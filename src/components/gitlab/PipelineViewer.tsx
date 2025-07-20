@@ -1,10 +1,8 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Loader2, ExternalLink, RefreshCw, Play, XCircle, CheckCircle, Clock, AlertCircle } from 'lucide-react';
-import { gitlabService } from '@/lib/services/gitlabService';
-import { useTranslation } from 'react-i18next';
+import { Loader2, ExternalLink, RefreshCw, XCircle, CheckCircle, Clock, AlertCircle } from 'lucide-react';
 import type { MergeRequest } from '@/lib/types/mergeRequest';
 
 interface PipelineViewerProps {
@@ -37,7 +35,6 @@ interface PipelineJob {
 }
 
 export function PipelineViewer({ mergeRequest }: PipelineViewerProps) {
-  const { t } = useTranslation();
   const [pipeline, setPipeline] = useState<Pipeline | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);

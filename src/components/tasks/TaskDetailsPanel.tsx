@@ -239,7 +239,7 @@ export function TaskDetailsPanel({
 
               <TabsContent value="mrs" className="h-full overflow-y-auto p-6">
                 {task ? (
-                  <MergeRequestList taskId={task.id} project={project} />
+                  <MergeRequestList taskId={task.id} project={project || undefined} />
                 ) : (
                   <div className="flex items-center justify-center h-full text-muted-foreground">
                     {t('task.selectTaskToView')}
