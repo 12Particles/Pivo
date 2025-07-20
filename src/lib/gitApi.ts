@@ -130,6 +130,7 @@ export const gitApi = {
     added: string[];
     deleted: string[];
     untracked: string[];
+    remotes: Array<{ name: string; url: string }>;
   }> => {
     return invoke("get_git_status", { repoPath });
   },

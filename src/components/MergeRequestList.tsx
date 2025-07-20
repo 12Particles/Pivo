@@ -2,23 +2,32 @@ import React, { useEffect, useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { ExternalLink, GitMerge, AlertCircle, CheckCircle, XCircle, Clock } from 'lucide-react';
+import { ExternalLink, GitMerge, AlertCircle, CheckCircle, XCircle, Clock, Plus } from 'lucide-react';
 import { gitlabService } from '@/lib/services/gitlabService';
 import type { MergeRequest } from '@/lib/types/mergeRequest';
+import { CreateMergeRequestDialog } from '@/components/gitlab/CreateMergeRequestDialog';
+import { PipelineViewer } from '@/components/gitlab/PipelineViewer';
 import { useTranslation } from 'react-i18next';
+import type { TaskAttempt, Project } from '@/types';
+import { taskAttemptApi } from '@/lib/api';
 
 interface MergeRequestListProps {
   taskId?: string;
   taskAttemptId?: string;
+  project?: Project;
 }
 
-export function MergeRequestList({ taskId, taskAttemptId }: MergeRequestListProps) {
+export function MergeRequestList({ taskId, taskAttemptId, project }: MergeRequestListProps) {
   const { t } = useTranslation();
   const [mergeRequests, setMergeRequests] = useState<MergeRequest[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showCreateDialog, setShowCreateDialog] = useState(false);
+  const [currentAttempt, setCurrentAttempt] = useState<TaskAttempt | null>(null);
+  const [selectedMR, setSelectedMR] = useState<MergeRequest | null>(null);
 
   useEffect(() => {
     loadMergeRequests();
+    loadLatestAttempt();
   }, [taskId, taskAttemptId]);
 
   const loadMergeRequests = async () => {
@@ -39,6 +48,21 @@ export function MergeRequestList({ taskId, taskAttemptId }: MergeRequestListProp
       console.error('Failed to load merge requests:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadLatestAttempt = async () => {
+    if (!taskId) return;
+    
+    try {
+      const attempts = await taskAttemptApi.listForTask(taskId);
+      if (attempts.length > 0) {
+        // Get the latest attempt
+        const latestAttempt = attempts[attempts.length - 1];
+        setCurrentAttempt(latestAttempt);
+      }
+    } catch (error) {
+      console.error("Failed to load attempts:", error);
     }
   };
 
@@ -100,6 +124,21 @@ export function MergeRequestList({ taskId, taskAttemptId }: MergeRequestListProp
 
   return (
     <div className="space-y-4">
+      {/* Header with create button */}
+      {currentAttempt && project && (
+        <div className="flex justify-between items-center">
+          <h3 className="text-lg font-semibold">{t('mergeRequests.title')}</h3>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setShowCreateDialog(true)}
+          >
+            <Plus className="h-4 w-4 mr-1" />
+            {t('mergeRequests.createMR')}
+          </Button>
+        </div>
+      )}
+
       {mergeRequests.map((mr) => (
         <Card key={mr.id}>
           <CardHeader>
@@ -145,19 +184,33 @@ export function MergeRequestList({ taskId, taskAttemptId }: MergeRequestListProp
                 </div>
               )}
               {mr.pipelineStatus && (
-                <div className="flex items-center gap-2">
-                  {getPipelineStatusIcon(mr.pipelineStatus)}
-                  <span className="text-sm">
-                    {t('mergeRequests.pipeline')}: {mr.pipelineStatus}
-                  </span>
-                  {mr.pipelineUrl && (
+                <div>
+                  <div className="flex items-center gap-2 mb-2">
+                    {getPipelineStatusIcon(mr.pipelineStatus)}
+                    <span className="text-sm">
+                      {t('mergeRequests.pipeline')}: {mr.pipelineStatus}
+                    </span>
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={() => window.open(mr.pipelineUrl, '_blank')}
+                      onClick={() => setSelectedMR(selectedMR?.id === mr.id ? null : mr)}
                     >
-                      <ExternalLink className="h-3 w-3" />
+                      {selectedMR?.id === mr.id ? 'Hide Details' : 'Show Details'}
                     </Button>
+                    {mr.pipelineUrl && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => window.open(mr.pipelineUrl, '_blank')}
+                      >
+                        <ExternalLink className="h-3 w-3" />
+                      </Button>
+                    )}
+                  </div>
+                  {selectedMR?.id === mr.id && (
+                    <div className="mt-4">
+                      <PipelineViewer mergeRequest={mr} />
+                    </div>
                   )}
                 </div>
               )}
@@ -165,6 +218,17 @@ export function MergeRequestList({ taskId, taskAttemptId }: MergeRequestListProp
           )}
         </Card>
       ))}
+
+      {/* Create MR Dialog */}
+      {currentAttempt && project && (
+        <CreateMergeRequestDialog
+          open={showCreateDialog}
+          onOpenChange={setShowCreateDialog}
+          taskAttempt={currentAttempt}
+          projectPath={project.path}
+          onSuccess={loadMergeRequests}
+        />
+      )}
     </div>
   );
 }

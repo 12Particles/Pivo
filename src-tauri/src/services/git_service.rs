@@ -543,6 +543,32 @@ impl GitService {
             }
         }
 
+        // Get remotes
+        let remote_output = Command::new("git")
+            .current_dir(repo_path)
+            .args(&["remote", "-v"])
+            .output()
+            .map_err(|e| format!("Failed to get remotes: {}", e))?;
+
+        if remote_output.status.success() {
+            let remote_text = String::from_utf8_lossy(&remote_output.stdout);
+            let mut remotes_map = std::collections::HashMap::new();
+            
+            for line in remote_text.lines() {
+                let parts: Vec<&str> = line.split_whitespace().collect();
+                if parts.len() >= 2 {
+                    remotes_map.insert(parts[0], parts[1]);
+                }
+            }
+            
+            for (name, url) in remotes_map {
+                files.remotes.push(RemoteInfo {
+                    name: name.to_string(),
+                    url: url.to_string(),
+                });
+            }
+        }
+
         Ok(files)
     }
 
@@ -568,6 +594,13 @@ pub struct GitStatus {
     pub added: Vec<String>,
     pub deleted: Vec<String>,
     pub untracked: Vec<String>,
+    pub remotes: Vec<RemoteInfo>,
+}
+
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub struct RemoteInfo {
+    pub name: String,
+    pub url: String,
 }
 
 impl GitStatus {

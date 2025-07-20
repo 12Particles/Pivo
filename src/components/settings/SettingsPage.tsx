@@ -5,6 +5,7 @@ import { ArrowLeft, Settings as SettingsIcon } from "lucide-react";
 import { McpServerManager } from "@/components/mcp/McpServerManager";
 import { GeneralSettings } from "./GeneralSettings";
 import { McpConfigManager } from "./McpConfigManager";
+import { GitLabSettings } from "./GitLabSettings";
 import { useTranslation } from "react-i18next";
 
 interface SettingsPageProps {
@@ -34,14 +35,19 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
 
       <div className="container mx-auto p-6">
         <Tabs defaultValue="general" className="w-full">
-          <TabsList className="grid w-full grid-cols-3 max-w-[600px]">
+          <TabsList className="grid w-full grid-cols-4 max-w-[800px]">
             <TabsTrigger value="general">{t('settings.generalSettings')}</TabsTrigger>
+            <TabsTrigger value="gitlab">GitLab</TabsTrigger>
             <TabsTrigger value="mcp">{t('settings.mcpServers')}</TabsTrigger>
             <TabsTrigger value="mcp-config">{t('settings.mcpConfiguration')}</TabsTrigger>
           </TabsList>
 
           <TabsContent value="general" className="space-y-4">
             <GeneralSettings />
+          </TabsContent>
+
+          <TabsContent value="gitlab" className="space-y-4">
+            <GitLabSettings />
           </TabsContent>
 
           <TabsContent value="mcp" className="space-y-4">
