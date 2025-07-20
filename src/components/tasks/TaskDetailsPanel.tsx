@@ -53,17 +53,30 @@ export function TaskDetailsPanel({
   if (!task) return null;
 
   return (
-    <div className="h-full flex flex-col overflow-hidden">
-      {/* Main content area */}
-      <Card className="flex-1 overflow-hidden">
+    <div className="h-full flex flex-col gap-4 overflow-hidden">
+      {/* Top section - File changes */}
+      <Card className="flex-1 min-h-0">
         <CardContent className="h-full p-0">
-          <Tabs defaultValue="files" className="h-full flex flex-col">
-            <TabsList className="grid w-full grid-cols-6 flex-shrink-0">
+          {project && task ? (
+            <FileTreeDiff 
+              projectPath={project.path} 
+              taskId={task.id} 
+              worktreePath={currentAttempt?.worktree_path}
+            />
+          ) : (
+            <div className="flex items-center justify-center h-full text-muted-foreground">
+              {t('git.selectFileToView')}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Bottom section - Tabs */}
+      <Card className="flex-1 min-h-0">
+        <CardContent className="h-full p-0">
+          <Tabs defaultValue="details" className="h-full flex flex-col">
+            <TabsList className="grid w-full grid-cols-5 flex-shrink-0">
               <TabsTrigger value="details">{t('task.taskDetails')}</TabsTrigger>
-              <TabsTrigger value="files">
-                <FileText className="h-4 w-4 mr-1" />
-                Files
-              </TabsTrigger>
               <TabsTrigger value="changes">
                 <GitCommit className="h-4 w-4 mr-1" />
                 Changes
@@ -194,22 +207,6 @@ export function TaskDetailsPanel({
                 </div>
               </TabsContent>
 
-              <TabsContent value="files" className="h-full p-0">
-                {project && task ? (
-                  <FileTreeDiff 
-                    projectPath={project.path} 
-                    taskId={task.id} 
-                    worktreePath={currentAttempt?.worktree_path}
-                  />
-                ) : (
-                  <div className="flex items-center justify-center h-full text-muted-foreground">
-                    <div className="text-center">
-                      <FolderGit className="h-12 w-12 mx-auto mb-2 opacity-50" />
-                      <p>{t('terminal.notAssociatedProject')}</p>
-                    </div>
-                  </div>
-                )}
-              </TabsContent>
 
               <TabsContent value="changes" className="h-full p-0">
                 {project && task && currentAttempt ? (
