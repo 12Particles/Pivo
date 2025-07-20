@@ -1,5 +1,4 @@
 import { useState, useEffect } from "react";
-import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Task, Project, TaskAttempt } from "@/types";
@@ -30,7 +29,11 @@ export function IntegrationPanel({ task, project }: IntegrationPanelProps) {
   const detectGitProvider = async () => {
     try {
       setLoading(true);
-      if (project.git_repo) {
+      // Use project's git_provider field if available
+      if (project.git_provider) {
+        setProvider(project.git_provider.toLowerCase());
+      } else if (project.git_repo) {
+        // Fallback to detection from URL
         const detectedProvider = await gitlabService.detectGitProvider(project.git_repo);
         setProvider(detectedProvider.toLowerCase());
       } else {

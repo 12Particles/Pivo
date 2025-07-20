@@ -7,6 +7,7 @@ use serde::{Deserialize, Serialize};
 use serde_json;
 use tauri::{AppHandle, Emitter};
 use uuid::Uuid;
+use log::{info, debug, error};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CliSession {
@@ -72,9 +73,10 @@ impl CliExecutorService {
         &self,
         task_id: &str,
         working_directory: &str,
-        project_path: Option<&str>,
+        _project_path: Option<&str>,
+        stored_claude_session_id: Option<&str>,
     ) -> Result<CliSession, String> {
-        println!("Starting Claude Code session for task: {}", task_id);
+        info!("Starting Claude Code session for task: {}", task_id);
         let session_id = Uuid::new_v4().to_string();
         let session = CliSession {
             id: session_id.clone(),
@@ -94,7 +96,7 @@ impl CliExecutorService {
             session: session.clone(),
             child: None,
             stdin: None,
-            claude_session_id: None,
+            claude_session_id: stored_claude_session_id.map(|s| s.to_string()),
         });
         drop(sessions);
         
@@ -144,10 +146,10 @@ impl CliExecutorService {
         mut cmd: Command,
         session: &mut CliSession,
     ) -> Result<(), String> {
-        println!("Spawning process with command: {:?}", cmd);
+        info!("Spawning process with command: {:?}", cmd);
         let mut child = cmd.spawn()
             .map_err(|e| format!("Failed to spawn CLI process: {}", e))?;
-        println!("Process spawned successfully with PID: {:?}", child.id());
+        info!("Process spawned successfully with PID: {:?}", child.id());
 
         let stdin = child.stdin.take();
         let stdout = child.stdout.take()
@@ -165,11 +167,11 @@ impl CliExecutorService {
         let task_id_clone = task_id.clone();
         let app_handle_clone = self.app_handle.clone();
         thread::spawn(move || {
-            println!("Starting stdout reader thread for session: {}", session_id_clone);
+            debug!("Starting stdout reader thread for session: {}", session_id_clone);
             let reader = BufReader::new(stdout);
             for line in reader.lines() {
                 if let Ok(line) = line {
-                    println!("CLI stdout: {}", line);
+                    debug!("CLI stdout: {}", line);
                     
                     // Parse JSON output from Claude Code
                     let content = if let Ok(json_data) = serde_json::from_str::<serde_json::Value>(&line) {
@@ -266,7 +268,7 @@ impl CliExecutorService {
                     let _ = app_handle_clone.emit("cli-output", &output);
                 }
             }
-            println!("Stdout reader thread ended for session: {}", session_id_clone);
+            debug!("Stdout reader thread ended for session: {}", session_id_clone);
         });
 
         // Handle stderr
@@ -274,11 +276,11 @@ impl CliExecutorService {
         let task_id_clone = task_id.clone();
         let app_handle_clone = self.app_handle.clone();
         thread::spawn(move || {
-            println!("Starting stderr reader thread for session: {}", session_id_clone);
+            debug!("Starting stderr reader thread for session: {}", session_id_clone);
             let reader = BufReader::new(stderr);
             for line in reader.lines() {
                 if let Ok(line) = line {
-                    println!("CLI stderr: {}", line);
+                    debug!("CLI stderr: {}", line);
                     let output = CliOutput {
                         session_id: session_id_clone.clone(),
                         task_id: task_id_clone.clone(),
@@ -289,7 +291,7 @@ impl CliExecutorService {
                     let _ = app_handle_clone.emit("cli-output", &output);
                 }
             }
-            println!("Stderr reader thread ended for session: {}", session_id_clone);
+            debug!("Stderr reader thread ended for session: {}", session_id_clone);
         });
 
         session.status = CliSessionStatus::Running;
@@ -301,14 +303,14 @@ impl CliExecutorService {
             session: session.clone(),
             child: Some(child),
             stdin,
-            claude_session_id: None,
+            claude_session_id: None,  // Gemini doesn't use Claude session ID
         });
 
         Ok(())
     }
 
     pub fn send_input(&self, session_id: &str, input: &str) -> Result<(), String> {
-        println!("Sending input to session {}: {}", session_id, input);
+        info!("Sending input to session {}: {}", session_id, input);
         
         // Get session info
         let sessions = self.sessions.lock().unwrap();
@@ -338,10 +340,12 @@ impl CliExecutorService {
         
         // Add --resume flag if we have a Claude session ID
         if let Some(claude_sid) = claude_session_id {
-            cmd.arg(format!("--resume={}", claude_sid));
+            info!("Using Claude session ID for resume: {}", claude_sid);
+            cmd.arg("--resume");
+            cmd.arg(claude_sid);
         }
 
-        println!("Spawning Claude Code with command: {:?}", cmd);
+        info!("Spawning Claude Code with command: {:?}", cmd);
         
         // Spawn the process
         let mut child = cmd.spawn()
@@ -364,11 +368,11 @@ impl CliExecutorService {
             let app_handle_clone = self.app_handle.clone();
             let sessions_clone = self.sessions.clone();
             thread::spawn(move || {
-                println!("Reading Claude Code output for session: {}", session_id_clone);
+                debug!("Reading Claude Code output for session: {}", session_id_clone);
                 let reader = BufReader::new(stdout);
                 for line in reader.lines() {
                     if let Ok(line) = line {
-                        println!("Claude stdout: {}", line);
+                        debug!("Claude stdout: {}", line);
                         
                         // Parse JSON output from Claude Code
                         let content = if let Ok(json_data) = serde_json::from_str::<serde_json::Value>(&line) {
@@ -378,7 +382,14 @@ impl CliExecutorService {
                                 let mut sessions = sessions_clone.lock().unwrap();
                                 if let Some(process) = sessions.get_mut(&session_id_clone) {
                                     process.claude_session_id = Some(claude_session_id.to_string());
-                                    println!("Stored Claude session ID: {}", claude_session_id);
+                                    info!("Stored Claude session ID: {}", claude_session_id);
+                                    
+                                    // Emit event to frontend to save Claude session ID
+                                    let _ = app_handle_clone.emit("claude-session-id-received", serde_json::json!({
+                                        "task_id": task_id_clone.clone(),
+                                        "session_id": session_id_clone.clone(),
+                                        "claude_session_id": claude_session_id
+                                    }));
                                 }
                             }
                             
@@ -490,13 +501,13 @@ impl CliExecutorService {
                         let _ = app_handle_clone.emit("cli-output", &output);
                     }
                 }
-                println!("Claude Code output reading completed for session: {}", session_id_clone);
+                debug!("Claude Code output reading completed for session: {}", session_id_clone);
                 
                 // When Claude Code completes, update task status to Reviewing
                 let app_handle_for_status = app_handle_clone.clone();
                 let task_id_for_status = task_id_clone.clone();
                 thread::spawn(move || {
-                    println!("Updating task status to Reviewing for task: {}", task_id_for_status);
+                    info!("Updating task status to Reviewing for task: {}", task_id_for_status);
                     let _ = app_handle_for_status.emit("cli-process-completed", serde_json::json!({
                         "task_id": task_id_for_status,
                         "session_id": session_id_clone
@@ -514,7 +525,7 @@ impl CliExecutorService {
                 let reader = BufReader::new(stderr);
                 for line in reader.lines() {
                     if let Ok(line) = line {
-                        println!("Claude stderr: {}", line);
+                        debug!("Claude stderr: {}", line);
                         let output = CliOutput {
                             session_id: session_id_clone.clone(),
                             task_id: task_id_clone.clone(),

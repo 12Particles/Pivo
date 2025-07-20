@@ -3,7 +3,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Task, Project, TaskAttempt } from "@/types";
-import { Play, GitBranch, FolderGit } from "lucide-react";
+import { Play, GitBranch } from "lucide-react";
 import { Terminal } from "@/components/terminal/Terminal";
 import { FileTreeDiff } from "@/components/git/FileTreeDiff";
 import { IntegrationPanel } from "@/components/integration/IntegrationPanel";

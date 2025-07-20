@@ -13,11 +13,20 @@ impl ProjectService {
 
     pub async fn create_project(&self, req: CreateProjectRequest) -> Result<Project, sqlx::Error> {
         let id = Uuid::new_v4();
+        
+        // Auto-detect git provider from git_repo URL
+        let git_provider = req.git_repo.as_ref().map(|url| {
+            if url.contains("github.com") {
+                "github".to_string()
+            } else {
+                "gitlab".to_string()
+            }
+        });
 
         sqlx::query(
             r#"
-            INSERT INTO projects (id, name, description, path, git_repo, setup_script, dev_script, created_at, updated_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
+            INSERT INTO projects (id, name, description, path, git_repo, git_provider, setup_script, dev_script, created_at, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
             "#,
         )
         .bind(id.to_string())
@@ -25,6 +34,7 @@ impl ProjectService {
         .bind(&req.description)
         .bind(&req.path)
         .bind(&req.git_repo)
+        .bind(&git_provider)
         .bind(&req.setup_script)
         .bind(&req.dev_script)
         .execute(&self.pool)
@@ -80,6 +90,15 @@ impl ProjectService {
         if let Some(git_repo) = &req.git_repo {
             update_parts.push("git_repo = ?");
             params.push(git_repo.clone());
+            
+            // Auto-detect and update git provider when git_repo changes
+            let git_provider = if git_repo.contains("github.com") {
+                "github".to_string()
+            } else {
+                "gitlab".to_string()
+            };
+            update_parts.push("git_provider = ?");
+            params.push(git_provider);
         }
 
         if let Some(setup_script) = &req.setup_script {

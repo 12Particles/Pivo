@@ -124,7 +124,10 @@
     "addTaskToProject": "Add a new task to the current project",
     "enterTaskTitle": "Enter task title...",
     "enterTaskDescription": "Enter task description...",
-    "addTag": "Add tag..."
+    "addTag": "Add tag...",
+    "createAndStart": "Create & Start",
+    "images": "Images",
+    "attachedImages": "Attached {{count}} images"
   },
   "terminal": {
     "title": "Terminal",
@@ -180,7 +183,10 @@
     "showAllLines": "Show all {{count}} lines",
     "collapse": "Collapse",
     "attachment": "Attachment",
-    "executing": "Executing"
+    "executing": "Executing",
+    "waitForCompletion": "Please wait for current task to complete",
+    "imagePasted": "Image pasted",
+    "imagePastedDesc": "Pasted {{count}} image(s)"
   },
   "git": {
     "fileChanges": "File Changes",

@@ -44,6 +44,9 @@ function App() {
       logger.info('Pivo application started');
     });
     
+    // Refresh git providers for all projects on app start
+    refreshGitProviders();
+    
     // Listen for menu events
     const unlistenMenuLogs = listen('menu-view-logs', async () => {
       try {
@@ -120,6 +123,23 @@ function App() {
     };
   }, [selectedTask]);
 
+  const refreshGitProviders = async () => {
+    try {
+      logger.info('Refreshing git providers for all projects');
+      const updatedProjects = await projectApi.refreshAllGitProviders();
+      if (updatedProjects.length > 0) {
+        logger.info(`Updated git providers for ${updatedProjects.length} projects`);
+        toast({
+          title: t('common.success'),
+          description: `Updated git providers for ${updatedProjects.length} projects`,
+        });
+      }
+    } catch (error) {
+      logger.error('Failed to refresh git providers', error);
+      console.error("Failed to refresh git providers:", error);
+    }
+  };
+
   const loadTasks = async () => {
     if (!currentProject) return;
     
@@ -158,15 +178,27 @@ function App() {
     setShowCreateTaskDialog(true);
   };
 
-  const handleCreateTask = async (data: CreateTaskRequest) => {
+  const handleCreateTask = async (data: CreateTaskRequest, shouldStart?: boolean) => {
     try {
       const newTask = await taskApi.create(data);
       setTasks([...tasks, newTask]);
       setShowCreateTaskDialog(false);
-      toast({
-        title: t('common.success'),
-        description: t('task.createTaskSuccess'),
-      });
+      
+      if (shouldStart) {
+        // Automatically start the task after creation
+        const updatedTask = await taskApi.updateStatus(newTask.id, TaskStatus.Working);
+        setTasks(tasks.map(t => t.id === newTask.id ? updatedTask : t));
+        setSelectedTask(updatedTask);
+        toast({
+          title: t('task.createTaskSuccess'),
+          description: t('task.taskStarted'),
+        });
+      } else {
+        toast({
+          title: t('common.success'),
+          description: t('task.createTaskSuccess'),
+        });
+      }
       
       // 自动创建 worktree
       if (currentProject?.git_repo) {

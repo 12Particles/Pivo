@@ -17,6 +17,7 @@ pub struct TaskAttempt {
     pub last_sync_at: Option<DateTime<Utc>>,
     pub created_at: DateTime<Utc>,
     pub completed_at: Option<DateTime<Utc>>,
+    pub claude_session_id: Option<String>,
 }
 
 #[derive(Debug, FromRow)]
@@ -33,6 +34,7 @@ pub struct TaskAttemptRow {
     pub last_sync_at: Option<String>,
     pub created_at: String,
     pub completed_at: Option<String>,
+    pub claude_session_id: Option<String>,
 }
 
 impl From<TaskAttemptRow> for TaskAttempt {
@@ -61,6 +63,7 @@ impl From<TaskAttemptRow> for TaskAttempt {
                     .map(|dt| dt.with_timezone(&Utc))
                     .ok()
             ),
+            claude_session_id: row.claude_session_id,
         }
     }
 }

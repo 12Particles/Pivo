@@ -80,6 +80,10 @@ export const taskAttemptApi = {
   getConversation: async (attemptId: string): Promise<any> => {
     return await invoke("get_attempt_conversation", { attemptId });
   },
+
+  updateClaudeSessionId: async (attemptId: string, claudeSessionId: string): Promise<void> => {
+    return await invoke("update_attempt_claude_session", { attemptId, claudeSessionId });
+  },
 };
 
 // Project API
@@ -102,6 +106,10 @@ export const projectApi = {
 
   delete: async (id: string): Promise<void> => {
     return await invoke("delete_project", { id });
+  },
+  
+  refreshAllGitProviders: async (): Promise<Project[]> => {
+    return await invoke("refresh_all_git_providers");
   },
 };
 
@@ -143,11 +151,18 @@ export const gitApi = {
     taskId: string,
     baseBranch: string
   ): Promise<string> => {
-    return await invoke("create_worktree", { repoPath, taskId, baseBranch });
+    return await invoke("create_worktree", { 
+      repoPath: repoPath, 
+      branchName: taskId, 
+      baseBranch: baseBranch 
+    });
   },
 
   removeWorktree: async (repoPath: string, worktreePath: string): Promise<void> => {
-    return await invoke("remove_worktree", { repoPath, worktreePath });
+    return await invoke("remove_worktree", { 
+      repoPath: repoPath, 
+      worktreePath: worktreePath 
+    });
   },
 
   getCurrentBranch: async (repoPath: string): Promise<string> => {
@@ -179,15 +194,15 @@ export const gitApi = {
   },
 
   listAllFiles: async (directoryPath: string): Promise<any[]> => {
-    return await invoke("list_all_files", { directoryPath });
+    return await invoke("list_all_files", { repoPath: directoryPath });
   },
 
-  readFileContent: async (filePath: string): Promise<string> => {
-    return await invoke("read_file_content", { filePath });
+  readFileContent: async (repoPath: string, filePath: string): Promise<string> => {
+    return await invoke("read_file_content", { repoPath: repoPath, filePath: filePath });
   },
 
   getFileFromRef: async (repoPath: string, fileRef: string): Promise<string> => {
-    return await invoke("get_file_from_ref", { repoPath, fileRef });
+    return await invoke("get_file_from_ref", { repoPath: repoPath, fileRef: fileRef });
   },
 };
 
@@ -290,15 +305,35 @@ export const mcpApi = {
 
 // CLI API
 export const cliApi = {
+  // New simplified API
+  executeClaudeCommand: async (
+    taskId: string,
+    workingDirectory: string,
+    message: string,
+    claudeSessionId?: string,
+    projectPath?: string
+  ): Promise<void> => {
+    return await invoke("execute_claude_command", {
+      taskId,
+      workingDirectory,
+      message,
+      claudeSessionId,
+      projectPath,
+    });
+  },
+
+  // Legacy API - kept for backward compatibility
   startClaudeSession: async (
     taskId: string,
     workingDirectory: string,
-    projectPath?: string
+    projectPath?: string,
+    storedClaudeSessionId?: string
   ): Promise<CliSession> => {
     return await invoke("start_claude_session", {
       taskId,
       workingDirectory,
       projectPath,
+      storedClaudeSessionId,
     });
   },
 
@@ -336,6 +371,10 @@ export const cliApi = {
 
   configureGeminiApiKey: async (apiKey: string): Promise<void> => {
     return await invoke("configure_gemini_api_key", { apiKey });
+  },
+
+  saveImagesToTemp: async (base64Images: string[]): Promise<string[]> => {
+    return await invoke("save_images_to_temp", { base64Images });
   },
 };
 

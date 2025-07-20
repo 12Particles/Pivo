@@ -18,6 +18,12 @@
     "fs:allow-write-text-file",
     "fs:allow-read-file",
     "fs:allow-write-file",
-    "fs:allow-exists"
+    "fs:allow-exists",
+    "fs:allow-mkdir",
+    "fs:allow-create",
+    "fs:allow-appdata-read",
+    "fs:allow-appdata-write",
+    "fs:allow-appdata-read-recursive",
+    "fs:allow-appdata-write-recursive"
   ]
 }

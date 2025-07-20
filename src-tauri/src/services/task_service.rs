@@ -308,4 +308,16 @@ impl TaskService {
             Ok(None)
         }
     }
+    
+    pub async fn update_attempt_claude_session(&self, attempt_id: Uuid, claude_session_id: String) -> Result<(), sqlx::Error> {
+        sqlx::query(
+            "UPDATE task_attempts SET claude_session_id = ? WHERE id = ?"
+        )
+        .bind(&claude_session_id)
+        .bind(attempt_id.to_string())
+        .execute(&self.pool)
+        .await?;
+        
+        Ok(())
+    }
 }

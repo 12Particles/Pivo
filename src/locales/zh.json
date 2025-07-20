@@ -124,7 +124,10 @@
     "addTaskToProject": "添加一个新任务到当前项目中",
     "enterTaskTitle": "输入任务标题...",
     "enterTaskDescription": "输入任务描述...",
-    "addTag": "添加标签..."
+    "addTag": "添加标签...",
+    "createAndStart": "创建并开始",
+    "images": "图片",
+    "attachedImages": "已附加 {{count}} 张图片"
   },
   "terminal": {
     "title": "终端",
@@ -179,8 +182,11 @@
     "selectImageError": "选择图片失败",
     "showAllLines": "显示全部 {{count}} 行",
     "collapse": "折叠",
+    "waitForCompletion": "请等待当前任务执行完成",
     "attachment": "附件",
-    "executing": "执行中"
+    "executing": "执行中",
+    "imagePasted": "图片已粘贴",
+    "imagePastedDesc": "已粘贴 {{count}} 张图片"
   },
   "git": {
     "fileChanges": "文件变更",

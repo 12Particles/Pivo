@@ -14,12 +14,14 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { TaskPriority, CreateTaskRequest } from "@/types";
 import { useTranslation } from "react-i18next";
+import { ImageUpload } from "@/components/ui/image-upload";
+import { Play } from "lucide-react";
 
 interface CreateTaskDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   projectId: string;
-  onSubmit: (data: CreateTaskRequest) => void;
+  onSubmit: (data: CreateTaskRequest, shouldStart?: boolean) => void;
 }
 
 export function CreateTaskDialog({ open, onOpenChange, projectId, onSubmit }: CreateTaskDialogProps) {
@@ -33,18 +35,25 @@ export function CreateTaskDialog({ open, onOpenChange, projectId, onSubmit }: Cr
   });
 
   const [tagInput, setTagInput] = useState("");
+  const [images, setImages] = useState<string[]>([]);
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = (shouldStart: boolean = false) => {
     if (!formData.title?.trim()) return;
+    
+    // If we have images, append them to the description
+    let finalDescription = formData.description || "";
+    if (images.length > 0) {
+      finalDescription += "\n\n" + t('task.attachedImages', { count: images.length });
+      // Note: In a full implementation, we would handle image storage and references here
+    }
     
     onSubmit({
       project_id: projectId,
       title: formData.title,
-      description: formData.description,
+      description: finalDescription,
       priority: formData.priority || TaskPriority.Medium,
       tags: formData.tags,
-    });
+    }, shouldStart);
 
     // Reset form
     setFormData({
@@ -55,6 +64,7 @@ export function CreateTaskDialog({ open, onOpenChange, projectId, onSubmit }: Cr
       tags: [],
     });
     setTagInput("");
+    setImages([]);
     onOpenChange(false);
   };
 
@@ -79,8 +89,8 @@ export function CreateTaskDialog({ open, onOpenChange, projectId, onSubmit }: Cr
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[425px]">
-        <form onSubmit={handleSubmit}>
+      <DialogContent className="sm:max-w-[550px] max-h-[80vh] overflow-y-auto">
+        <form onSubmit={(e) => { e.preventDefault(); handleSubmit(false); }}>
           <DialogHeader>
             <DialogTitle>{t('task.createTask')}</DialogTitle>
             <DialogDescription>
@@ -168,13 +178,32 @@ export function CreateTaskDialog({ open, onOpenChange, projectId, onSubmit }: Cr
                 </div>
               )}
             </div>
+
+            <div className="grid gap-2">
+              <Label>{t('task.images')}</Label>
+              <ImageUpload
+                images={images}
+                onImagesChange={setImages}
+                maxImages={5}
+              />
+            </div>
           </div>
 
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               {t('common.cancel')}
             </Button>
-            <Button type="submit">{t('task.createTask')}</Button>
+            <Button type="submit" variant="secondary">
+              {t('task.createTask')}
+            </Button>
+            <Button 
+              type="button" 
+              onClick={() => handleSubmit(true)}
+              disabled={!formData.title?.trim()}
+            >
+              <Play className="h-4 w-4 mr-2" />
+              {t('task.createAndStart')}
+            </Button>
           </DialogFooter>
         </form>
       </DialogContent>

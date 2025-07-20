@@ -75,12 +75,24 @@ export function TaskConversationEnhanced({ task, project }: TaskConversationEnha
     loadAttempts();
   }, [task.id]);
 
-  // Auto-start session when task is in Working status
+  // Auto-start session and send initial prompt only for brand new tasks
   useEffect(() => {
-    if (task.status === "Working" && !session && !isLoading) {
-      startSession();
+    if (task.status === "Working" && !session && !isLoading && !currentAttempt && messages.length === 0) {
+      // Only auto-start for brand new tasks that have never been worked on
+      // This will create the session AND send the task prompt
+      startSession(false);
     }
-  }, [task.status]);
+  }, [task.status, currentAttempt, messages.length]);
+  
+  // Handle the case where we have an existing attempt but no active session
+  // This happens after app restart
+  useEffect(() => {
+    // If we have messages but no session, don't auto-create one
+    // Wait for user to send a message
+    if (currentAttempt && messages.length > 0 && !session) {
+      console.log("Have existing conversation, waiting for user input to resume");
+    }
+  }, [currentAttempt, messages.length, session]);
 
   // Auto-save messages periodically
   useEffect(() => {
@@ -149,6 +161,21 @@ export function TaskConversationEnhanced({ task, project }: TaskConversationEnha
       }
     });
     
+    // Listen for Claude session ID
+    const unlistenClaudeSessionId = listen<any>("claude-session-id-received", async (event) => {
+      if (event.payload.task_id === task.id && currentAttempt) {
+        console.log("Received Claude session ID:", event.payload.claude_session_id);
+        
+        // Save Claude session ID to database
+        try {
+          await taskAttemptApi.updateClaudeSessionId(currentAttempt.id, event.payload.claude_session_id);
+          console.log("Saved Claude session ID to database");
+        } catch (error) {
+          console.error("Failed to save Claude session ID:", error);
+        }
+      }
+    });
+    
     // Listen for process completion
     const unlistenComplete = listen<any>("cli-process-completed", async (event) => {
       if (event.payload.task_id === task.id) {
@@ -187,15 +214,6 @@ export function TaskConversationEnhanced({ task, project }: TaskConversationEnha
             title: t('task.taskCompleted'),
             description: t('task.reviewResults'),
           });
-          
-          // Send pending messages if any
-          if (pendingMessages.length > 0) {
-            const nextMessage = pendingMessages[0];
-            setPendingMessages(prev => prev.slice(1));
-            setInput(nextMessage);
-            // Auto-send the next message
-            setTimeout(() => sendMessage(), 100);
-          }
         } catch (error) {
           console.error("Failed to update task status:", error);
           toast({
@@ -210,6 +228,7 @@ export function TaskConversationEnhanced({ task, project }: TaskConversationEnha
     return () => {
       unlistenOutput.then((fn) => fn());
       unlistenStatus.then((fn) => fn());
+      unlistenClaudeSessionId.then((fn) => fn());
       unlistenComplete.then((fn) => fn());
     };
   }, [session?.id, task.id]);
@@ -286,10 +305,10 @@ export function TaskConversationEnhanced({ task, project }: TaskConversationEnha
     }
   };
 
-  const startSession = async () => {
+  const startSession = async (isResume: boolean = false): Promise<CliSession | null> => {
     try {
       setIsLoading(true);
-      console.log("Starting CLI session for task:", task.id);
+      console.log("Starting CLI session for task:", task.id, "isResume:", isResume);
       
       // Create a new attempt if we don't have one
       let attempt = currentAttempt;
@@ -329,10 +348,16 @@ export function TaskConversationEnhanced({ task, project }: TaskConversationEnha
       
       if (aiType === "claude") {
         console.log("Starting Claude Code session with path:", workingDirectory);
+        // If resuming, pass the stored Claude session ID
+        const claudeSessionId = isResume && attempt?.claude_session_id ? attempt.claude_session_id : undefined;
+        if (claudeSessionId) {
+          console.log("Using stored Claude session ID:", claudeSessionId);
+        }
         newSession = await cliApi.startClaudeSession(
           task.id,
           workingDirectory,
-          project.path  // Keep project path for context
+          project.path,  // Keep project path for context
+          claudeSessionId
         );
       } else {
         newSession = await cliApi.startGeminiSession(
@@ -351,13 +376,30 @@ export function TaskConversationEnhanced({ task, project }: TaskConversationEnha
         timestamp: new Date(),
       });
       
-      // Send task information immediately
-      const taskPrompt = task.description 
-        ? `Task title: ${task.title}\nTask description: ${task.description}`
-        : `Task title: ${task.title}`;
+      // Only send task information if this is NOT a resume
+      if (!isResume) {
+        const taskPrompt = task.description 
+          ? `Task title: ${task.title}\nTask description: ${task.description}`
+          : `Task title: ${task.title}`;
+        
+        console.log("Sending task prompt:", taskPrompt);
+        await cliApi.sendInput(newSession.id, taskPrompt);
+      }
       
-      console.log("Sending task prompt:", taskPrompt);
-      await cliApi.sendInput(newSession.id, taskPrompt);
+      // If we have a pending message (from follow-up), send it now
+      if (isSending && input.trim()) {
+        console.log("Sending pending follow-up message:", input);
+        const pendingMessage = input;
+        setInput("");
+        
+        // Wait a bit to ensure the first message is processed
+        setTimeout(async () => {
+          await cliApi.sendInput(newSession.id, pendingMessage);
+          setIsSending(false);
+        }, 100);
+      }
+      
+      return newSession;
     } catch (error) {
       console.error("Failed to start session:", error);
       toast({
@@ -365,6 +407,8 @@ export function TaskConversationEnhanced({ task, project }: TaskConversationEnha
         description: `${t('ai.startSessionError')}: ${error}`,
         variant: "destructive",
       });
+      setIsSending(false);
+      return null;
     } finally {
       setIsLoading(false);
     }
@@ -374,6 +418,15 @@ export function TaskConversationEnhanced({ task, project }: TaskConversationEnha
   const sendMessage = async () => {
     const message = input.trim();
     if (!message && images.length === 0) return;
+
+    // Check if Claude is still running
+    if (session && session.status === CliSessionStatus.Running) {
+      toast({
+        title: t('common.info'),
+        description: t('ai.waitForCompletion'),
+      });
+      return;
+    }
 
     // If a message is being sent, queue this one
     if (isSending) {
@@ -412,11 +465,16 @@ export function TaskConversationEnhanced({ task, project }: TaskConversationEnha
         
         let fullMessage = message;
         
-        // If we have images, we need to format the message appropriately
+        // If we have images, we need to save them as temporary files for Claude Code
         if (images.length > 0) {
-          // For now, we'll mention that images were attached
-          // In a real implementation, we'd need to handle image data properly
-          fullMessage += `\n\n[已附加 ${images.length} 张图片]`;
+          // Save images to temp files and get paths
+          const imagePaths = await cliApi.saveImagesToTemp(images);
+          
+          // Append image paths to the message in the format Claude Code expects
+          fullMessage += "\n\nAttached images:";
+          for (const path of imagePaths) {
+            fullMessage += `\n- ${path}`;
+          }
         }
         await cliApi.sendInput(session.id, fullMessage);
       } catch (error) {
@@ -426,13 +484,49 @@ export function TaskConversationEnhanced({ task, project }: TaskConversationEnha
           description: `${t('ai.sendMessageError')}: ${error}`,
           variant: "destructive",
         });
-      } finally {
         setIsSending(false);
       }
-    } else if (task.status === "Working") {
-      // Start a new session if task is working
-      await startSession();
-      setIsSending(false);
+    } else if (task.status === "Working" || task.status === "Reviewing") {
+      // If there's no session but task is in Working/Reviewing status, we need to continue with the existing session
+      // This happens when sending a follow-up after task completion
+      console.log("No active session but task is in Working/Reviewing status, starting session for follow-up");
+      
+      // First, change task status to Working if it's Reviewing
+      if (task.status === "Reviewing") {
+        await taskApi.updateStatus(task.id, TaskStatus.Working);
+      }
+      
+      // Start a new session that will use --resume with the stored Claude session ID
+      // Pass isResume=true to avoid sending task prompt again
+      const newSession = await startSession(true);
+      
+      // Now send the user's message
+      if (newSession) {
+        try {
+          let fullMessage = message;
+          
+          // If we have images, save them as temporary files
+          if (images.length > 0) {
+            const imagePaths = await cliApi.saveImagesToTemp(images);
+            fullMessage += "\n\nAttached images:";
+            for (const path of imagePaths) {
+              fullMessage += `\n- ${path}`;
+            }
+          }
+          
+          await cliApi.sendInput(newSession.id, fullMessage);
+        } catch (error) {
+          console.error("Failed to send message after creating session:", error);
+          toast({
+            title: t('common.error'),
+            description: `${t('ai.sendMessageError')}: ${error}`,
+            variant: "destructive",
+          });
+          setIsSending(false);
+        }
+      } else {
+        setIsSending(false);
+      }
     } else {
       toast({
         title: t('common.info'),
@@ -465,6 +559,41 @@ export function TaskConversationEnhanced({ task, project }: TaskConversationEnha
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       sendMessage();
+    }
+  };
+
+  const handlePaste = async (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
+    const items = Array.from(e.clipboardData.items);
+    const imageItems = items.filter(item => item.type.startsWith("image/"));
+    
+    if (imageItems.length === 0) return;
+    
+    e.preventDefault();
+    const newImages: string[] = [];
+
+    for (const item of imageItems) {
+      const file = item.getAsFile();
+      if (file) {
+        try {
+          const reader = new FileReader();
+          const base64 = await new Promise<string>((resolve, reject) => {
+            reader.onload = () => resolve(reader.result as string);
+            reader.onerror = reject;
+            reader.readAsDataURL(file);
+          });
+          newImages.push(base64);
+        } catch (error) {
+          console.error("Failed to read pasted image:", error);
+        }
+      }
+    }
+
+    if (newImages.length > 0) {
+      setImages([...images, ...newImages].slice(0, 5)); // Limit to 5 images
+      toast({
+        title: t('ai.imagePasted'),
+        description: t('ai.imagePastedDesc', { count: newImages.length }),
+      });
     }
   };
 
@@ -1035,13 +1164,15 @@ export function TaskConversationEnhanced({ task, project }: TaskConversationEnha
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyPress={handleKeyPress}
+            onPaste={handlePaste}
             placeholder={t('ai.sendMessage')}
             className="flex-1 min-h-[60px] max-h-[120px] resize-none"
+            disabled={isSending || (session?.status === CliSessionStatus.Running) || false}
           />
           
           <Button 
             onClick={sendMessage} 
-            disabled={(!input.trim() && images.length === 0) || (isSending && pendingMessages.length > 0)}
+            disabled={(!input.trim() && images.length === 0) || isSending || (session?.status === CliSessionStatus.Running) || false}
           >
             {pendingMessages.length > 0 ? (
               <>

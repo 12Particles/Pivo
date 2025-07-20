@@ -33,6 +33,7 @@ export interface Project {
   description?: string;
   path: string;
   git_repo?: string;
+  git_provider?: string;
   setup_script?: string;
   dev_script?: string;
   created_at: string;
@@ -89,6 +90,7 @@ export interface TaskAttempt {
   last_sync_at?: string;
   created_at: string;
   completed_at?: string;
+  claude_session_id?: string;
 }
 
 export enum AttemptStatus {
@@ -285,6 +287,15 @@ export type ToolContent =
   | { type: "image"; data: string; mime_type: string }
   | { type: "resource"; uri: string; text?: string };
 
+export interface CliExecutionContext {
+  id: string;
+  task_id: string;
+  executor_type: CliExecutorType;
+  working_directory: string;
+  claude_session_id?: string;  // For resuming Claude conversations
+}
+
+// Backward compatibility - will be removed
 export interface CliSession {
   id: string;
   task_id: string;

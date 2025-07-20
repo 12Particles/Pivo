@@ -99,25 +99,71 @@ export function FileTreeDiff({ projectPath, taskId, worktreePath }: FileTreeDiff
     if (!worktreePath || allFilesLoaded) return;
     
     try {
-      const files = await gitApi.listAllFiles(worktreePath);
+      const fileList = await gitApi.listAllFiles(worktreePath);
       
-      // Convert backend response to our FileNode format and add git status
-      const convertNodes = (nodes: any[]): FileNode[] => {
-        return nodes.map(node => {
-          // Get relative path from worktree
-          const relativePath = node.path.replace(worktreePath + '/', '');
-          return {
-            name: node.name,
-            path: node.path,
-            type: node.type === 'folder' ? 'folder' : 'file',
-            status: gitStatusMap[relativePath],
-            children: node.children ? convertNodes(node.children) : undefined
-          } as FileNode;
+      // Build file tree from flat list of file paths
+      const root: FileNode[] = [];
+      const folders = new Map<string, FileNode>();
+      
+      fileList.forEach((filePath: string) => {
+        const parts = filePath.split("/");
+        let currentLevel = root;
+        let currentPath = "";
+        
+        parts.forEach((part: string, index: number) => {
+          currentPath = currentPath ? `${currentPath}/${part}` : part;
+          
+          if (index === parts.length - 1) {
+            // It's a file
+            currentLevel.push({
+              name: part,
+              path: `${worktreePath}/${currentPath}`,
+              type: "file",
+              status: gitStatusMap[currentPath],
+            });
+          } else {
+            // It's a folder
+            let folder = folders.get(currentPath);
+            if (!folder) {
+              folder = {
+                name: part,
+                path: `${worktreePath}/${currentPath}`,
+                type: "folder",
+                children: [],
+              };
+              folders.set(currentPath, folder);
+              currentLevel.push(folder);
+            }
+            currentLevel = folder.children!;
+          }
+        });
+      });
+      
+      // Sort function: folders first, then files, both alphabetically
+      const sortNodes = (nodes: FileNode[]): FileNode[] => {
+        return nodes.sort((a, b) => {
+          // If different types, folders come first
+          if (a.type !== b.type) {
+            return a.type === "folder" ? -1 : 1;
+          }
+          // If same type, sort alphabetically by name
+          return a.name.localeCompare(b.name);
         });
       };
       
-      const tree = convertNodes(files);
-      setFileTree(tree);
+      // Recursively sort all levels
+      const sortTree = (nodes: FileNode[]): FileNode[] => {
+        const sorted = sortNodes(nodes);
+        sorted.forEach(node => {
+          if (node.type === "folder" && node.children) {
+            node.children = sortTree(node.children);
+          }
+        });
+        return sorted;
+      };
+      
+      const sortedTree = sortTree(root);
+      setFileTree(sortedTree);
       setAllFilesLoaded(true);
     } catch (error) {
       console.error("Failed to load all files:", error);
@@ -185,7 +231,31 @@ export function FileTreeDiff({ projectPath, taskId, worktreePath }: FileTreeDiff
       });
     });
 
-    setChangedFilesTree(root);
+    // Sort function: folders first, then files, both alphabetically
+    const sortNodes = (nodes: FileNode[]): FileNode[] => {
+      return nodes.sort((a, b) => {
+        // If different types, folders come first
+        if (a.type !== b.type) {
+          return a.type === "folder" ? -1 : 1;
+        }
+        // If same type, sort alphabetically by name
+        return a.name.localeCompare(b.name);
+      });
+    };
+    
+    // Recursively sort all levels
+    const sortTree = (nodes: FileNode[]): FileNode[] => {
+      const sorted = sortNodes(nodes);
+      sorted.forEach(node => {
+        if (node.type === "folder" && node.children) {
+          node.children = sortTree(node.children);
+        }
+      });
+      return sorted;
+    };
+    
+    const sortedTree = sortTree(root);
+    setChangedFilesTree(sortedTree);
   };
 
   const loadDiff = async (filePath: string) => {
@@ -211,7 +281,7 @@ export function FileTreeDiff({ projectPath, taskId, worktreePath }: FileTreeDiff
       
       if (fileStatus === 'added') {
         // New file, show only the new content
-        const content = await gitApi.readFileContent(fullPath);
+        const content = await gitApi.readFileContent(worktreePath, relativePath);
         
         if (existingIndex === -1) {
           const newFile: OpenFile = {
@@ -244,7 +314,7 @@ export function FileTreeDiff({ projectPath, taskId, worktreePath }: FileTreeDiff
         }
       } else if (fileStatus === 'modified') {
         // Modified file, get the current content and compare with git
-        const currentContent = await gitApi.readFileContent(fullPath);
+        const currentContent = await gitApi.readFileContent(worktreePath, relativePath);
         
         // Get the original content from git
         const gitShowResult = await gitApi.getFileFromRef(worktreePath, `HEAD:${relativePath}`);
@@ -263,7 +333,7 @@ export function FileTreeDiff({ projectPath, taskId, worktreePath }: FileTreeDiff
         }
       } else {
         // File has no changes, just display current content
-        const content = await gitApi.readFileContent(fullPath);
+        const content = await gitApi.readFileContent(worktreePath, relativePath);
         
         if (existingIndex === -1) {
           const newFile: OpenFile = {
@@ -442,17 +512,15 @@ export function FileTreeDiff({ projectPath, taskId, worktreePath }: FileTreeDiff
                     <TabsTrigger
                       key={file.path}
                       value={file.path}
-                      className="relative h-10 rounded-none border-b-2 border-b-transparent data-[state=active]:border-b-primary data-[state=active]:shadow-none px-4 flex-shrink-0"
+                      className="relative h-10 rounded-none border-b-2 border-b-transparent data-[state=active]:border-b-primary data-[state=active]:shadow-none px-4 flex-shrink-0 flex items-center"
                     >
                       <span className="text-sm">{file.name}</span>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-4 w-4 ml-2 hover:bg-accent"
+                      <span
+                        className="h-4 w-4 ml-2 hover:bg-accent rounded-sm flex items-center justify-center cursor-pointer"
                         onClick={(e) => closeTab(file.path, e)}
                       >
                         <X className="h-3 w-3" />
-                      </Button>
+                      </span>
                     </TabsTrigger>
                   ))}
                 </TabsList>

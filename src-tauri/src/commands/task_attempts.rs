@@ -115,3 +115,17 @@ pub async fn get_attempt_conversation(
         .await
         .map_err(|e| e.to_string())
 }
+
+#[tauri::command]
+pub async fn update_attempt_claude_session(
+    state: State<'_, AppState>,
+    attempt_id: String,
+    claude_session_id: String,
+) -> Result<(), String> {
+    let uuid = Uuid::parse_str(&attempt_id).map_err(|e| e.to_string())?;
+    state
+        .task_service
+        .update_attempt_claude_session(uuid, claude_session_id)
+        .await
+        .map_err(|e| e.to_string())
+}
