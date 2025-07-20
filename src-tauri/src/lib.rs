@@ -2,6 +2,8 @@ mod db;
 mod models;
 mod services;
 mod commands;
+mod logging;
+mod menu;
 
 use std::sync::Arc;
 use services::{TaskService, ProjectService, ProcessService, TerminalService, McpServerManager, CliExecutorService};
@@ -25,6 +27,13 @@ pub fn run() {
         .plugin(tauri_plugin_fs::init())
         .setup(|app| {
             let handle = app.handle();
+            
+            // Initialize logging
+            logging::init_logging().expect("Failed to initialize logging");
+            log::info!("Starting Pivo application");
+            
+            // Setup menu events
+            menu::setup_menu_events(app)?;
             
             // Initialize database
             tauri::async_runtime::block_on(async {
@@ -129,6 +138,11 @@ pub fn run() {
             commands::cli::configure_claude_api_key,
             commands::cli::configure_gemini_api_key,
             commands::git_info::extract_git_info_from_path,
+            commands::logging::get_log_content,
+            commands::logging::get_log_path,
+            commands::logging::open_log_file,
+            commands::logging::clear_logs,
+            commands::window::show_log_viewer,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

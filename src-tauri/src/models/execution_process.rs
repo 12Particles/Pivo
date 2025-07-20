@@ -66,6 +66,7 @@ impl From<ExecutionProcessRow> for ExecutionProcess {
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, sqlx::Type)]
 #[sqlx(rename_all = "lowercase")]
+#[serde(rename_all = "lowercase")]
 pub enum ProcessType {
     SetupScript,
     CodingAgent,
@@ -75,6 +76,7 @@ pub enum ProcessType {
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, sqlx::Type)]
 #[sqlx(rename_all = "lowercase")]
+#[serde(rename_all = "lowercase")]
 pub enum ProcessStatus {
     Running,
     Completed,

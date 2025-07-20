@@ -108,16 +108,22 @@ export function TaskDetailsPanel({
                       <GitBranch className="h-4 w-4" />
                       {t('task.worktreeInfo')}
                     </h3>
-                    <dl className="grid grid-cols-2 gap-4 text-sm">
-                      <div>
-                        <dt className="text-muted-foreground">{t('task.worktreePath')}</dt>
-                        <dd className="font-mono text-xs">{project.path}/worktrees/{task.id}</dd>
-                      </div>
-                      <div>
-                        <dt className="text-muted-foreground">{t('task.branchName')}</dt>
-                        <dd className="font-mono text-xs">task/{task.id.slice(0, 8)}</dd>
-                      </div>
-                    </dl>
+                    {currentAttempt ? (
+                      <dl className="grid grid-cols-2 gap-4 text-sm">
+                        <div>
+                          <dt className="text-muted-foreground">{t('task.worktreePath')}</dt>
+                          <dd className="font-mono text-xs">{currentAttempt.worktree_path}</dd>
+                        </div>
+                        <div>
+                          <dt className="text-muted-foreground">{t('task.branchName')}</dt>
+                          <dd className="font-mono text-xs">{currentAttempt.branch}</dd>
+                        </div>
+                      </dl>
+                    ) : (
+                      <p className="text-sm text-muted-foreground">
+                        {t('task.noWorktreeCreated')}
+                      </p>
+                    )}
                   </div>
                 )}
 

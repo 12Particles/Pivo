@@ -23,6 +23,8 @@ import { toast } from "@/hooks/use-toast";
 import { Toaster } from "@/components/ui/toaster";
 import { listen } from "@tauri-apps/api/event";
 import { useTranslation } from "react-i18next";
+import { logger } from "@/lib/logger";
+import { invoke } from "@tauri-apps/api/core";
 
 const queryClient = new QueryClient();
 
@@ -36,8 +38,63 @@ function App() {
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [loading, setLoading] = useState(false);
 
+  // Initialize logger on app start
+  useEffect(() => {
+    logger.init().then(() => {
+      logger.info('Pivo application started');
+    });
+    
+    // Listen for menu events
+    const unlistenMenuLogs = listen('menu-view-logs', async () => {
+      try {
+        await invoke('show_log_viewer');
+      } catch (error) {
+        console.error('Failed to open log viewer:', error);
+        toast({
+          title: t('common.error'),
+          description: t('logs.openFailed'),
+          variant: "destructive",
+        });
+      }
+    });
+    
+    const unlistenLogsClear = listen('menu-logs-cleared', () => {
+      toast({
+        title: t('common.success'),
+        description: t('logs.logsCleared'),
+      });
+    });
+    
+    // Add keyboard shortcut for logs (Cmd/Ctrl + L)
+    const handleKeyDown = async (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'l') {
+        e.preventDefault();
+        try {
+          await invoke('show_log_viewer');
+        } catch (error) {
+          console.error('Failed to open log viewer:', error);
+          toast({
+            title: t('common.error'),
+            description: t('logs.openFailed'),
+            variant: "destructive",
+          });
+        }
+      }
+    };
+    
+    window.addEventListener('keydown', handleKeyDown);
+    
+    return () => {
+      logger.destroy();
+      unlistenMenuLogs.then(fn => fn());
+      unlistenLogsClear.then(fn => fn());
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, []);
+
   useEffect(() => {
     if (currentProject) {
+      logger.info('Project selected', { projectId: currentProject.id, projectName: currentProject.name });
       loadTasks();
     }
   }, [currentProject]);
@@ -68,9 +125,12 @@ function App() {
     
     try {
       setLoading(true);
+      logger.info('Loading tasks for project', { projectId: currentProject.id });
       const data = await taskApi.list(currentProject.id);
       setTasks(data);
+      logger.info('Tasks loaded successfully', { count: data.length });
     } catch (error) {
+      logger.error('Failed to load tasks', error);
       console.error("Failed to load tasks:", error);
     } finally {
       setLoading(false);

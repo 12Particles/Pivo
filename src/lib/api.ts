@@ -382,3 +382,22 @@ export const gitInfoApi = {
     return await invoke("extract_git_info_from_path", { path });
   },
 };
+
+// Logging API
+export const loggingApi = {
+  getLogContent: async (lines?: number): Promise<string> => {
+    return await invoke("get_log_content", { lines });
+  },
+
+  getLogPath: async (): Promise<string> => {
+    return await invoke("get_log_path");
+  },
+
+  openLogFile: async (): Promise<void> => {
+    return await invoke("open_log_file");
+  },
+
+  clearLogs: async (): Promise<void> => {
+    return await invoke("clear_logs");
+  },
+};

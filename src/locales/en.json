@@ -113,6 +113,7 @@
     "worktreeInfo": "Worktree Information",
     "worktreePath": "Worktree Path",
     "branchName": "Branch Name",
+    "noWorktreeCreated": "No worktree created yet. Run the task to create a worktree.",
     "executeAttempts": "Execution Attempts",
     "currentAttempt": "Current Attempt",
     "noAttempts": "No execution attempts",
@@ -195,5 +196,22 @@
     "success": "Success",
     "warning": "Warning",
     "info": "Info"
+  },
+  "logs": {
+    "viewLogs": "View Logs",
+    "applicationLogs": "Application Logs",
+    "backendLogs": "Backend Logs",
+    "frontendLogs": "Frontend Logs",
+    "export": "Export",
+    "clear": "Clear",
+    "openInEditor": "Open in Editor",
+    "autoRefresh": "Auto-refresh",
+    "noLogs": "No logs available",
+    "failedToLoad": "Failed to load logs",
+    "openFailed": "Failed to open log viewer",
+    "exportSuccess": "Logs exported successfully",
+    "clearFailed": "Failed to clear logs",
+    "logsCleared": "Logs cleared successfully",
+    "shortcut": "Ctrl/Cmd+L"
   }
 }

@@ -113,6 +113,7 @@
     "worktreeInfo": "工作树信息",
     "worktreePath": "工作树路径",
     "branchName": "分支名称",
+    "noWorktreeCreated": "尚未创建工作树。运行任务以创建工作树。",
     "executeAttempts": "执行尝试",
     "currentAttempt": "当前尝试",
     "noAttempts": "暂无执行尝试",
@@ -195,5 +196,22 @@
     "success": "成功",
     "warning": "警告",
     "info": "信息"
+  },
+  "logs": {
+    "viewLogs": "查看日志",
+    "applicationLogs": "应用程序日志",
+    "backendLogs": "后端日志",
+    "frontendLogs": "前端日志",
+    "export": "导出",
+    "clear": "清空",
+    "openInEditor": "在编辑器中打开",
+    "autoRefresh": "自动刷新",
+    "noLogs": "暂无日志",
+    "failedToLoad": "加载日志失败",
+    "openFailed": "打开日志查看器失败",
+    "exportSuccess": "日志导出成功",
+    "clearFailed": "清空日志失败",
+    "logsCleared": "日志已清空",
+    "shortcut": "Ctrl/Cmd+L"
   }
 }

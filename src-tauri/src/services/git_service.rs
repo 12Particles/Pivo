@@ -24,6 +24,8 @@ impl GitService {
         let worktree_name = branch_name;
         let worktree_path = self.temp_dir.join(&worktree_name);
         
+        log::info!("Creating worktree for branch {} at {:?}", branch_name, worktree_path);
+        
         // Create worktree
         let output = Command::new("git")
             .current_dir(repo_path)
@@ -39,9 +41,12 @@ impl GitService {
             .map_err(|e| format!("Failed to create worktree: {}", e))?;
 
         if !output.status.success() {
-            return Err(String::from_utf8_lossy(&output.stderr).to_string());
+            let error = String::from_utf8_lossy(&output.stderr).to_string();
+            log::error!("Failed to create worktree: {}", error);
+            return Err(error);
         }
 
+        log::info!("Successfully created worktree at {:?}", worktree_path);
         Ok(worktree_path)
     }
 

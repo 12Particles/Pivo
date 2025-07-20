@@ -54,6 +54,7 @@ impl From<TaskAttemptRow> for TaskAttempt {
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, sqlx::Type)]
 #[sqlx(rename_all = "lowercase")]
+#[serde(rename_all = "lowercase")]
 pub enum AttemptStatus {
     Running,
     Success,
