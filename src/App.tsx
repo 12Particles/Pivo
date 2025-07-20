@@ -22,10 +22,12 @@ import { open } from "@tauri-apps/plugin-dialog";
 import { toast } from "@/hooks/use-toast";
 import { Toaster } from "@/components/ui/toaster";
 import { listen } from "@tauri-apps/api/event";
+import { useTranslation } from "react-i18next";
 
 const queryClient = new QueryClient();
 
 function App() {
+  const { t } = useTranslation();
   const [currentProject, setCurrentProject] = useState<Project | null>(null);
   const [showProjectForm, setShowProjectForm] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
@@ -102,8 +104,8 @@ function App() {
       setTasks([...tasks, newTask]);
       setShowCreateTaskDialog(false);
       toast({
-        title: "成功",
-        description: "任务创建成功",
+        title: t('common.success'),
+        description: t('task.createTaskSuccess'),
       });
       
       // 自动创建 worktree
@@ -111,8 +113,8 @@ function App() {
         try {
           await gitApi.createWorktree(currentProject.path, newTask.id, "main");
           toast({
-            title: "成功",
-            description: "工作树已创建",
+            title: t('common.success'),
+            description: t('task.worktreeCreated'),
           });
         } catch (error) {
           console.error("Failed to create worktree:", error);
@@ -121,8 +123,8 @@ function App() {
     } catch (error) {
       console.error("Failed to create task:", error);
       toast({
-        title: "错误",
-        description: `创建任务失败: ${error}`,
+        title: t('common.error'),
+        description: `${t('task.createTaskError')}: ${error}`,
         variant: "destructive",
       });
     }
@@ -147,14 +149,14 @@ function App() {
       }
       
       toast({
-        title: "任务已开始",
-        description: "请在任务会话中与 AI 助手交互",
+        title: t('task.taskStarted'),
+        description: t('task.interactWithAi'),
       });
     } catch (error) {
       console.error("Failed to run task:", error);
       toast({
-        title: "错误",
-        description: `运行任务失败: ${error}`,
+        title: t('common.error'),
+        description: `${t('task.runTaskError')}: ${error}`,
         variant: "destructive",
       });
     }
@@ -184,8 +186,8 @@ function App() {
         
         if (!gitInfo.is_git_repo) {
           toast({
-            title: "错误",
-            description: "所选目录不是 Git 仓库",
+            title: t('common.error'),
+            description: t('project.notGitRepo'),
             variant: "destructive",
           });
           return;
@@ -193,12 +195,12 @@ function App() {
 
         // Extract project name from path
         const pathParts = (selected as string).split("/");
-        const projectName = pathParts[pathParts.length - 1] || "未命名项目";
+        const projectName = pathParts[pathParts.length - 1] || "Untitled Project";
 
         // Create project with extracted info
         const projectData: CreateProjectRequest = {
           name: projectName,
-          description: `${gitInfo.current_branch ? `当前分支: ${gitInfo.current_branch}` : ""}${gitInfo.has_uncommitted_changes ? " (有未提交的更改)" : ""}`,
+          description: `${gitInfo.current_branch ? `${t('project.currentBranch')}: ${gitInfo.current_branch}` : ""}${gitInfo.has_uncommitted_changes ? ` (${t('project.hasUncommittedChanges')})` : ""}`,
           path: selected as string,
           git_repo: gitInfo.remote_url,
         };
@@ -208,8 +210,8 @@ function App() {
     } catch (error) {
       console.error("Failed to select git directory:", error);
       toast({
-        title: "错误",
-        description: "选择 Git 目录失败",
+        title: t('common.error'),
+        description: t('project.selectGitDirError'),
         variant: "destructive",
       });
     }
@@ -247,9 +249,9 @@ function App() {
                   className="mb-4"
                 >
                   <ArrowLeft className="h-4 w-4 mr-2" />
-                  返回
+                  {t('common.back')}
                 </Button>
-                <h2 className="text-2xl font-bold">创建新项目</h2>
+                <h2 className="text-2xl font-bold">{t('project.createProject')}</h2>
               </div>
               <ProjectForm
                 onSubmit={handleCreateProject}
@@ -285,13 +287,13 @@ function App() {
               </Button>
             </div>
             <p className="text-sm text-muted-foreground">
-              {currentProject.description || "暂无描述"}
+              {currentProject.description || t('project.noDescription')}
             </p>
           </div>
           <div className="flex-1 overflow-hidden">
             {loading ? (
               <div className="flex items-center justify-center h-64">
-                <div className="text-muted-foreground">加载任务中...</div>
+                <div className="text-muted-foreground">{t('common.loading')}</div>
               </div>
             ) : (
               <TaskKanbanBoard
@@ -303,13 +305,13 @@ function App() {
                 onEditTask={() => {
                   // TODO: Implement edit task dialog
                   toast({
-                    title: "编辑任务",
-                    description: "编辑功能即将推出",
+                    title: t('task.editTask'),
+                    description: t('task.editFeatureComing'),
                   });
                 }}
                 onDeleteTask={async (task) => {
                   // Simple confirmation using window.confirm
-                  const confirmed = window.confirm(`确定要删除任务 "${task.title}" 吗？`);
+                  const confirmed = window.confirm(t('task.deleteConfirm', { title: task.title }));
                   if (!confirmed) return;
                   
                   try {
@@ -319,14 +321,14 @@ function App() {
                       setSelectedTask(null);
                     }
                     toast({
-                      title: "成功",
-                      description: "任务已删除",
+                      title: t('common.success'),
+                      description: t('task.taskDeleted'),
                     });
                   } catch (error) {
                     console.error("Failed to delete task:", error);
                     toast({
-                      title: "错误",
-                      description: `删除任务失败: ${error}`,
+                      title: t('common.error'),
+                      description: `${t('task.deleteTaskError')}: ${error}`,
                       variant: "destructive",
                     });
                   }
@@ -347,7 +349,7 @@ function App() {
             />
           ) : (
             <div className="h-full flex items-center justify-center text-muted-foreground">
-              选择一个任务查看详情
+              {t('task.selectTaskToView')}
             </div>
           )}
         </div>
@@ -355,7 +357,7 @@ function App() {
         {/* 右侧面板 - 任务会话 */}
         <div className="w-[480px] border-l flex flex-col h-full">
           <div className="flex items-center justify-between p-4 border-b flex-shrink-0">
-            <h3 className="font-medium">任务会话</h3>
+            <h3 className="font-medium">{t('task.taskConversation')}</h3>
           </div>
           <div className="flex-1 overflow-hidden">
             {selectedTask && currentProject ? (
@@ -366,7 +368,7 @@ function App() {
               />
             ) : (
               <div className="flex items-center justify-center h-full text-muted-foreground">
-                选择一个任务开始会话
+                {t('task.selectTaskToChat')}
               </div>
             )}
           </div>

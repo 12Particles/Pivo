@@ -10,6 +10,7 @@ import {
 import { cn } from "@/lib/utils";
 import { Task, TaskPriority, TaskStatus } from "@/types";
 import { Clock, User, Play, MoreVertical, Trash2, Edit } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 interface TaskCardProps {
   task: Task;
@@ -36,6 +37,8 @@ const statusColors: Record<TaskStatus, string> = {
 };
 
 export function TaskCard({ task, isDragging, onClick, onExecute, onEdit, onDelete }: TaskCardProps) {
+  const { t } = useTranslation();
+  
   return (
     <Card
       className={cn(
@@ -76,7 +79,7 @@ export function TaskCard({ task, isDragging, onClick, onExecute, onEdit, onDelet
                     }}
                   >
                     <Play className="h-4 w-4 mr-2" />
-                    执行
+                    {t('common.execute')}
                   </DropdownMenuItem>
                   <DropdownMenuItem 
                     onClick={(e: React.MouseEvent) => {
@@ -85,7 +88,7 @@ export function TaskCard({ task, isDragging, onClick, onExecute, onEdit, onDelet
                     }}
                   >
                     <Edit className="h-4 w-4 mr-2" />
-                    修改
+                    {t('common.edit')}
                   </DropdownMenuItem>
                   <DropdownMenuItem 
                     onClick={(e: React.MouseEvent) => {
@@ -95,7 +98,7 @@ export function TaskCard({ task, isDragging, onClick, onExecute, onEdit, onDelet
                     className="text-red-600"
                   >
                     <Trash2 className="h-4 w-4 mr-2" />
-                    删除
+                    {t('common.delete')}
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>

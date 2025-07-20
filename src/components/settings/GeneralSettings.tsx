@@ -1,22 +1,51 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/hooks/use-toast";
+import { useTranslation } from "react-i18next";
 
 export function GeneralSettings() {
+  const { t, i18n } = useTranslation();
   const [theme, setTheme] = useState("system");
-  const [language, setLanguage] = useState("zh-CN");
+  const [language, setLanguage] = useState(i18n.language);
   const [autoSave, setAutoSave] = useState(true);
   const [notifications, setNotifications] = useState(true);
 
+  // Load settings from localStorage on mount
+  useEffect(() => {
+    const savedLanguage = localStorage.getItem('language') || 'en';
+    const savedTheme = localStorage.getItem('theme') || 'system';
+    const savedAutoSave = localStorage.getItem('autoSave') !== 'false';
+    const savedNotifications = localStorage.getItem('notifications') !== 'false';
+    
+    setLanguage(savedLanguage);
+    setTheme(savedTheme);
+    setAutoSave(savedAutoSave);
+    setNotifications(savedNotifications);
+    
+    // Apply saved language
+    i18n.changeLanguage(savedLanguage);
+  }, [i18n]);
+
+  const handleLanguageChange = (newLanguage: string) => {
+    setLanguage(newLanguage);
+    i18n.changeLanguage(newLanguage);
+    localStorage.setItem('language', newLanguage);
+  };
+
   const handleSave = () => {
-    // TODO: 实现保存设置到本地存储或配置文件
+    // Save settings to localStorage
+    localStorage.setItem('language', language);
+    localStorage.setItem('theme', theme);
+    localStorage.setItem('autoSave', autoSave.toString());
+    localStorage.setItem('notifications', notifications.toString());
+    
     toast({
-      title: "成功",
-      description: "设置已保存",
+      title: t('common.success'),
+      description: t('settings.settingsSaved'),
     });
   };
 
@@ -24,33 +53,33 @@ export function GeneralSettings() {
     <div className="space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle>外观设置</CardTitle>
-          <CardDescription>自定义应用程序的外观和主题</CardDescription>
+          <CardTitle>{t('settings.appearanceSettings')}</CardTitle>
+          <CardDescription>{t('settings.appearanceDescription')}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="theme">主题</Label>
+            <Label htmlFor="theme">{t('common.theme')}</Label>
             <Select value={theme} onValueChange={setTheme}>
               <SelectTrigger id="theme">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="light">浅色</SelectItem>
-                <SelectItem value="dark">深色</SelectItem>
-                <SelectItem value="system">跟随系统</SelectItem>
+                <SelectItem value="light">{t('settings.theme.light')}</SelectItem>
+                <SelectItem value="dark">{t('settings.theme.dark')}</SelectItem>
+                <SelectItem value="system">{t('settings.theme.system')}</SelectItem>
               </SelectContent>
             </Select>
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="language">语言</Label>
-            <Select value={language} onValueChange={setLanguage}>
+            <Label htmlFor="language">{t('common.language')}</Label>
+            <Select value={language} onValueChange={handleLanguageChange}>
               <SelectTrigger id="language">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="zh-CN">简体中文</SelectItem>
-                <SelectItem value="en-US">English</SelectItem>
+                <SelectItem value="zh">{t('settings.language.zh')}</SelectItem>
+                <SelectItem value="en">{t('settings.language.en')}</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -59,15 +88,15 @@ export function GeneralSettings() {
 
       <Card>
         <CardHeader>
-          <CardTitle>编辑器设置</CardTitle>
-          <CardDescription>配置编辑器的行为和功能</CardDescription>
+          <CardTitle>{t('settings.editorSettings')}</CardTitle>
+          <CardDescription>{t('settings.editorDescription')}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex items-center justify-between">
             <div className="space-y-0.5">
-              <Label htmlFor="auto-save">自动保存</Label>
+              <Label htmlFor="auto-save">{t('settings.autoSave')}</Label>
               <p className="text-sm text-muted-foreground">
-                自动保存您的更改
+                {t('settings.autoSaveDescription')}
               </p>
             </div>
             <Switch
@@ -79,9 +108,9 @@ export function GeneralSettings() {
 
           <div className="flex items-center justify-between">
             <div className="space-y-0.5">
-              <Label htmlFor="notifications">通知</Label>
+              <Label htmlFor="notifications">{t('common.notifications')}</Label>
               <p className="text-sm text-muted-foreground">
-                接收任务更新和系统通知
+                {t('settings.notificationsDescription')}
               </p>
             </div>
             <Switch
@@ -94,7 +123,7 @@ export function GeneralSettings() {
       </Card>
 
       <div className="flex justify-end">
-        <Button onClick={handleSave}>保存设置</Button>
+        <Button onClick={handleSave}>{t('settings.saveSettings')}</Button>
       </div>
     </div>
   );
