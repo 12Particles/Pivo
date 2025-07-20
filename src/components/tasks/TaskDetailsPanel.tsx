@@ -3,12 +3,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Task, Project, TaskAttempt } from "@/types";
-import { Play, GitBranch, FolderGit, FileText, GitCommit, GitMerge } from "lucide-react";
+import { Play, GitBranch, FolderGit } from "lucide-react";
 import { Terminal } from "@/components/terminal/Terminal";
 import { FileTreeDiff } from "@/components/git/FileTreeDiff";
-import { DiffViewer } from "@/components/git/DiffViewer";
 import { IntegrationPanel } from "@/components/integration/IntegrationPanel";
-import { MergeRequestList } from "@/components/MergeRequestList";
 import { useState, useEffect } from "react";
 import { taskAttemptApi } from "@/lib/api";
 import { useTranslation } from "react-i18next";
@@ -75,16 +73,8 @@ export function TaskDetailsPanel({
       <Card className="flex-1 min-h-0">
         <CardContent className="h-full p-0">
           <Tabs defaultValue="details" className="h-full flex flex-col">
-            <TabsList className="grid w-full grid-cols-5 flex-shrink-0">
+            <TabsList className="grid w-full grid-cols-3 flex-shrink-0">
               <TabsTrigger value="details">{t('task.taskDetails')}</TabsTrigger>
-              <TabsTrigger value="changes">
-                <GitCommit className="h-4 w-4 mr-1" />
-                Changes
-              </TabsTrigger>
-              <TabsTrigger value="mrs">
-                <GitMerge className="h-4 w-4 mr-1" />
-                MRs
-              </TabsTrigger>
               <TabsTrigger value="terminal">{t('terminal.title')}</TabsTrigger>
               <TabsTrigger value="integration">{t('integration.title')}</TabsTrigger>
             </TabsList>
@@ -208,24 +198,6 @@ export function TaskDetailsPanel({
               </TabsContent>
 
 
-              <TabsContent value="changes" className="h-full p-0">
-                {project && task && currentAttempt ? (
-                  <DiffViewer attempt={currentAttempt} />
-                ) : (
-                  <div className="flex items-center justify-center h-full text-muted-foreground">
-                    <div className="text-center">
-                      <GitCommit className="h-12 w-12 mx-auto mb-2 opacity-50" />
-                      <p>
-                        {!currentAttempt 
-                          ? t('task.noAttempts')
-                          : t('terminal.notAssociatedProject')
-                        }
-                      </p>
-                    </div>
-                  </div>
-                )}
-              </TabsContent>
-
               <TabsContent value="terminal" className="h-full p-0">
                 <Terminal 
                   taskAttemptId={taskAttemptId}
@@ -234,15 +206,6 @@ export function TaskDetailsPanel({
                 />
               </TabsContent>
 
-              <TabsContent value="mrs" className="h-full overflow-y-auto p-6">
-                {task ? (
-                  <MergeRequestList taskId={task.id} project={project || undefined} />
-                ) : (
-                  <div className="flex items-center justify-center h-full text-muted-foreground">
-                    {t('task.selectTaskToView')}
-                  </div>
-                )}
-              </TabsContent>
               <TabsContent value="integration" className="h-full p-0">
                 {project && task ? (
                   <IntegrationPanel task={task} project={project} />
