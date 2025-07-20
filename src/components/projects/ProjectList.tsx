@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { projectApi } from "@/lib/api";
 import { Project } from "@/types";
 import { FolderOpen, GitBranch, Plus, Settings } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 interface ProjectListProps {
   onSelectProject: (project: Project) => void;
@@ -12,6 +13,7 @@ interface ProjectListProps {
 }
 
 export function ProjectList({ onSelectProject, onCreateProject }: ProjectListProps) {
+  const { t } = useTranslation();
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -34,7 +36,7 @@ export function ProjectList({ onSelectProject, onCreateProject }: ProjectListPro
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="text-muted-foreground">加载项目中...</div>
+        <div className="text-muted-foreground">{t('common.loading')}</div>
       </div>
     );
   }
@@ -42,10 +44,10 @@ export function ProjectList({ onSelectProject, onCreateProject }: ProjectListPro
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold">项目</h2>
+        <h2 className="text-2xl font-bold">{t('project.projects')}</h2>
         <Button onClick={onCreateProject}>
           <Plus className="h-4 w-4 mr-2" />
-          新建项目
+          {t('project.createProject')}
         </Button>
       </div>
 
@@ -54,12 +56,12 @@ export function ProjectList({ onSelectProject, onCreateProject }: ProjectListPro
           <div className="text-center space-y-4">
             <FolderOpen className="h-12 w-12 mx-auto text-muted-foreground" />
             <div>
-              <h3 className="font-medium">暂无项目</h3>
+              <h3 className="font-medium">{t('project.noProjects')}</h3>
               <p className="text-sm text-muted-foreground mt-1">
-                创建您的第一个项目开始使用
+                {t('project.createFirstProject')}
               </p>
             </div>
-            <Button onClick={onCreateProject}>创建项目</Button>
+            <Button onClick={onCreateProject}>{t('project.createProject')}</Button>
           </div>
         </Card>
       ) : (
@@ -78,7 +80,7 @@ export function ProjectList({ onSelectProject, onCreateProject }: ProjectListPro
               </CardHeader>
               <CardContent>
                 <p className="text-sm text-muted-foreground mb-4">
-                  {project.description || "暂无描述"}
+                  {project.description || t('project.noDescription')}
                 </p>
                 <div className="flex items-center gap-4 text-xs text-muted-foreground">
                   <div className="flex items-center gap-1">

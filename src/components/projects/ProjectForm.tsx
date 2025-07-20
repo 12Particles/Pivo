@@ -6,6 +6,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { CreateProjectRequest } from "@/types";
 import { FolderOpen } from "lucide-react";
 import { open } from "@tauri-apps/plugin-dialog";
+import { useTranslation } from "react-i18next";
 
 interface ProjectFormProps {
   onSubmit: (data: CreateProjectRequest) => void;
@@ -13,6 +14,7 @@ interface ProjectFormProps {
 }
 
 export function ProjectForm({ onSubmit, onCancel }: ProjectFormProps) {
+  const { t } = useTranslation();
   const [formData, setFormData] = useState<CreateProjectRequest>({
     name: "",
     description: "",
@@ -26,7 +28,7 @@ export function ProjectForm({ onSubmit, onCancel }: ProjectFormProps) {
     const selected = await open({
       directory: true,
       multiple: false,
-      title: "选择项目目录",
+      title: t('project.selectProjectDirectory'),
     });
 
     if (selected) {
@@ -42,29 +44,29 @@ export function ProjectForm({ onSubmit, onCancel }: ProjectFormProps) {
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       <div className="space-y-2">
-        <Label htmlFor="name">项目名称 *</Label>
+        <Label htmlFor="name">{t('project.projectName')} *</Label>
         <Input
           id="name"
           value={formData.name}
           onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-          placeholder="我的项目"
+          placeholder={t('project.myProject')}
           required
         />
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="description">项目描述</Label>
+        <Label htmlFor="description">{t('project.projectDescription')}</Label>
         <Textarea
           id="description"
           value={formData.description}
           onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-          placeholder="描述您的项目..."
+          placeholder={t('project.describeYourProject')}
           rows={3}
         />
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="path">项目路径 *</Label>
+        <Label htmlFor="path">{t('project.projectPath')} *</Label>
         <div className="flex gap-2">
           <Input
             id="path"
@@ -80,7 +82,7 @@ export function ProjectForm({ onSubmit, onCancel }: ProjectFormProps) {
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="git_repo">Git 仓库 URL</Label>
+        <Label htmlFor="git_repo">{t('project.gitRepositoryUrl')}</Label>
         <Input
           id="git_repo"
           value={formData.git_repo}
@@ -90,7 +92,7 @@ export function ProjectForm({ onSubmit, onCancel }: ProjectFormProps) {
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="setup_script">初始化脚本</Label>
+        <Label htmlFor="setup_script">{t('project.setupScript')}</Label>
         <Textarea
           id="setup_script"
           value={formData.setup_script}
@@ -101,7 +103,7 @@ export function ProjectForm({ onSubmit, onCancel }: ProjectFormProps) {
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="dev_script">开发服务器脚本</Label>
+        <Label htmlFor="dev_script">{t('project.devScript')}</Label>
         <Textarea
           id="dev_script"
           value={formData.dev_script}
@@ -113,9 +115,9 @@ export function ProjectForm({ onSubmit, onCancel }: ProjectFormProps) {
 
       <div className="flex gap-2 justify-end">
         <Button type="button" variant="outline" onClick={onCancel}>
-          取消
+          {t('common.cancel')}
         </Button>
-        <Button type="submit">创建项目</Button>
+        <Button type="submit">{t('project.createProject')}</Button>
       </div>
     </form>
   );

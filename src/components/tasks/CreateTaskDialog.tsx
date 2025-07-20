@@ -13,6 +13,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { TaskPriority, CreateTaskRequest } from "@/types";
+import { useTranslation } from "react-i18next";
 
 interface CreateTaskDialogProps {
   open: boolean;
@@ -22,6 +23,7 @@ interface CreateTaskDialogProps {
 }
 
 export function CreateTaskDialog({ open, onOpenChange, projectId, onSubmit }: CreateTaskDialogProps) {
+  const { t } = useTranslation();
   const [formData, setFormData] = useState<Partial<CreateTaskRequest>>({
     project_id: projectId,
     title: "",
@@ -80,37 +82,37 @@ export function CreateTaskDialog({ open, onOpenChange, projectId, onSubmit }: Cr
       <DialogContent className="sm:max-w-[425px]">
         <form onSubmit={handleSubmit}>
           <DialogHeader>
-            <DialogTitle>创建新任务</DialogTitle>
+            <DialogTitle>{t('task.createTask')}</DialogTitle>
             <DialogDescription>
-              添加一个新任务到当前项目中
+              {t('task.addTaskToProject')}
             </DialogDescription>
           </DialogHeader>
           
           <div className="grid gap-4 py-4">
             <div className="grid gap-2">
-              <Label htmlFor="title">任务标题 *</Label>
+              <Label htmlFor="title">{t('task.taskTitle')} *</Label>
               <Input
                 id="title"
                 value={formData.title || ""}
                 onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                placeholder="输入任务标题..."
+                placeholder={t('task.enterTaskTitle')}
                 required
               />
             </div>
 
             <div className="grid gap-2">
-              <Label htmlFor="description">任务描述</Label>
+              <Label htmlFor="description">{t('task.taskDescription')}</Label>
               <Textarea
                 id="description"
                 value={formData.description || ""}
                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                placeholder="输入任务描述..."
+                placeholder={t('task.enterTaskDescription')}
                 rows={3}
               />
             </div>
 
             <div className="grid gap-2">
-              <Label htmlFor="priority">优先级</Label>
+              <Label htmlFor="priority">{t('common.priority')}</Label>
               <Select
                 value={formData.priority}
                 onValueChange={(value) => setFormData({ ...formData, priority: value as TaskPriority })}
@@ -119,22 +121,22 @@ export function CreateTaskDialog({ open, onOpenChange, projectId, onSubmit }: Cr
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value={TaskPriority.Low}>低</SelectItem>
-                  <SelectItem value={TaskPriority.Medium}>中</SelectItem>
-                  <SelectItem value={TaskPriority.High}>高</SelectItem>
-                  <SelectItem value={TaskPriority.Urgent}>紧急</SelectItem>
+                  <SelectItem value={TaskPriority.Low}>{t('task.taskPriority.low')}</SelectItem>
+                  <SelectItem value={TaskPriority.Medium}>{t('task.taskPriority.medium')}</SelectItem>
+                  <SelectItem value={TaskPriority.High}>{t('task.taskPriority.high')}</SelectItem>
+                  <SelectItem value={TaskPriority.Urgent}>{t('task.taskPriority.urgent')}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
 
             <div className="grid gap-2">
-              <Label htmlFor="tags">标签</Label>
+              <Label htmlFor="tags">{t('task.tags')}</Label>
               <div className="flex gap-2">
                 <Input
                   id="tags"
                   value={tagInput}
                   onChange={(e) => setTagInput(e.target.value)}
-                  placeholder="添加标签..."
+                  placeholder={t('task.addTag')}
                   onKeyPress={(e) => {
                     if (e.key === "Enter") {
                       e.preventDefault();
@@ -143,7 +145,7 @@ export function CreateTaskDialog({ open, onOpenChange, projectId, onSubmit }: Cr
                   }}
                 />
                 <Button type="button" variant="outline" onClick={handleAddTag}>
-                  添加
+                  {t('common.add')}
                 </Button>
               </div>
               {formData.tags && formData.tags.length > 0 && (
@@ -170,9 +172,9 @@ export function CreateTaskDialog({ open, onOpenChange, projectId, onSubmit }: Cr
 
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-              取消
+              {t('common.cancel')}
             </Button>
-            <Button type="submit">创建任务</Button>
+            <Button type="submit">{t('task.createTask')}</Button>
           </DialogFooter>
         </form>
       </DialogContent>

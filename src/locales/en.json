@@ -35,7 +35,8 @@
     "theme": "Theme",
     "notifications": "Notifications",
     "yes": "Yes",
-    "no": "No"
+    "no": "No",
+    "add": "Add"
   },
   "project": {
     "title": "Project",
@@ -48,9 +49,17 @@
     "projectPath": "Project Path",
     "gitRepository": "Git Repository",
     "noDescription": "No description",
+    "noProjects": "No Projects",
+    "createFirstProject": "Create your first project to get started",
     "currentBranch": "Current Branch",
     "hasUncommittedChanges": "Has uncommitted changes",
     "selectGitDirectory": "Select Git Project Directory",
+    "selectProjectDirectory": "Select Project Directory",
+    "myProject": "My Project",
+    "describeYourProject": "Describe your project...",
+    "gitRepositoryUrl": "Git Repository URL",
+    "setupScript": "Setup Script",
+    "devScript": "Development Server Script",
     "notGitRepo": "Selected directory is not a Git repository",
     "selectGitDirError": "Failed to select Git directory",
     "createProjectError": "Failed to create project"
@@ -75,7 +84,8 @@
     "taskPriority": {
       "low": "Low",
       "medium": "Medium",
-      "high": "High"
+      "high": "High",
+      "urgent": "Urgent"
     },
     "assignee": "Assignee",
     "tags": "Tags",
@@ -109,7 +119,11 @@
     "createNewAttempt": "Create New Execution Attempt",
     "worktreeCreated": "Worktree created",
     "taskCompleted": "Task completed",
-    "reviewResults": "AI has completed task processing, please review results"
+    "reviewResults": "AI has completed task processing, please review results",
+    "addTaskToProject": "Add a new task to the current project",
+    "enterTaskTitle": "Enter task title...",
+    "enterTaskDescription": "Enter task description...",
+    "addTag": "Add tag..."
   },
   "terminal": {
     "title": "Terminal",

@@ -35,7 +35,8 @@
     "theme": "主题",
     "notifications": "通知",
     "yes": "是",
-    "no": "否"
+    "no": "否",
+    "add": "添加"
   },
   "project": {
     "title": "项目",
@@ -48,9 +49,17 @@
     "projectPath": "项目路径",
     "gitRepository": "Git 仓库",
     "noDescription": "暂无描述",
+    "noProjects": "暂无项目",
+    "createFirstProject": "创建您的第一个项目开始使用",
     "currentBranch": "当前分支",
     "hasUncommittedChanges": "有未提交的更改",
     "selectGitDirectory": "选择 Git 项目目录",
+    "selectProjectDirectory": "选择项目目录",
+    "myProject": "我的项目",
+    "describeYourProject": "描述您的项目...",
+    "gitRepositoryUrl": "Git 仓库 URL",
+    "setupScript": "初始化脚本",
+    "devScript": "开发服务器脚本",
     "notGitRepo": "所选目录不是 Git 仓库",
     "selectGitDirError": "选择 Git 目录失败",
     "createProjectError": "创建项目失败"
@@ -75,7 +84,8 @@
     "taskPriority": {
       "low": "低",
       "medium": "中",
-      "high": "高"
+      "high": "高",
+      "urgent": "紧急"
     },
     "assignee": "负责人",
     "tags": "标签",
@@ -109,7 +119,11 @@
     "createNewAttempt": "创建新的执行尝试",
     "worktreeCreated": "工作树已创建",
     "taskCompleted": "任务完成",
-    "reviewResults": "AI 已完成任务处理，请审查结果"
+    "reviewResults": "AI 已完成任务处理，请审查结果",
+    "addTaskToProject": "添加一个新任务到当前项目中",
+    "enterTaskTitle": "输入任务标题...",
+    "enterTaskDescription": "输入任务描述...",
+    "addTag": "添加标签..."
   },
   "terminal": {
     "title": "终端",

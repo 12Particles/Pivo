@@ -5,12 +5,15 @@ import { ArrowLeft, Settings as SettingsIcon } from "lucide-react";
 import { McpServerManager } from "@/components/mcp/McpServerManager";
 import { GeneralSettings } from "./GeneralSettings";
 import { McpConfigManager } from "./McpConfigManager";
+import { useTranslation } from "react-i18next";
 
 interface SettingsPageProps {
   onBack: () => void;
 }
 
 export function SettingsPage({ onBack }: SettingsPageProps) {
+  const { t } = useTranslation();
+  
   return (
     <div className="h-screen bg-background">
       <div className="border-b">
@@ -22,7 +25,7 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
               </Button>
               <div className="flex items-center gap-2">
                 <SettingsIcon className="h-5 w-5" />
-                <h1 className="text-2xl font-bold">设置</h1>
+                <h1 className="text-2xl font-bold">{t('settings.title')}</h1>
               </div>
             </div>
           </div>
@@ -32,9 +35,9 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
       <div className="container mx-auto p-6">
         <Tabs defaultValue="general" className="w-full">
           <TabsList className="grid w-full grid-cols-3 max-w-[600px]">
-            <TabsTrigger value="general">常规设置</TabsTrigger>
-            <TabsTrigger value="mcp">MCP 服务器</TabsTrigger>
-            <TabsTrigger value="mcp-config">MCP 配置</TabsTrigger>
+            <TabsTrigger value="general">{t('settings.generalSettings')}</TabsTrigger>
+            <TabsTrigger value="mcp">{t('settings.mcpServers')}</TabsTrigger>
+            <TabsTrigger value="mcp-config">{t('settings.mcpConfiguration')}</TabsTrigger>
           </TabsList>
 
           <TabsContent value="general" className="space-y-4">
@@ -44,9 +47,9 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
           <TabsContent value="mcp" className="space-y-4">
             <Card>
               <CardHeader>
-                <CardTitle>MCP 服务器管理</CardTitle>
+                <CardTitle>MCP Server Management</CardTitle>
                 <CardDescription>
-                  管理和配置 Model Context Protocol (MCP) 服务器
+                  Manage and configure Model Context Protocol (MCP) servers
                 </CardDescription>
               </CardHeader>
               <CardContent>
