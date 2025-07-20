@@ -35,6 +35,7 @@ import { cn } from "@/lib/utils";
 import { toast } from "@/hooks/use-toast";
 import { open } from "@tauri-apps/plugin-dialog";
 import { readFile } from "@tauri-apps/plugin-fs";
+import { useTranslation } from "react-i18next";
 
 interface TaskConversationEnhancedProps {
   task: Task;
@@ -55,6 +56,7 @@ interface Message {
 }
 
 export function TaskConversationEnhanced({ task, project }: TaskConversationEnhancedProps) {
+  const { t } = useTranslation();
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [images, setImages] = useState<string[]>([]);
@@ -182,8 +184,8 @@ export function TaskConversationEnhanced({ task, project }: TaskConversationEnha
           const updatedTask = await taskApi.updateStatus(task.id, TaskStatus.Reviewing);
           console.log("Task status updated successfully:", updatedTask);
           toast({
-            title: "任务完成",
-            description: "AI 已完成任务处理，请审查结果",
+            title: t('task.taskCompleted'),
+            description: t('task.reviewResults'),
           });
           
           // Send pending messages if any
@@ -197,8 +199,8 @@ export function TaskConversationEnhanced({ task, project }: TaskConversationEnha
         } catch (error) {
           console.error("Failed to update task status:", error);
           toast({
-            title: "错误",
-            description: `更新任务状态失败: ${error}`,
+            title: t('common.error'),
+            description: `${t('task.updateTaskError')}: ${error}`,
             variant: "destructive",
           });
         }
@@ -345,7 +347,7 @@ export function TaskConversationEnhanced({ task, project }: TaskConversationEnha
       addMessage({
         id: `system-${Date.now()}`,
         type: "system",
-        content: `${aiType === "claude" ? "Claude Code" : "Gemini CLI"} 会话已启动`,
+        content: t('ai.sessionStarted', { type: aiType === "claude" ? "Claude Code" : "Gemini CLI" }),
         timestamp: new Date(),
       });
       
@@ -359,8 +361,8 @@ export function TaskConversationEnhanced({ task, project }: TaskConversationEnha
     } catch (error) {
       console.error("Failed to start session:", error);
       toast({
-        title: "错误",
-        description: `启动会话失败: ${error}`,
+        title: t('common.error'),
+        description: `${t('ai.startSessionError')}: ${error}`,
         variant: "destructive",
       });
     } finally {
@@ -378,8 +380,8 @@ export function TaskConversationEnhanced({ task, project }: TaskConversationEnha
       setPendingMessages(prev => [...prev, message]);
       setInput("");
       toast({
-        title: "消息已缓存",
-        description: "将在当前执行完成后发送",
+        title: t('ai.messagePending'),
+        description: t('ai.willSendAfterCurrent'),
       });
       return;
     }
@@ -420,8 +422,8 @@ export function TaskConversationEnhanced({ task, project }: TaskConversationEnha
       } catch (error) {
         console.error("Failed to send message:", error);
         toast({
-          title: "错误",
-          description: `发送消息失败: ${error}`,
+          title: t('common.error'),
+          description: `${t('ai.sendMessageError')}: ${error}`,
           variant: "destructive",
         });
       } finally {
@@ -433,8 +435,8 @@ export function TaskConversationEnhanced({ task, project }: TaskConversationEnha
       setIsSending(false);
     } else {
       toast({
-        title: "提示",
-        description: "请先运行任务",
+        title: t('common.info'),
+        description: t('task.startChat'),
       });
       setIsSending(false);
     }
@@ -445,14 +447,14 @@ export function TaskConversationEnhanced({ task, project }: TaskConversationEnha
       try {
         await cliApi.stopSession(session.id);
         toast({
-          title: "执行已停止",
-          description: "AI 助手已停止执行",
+          title: t('ai.executionStopped'),
+          description: t('ai.executionStopped'),
         });
       } catch (error) {
         console.error("Failed to stop session:", error);
         toast({
-          title: "错误",
-          description: `停止执行失败: ${error}`,
+          title: t('common.error'),
+          description: `${t('ai.stopExecutionError')}: ${error}`,
           variant: "destructive",
         });
       }
@@ -491,8 +493,8 @@ export function TaskConversationEnhanced({ task, project }: TaskConversationEnha
     } catch (error) {
       console.error("Failed to select images:", error);
       toast({
-        title: "错误",
-        description: "选择图片失败",
+        title: t('common.error'),
+        description: t('ai.selectImageError'),
         variant: "destructive",
       });
     }
@@ -846,13 +848,13 @@ export function TaskConversationEnhanced({ task, project }: TaskConversationEnha
               
               <div className="flex items-baseline gap-2 mb-1">
                 <span className="font-medium text-sm text-foreground">
-                  {isUser ? "You" : 
+                  {isUser ? t('ai.you') : 
                    isAssistant ? "Claude" : 
-                   isToolUse ? `Using tool: ${message.metadata?.toolName || "Unknown"}` :
-                   isToolResult ? "Tool Result" :
-                   isThinking ? "Thinking" :
-                   isError ? "Error" :
-                   "System"}
+                   isToolUse ? `${t('ai.usingTool', { tool: message.metadata?.toolName || "Unknown" })}` :
+                   isToolResult ? t('ai.toolResult') :
+                   isThinking ? t('ai.thinking') :
+                   isError ? t('common.error') :
+                   t('ai.system')}
                 </span>
                 <span className="text-xs text-muted-foreground">
                   {message.timestamp.toLocaleTimeString('en-US', { 
@@ -892,12 +894,12 @@ export function TaskConversationEnhanced({ task, project }: TaskConversationEnha
                 {isCollapsed ? (
                   <>
                     <ChevronRight className="h-3 w-3 mr-1" />
-                    Show all {lines.length} lines
+                    {t('ai.showAllLines', { count: lines.length })}
                   </>
                 ) : (
                   <>
                     <ChevronDown className="h-3 w-3 mr-1" />
-                    Collapse
+                    {t('ai.collapse')}
                   </>
                 )}
               </Button>
@@ -911,7 +913,7 @@ export function TaskConversationEnhanced({ task, project }: TaskConversationEnha
                   <div key={index} className="relative group/image">
                     <img
                       src={img}
-                      alt={`Attachment ${index + 1}`}
+                      alt={`${t('ai.attachment')} ${index + 1}`}
                       className="rounded-md border shadow-sm max-w-xs max-h-48 object-cover cursor-pointer transition-transform hover:scale-105"
                       onClick={() => window.open(img, '_blank')}
                     />
@@ -938,7 +940,7 @@ export function TaskConversationEnhanced({ task, project }: TaskConversationEnha
             )}
             {task.status === "Working" && (
               <Badge variant="outline" className="text-xs">
-                执行中
+                {t('ai.executing')}
               </Badge>
             )}
             {isSending && (
@@ -952,7 +954,7 @@ export function TaskConversationEnhanced({ task, project }: TaskConversationEnha
               onClick={stopExecution}
             >
               <Square className="h-4 w-4 mr-1" />
-              停止
+              {t('common.stop')}
             </Button>
           )}
         </div>
@@ -964,11 +966,11 @@ export function TaskConversationEnhanced({ task, project }: TaskConversationEnha
           {messages.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-64 text-muted-foreground">
               <Sparkles className="h-12 w-12 mb-4" />
-              <p className="text-sm">暂无会话记录</p>
+              <p className="text-sm">{t('task.noConversation')}</p>
               <p className="text-xs mt-1">
                 {task.status === "Working" ? 
-                  (session ? "AI 助手已就绪，请输入消息开始对话" : "正在启动 AI 助手...") : 
-                  "请先运行任务以开始会话"}
+                  (session ? t('task.aiReady') : t('task.startingAi')) : 
+                  t('task.startChat')}
               </p>
             </div>
           ) : (
@@ -985,7 +987,7 @@ export function TaskConversationEnhanced({ task, project }: TaskConversationEnha
                   </div>
                   <div className="flex items-center gap-2">
                     <span className="text-sm font-medium">Claude</span>
-                    <span className="text-sm text-muted-foreground">正在思考中...</span>
+                    <span className="text-sm text-muted-foreground">{t('ai.aiThinking')}</span>
                   </div>
                 </div>
               </div>
@@ -1024,7 +1026,7 @@ export function TaskConversationEnhanced({ task, project }: TaskConversationEnha
             variant="outline"
             size="icon"
             onClick={handleImageSelect}
-            title="添加图片"
+            title={t('ai.addImage')}
           >
             <ImagePlus className="h-4 w-4" />
           </Button>
@@ -1033,7 +1035,7 @@ export function TaskConversationEnhanced({ task, project }: TaskConversationEnha
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyPress={handleKeyPress}
-            placeholder="输入消息... (Shift+Enter 换行)"
+            placeholder={t('ai.sendMessage')}
             className="flex-1 min-h-[60px] max-h-[120px] resize-none"
           />
           
@@ -1044,7 +1046,7 @@ export function TaskConversationEnhanced({ task, project }: TaskConversationEnha
             {pendingMessages.length > 0 ? (
               <>
                 <Loader2 className="h-4 w-4 mr-1 animate-spin" />
-                {pendingMessages.length} 待发送
+                {t('ai.pendingMessages', { count: pendingMessages.length })}
               </>
             ) : (
               <Send className="h-4 w-4" />

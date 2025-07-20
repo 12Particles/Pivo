@@ -182,7 +182,10 @@
     "executing": "Executing"
   },
   "git": {
-    "fileChanges": "File Changes"
+    "fileChanges": "File Changes",
+    "taskNotStarted": "Task not started yet",
+    "executeToShowChanges": "File changes will be shown after task execution",
+    "noFileChanges": "No file changes"
   },
   "toast": {
     "error": "Error",

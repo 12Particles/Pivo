@@ -14,6 +14,7 @@ import {
   ChevronDown 
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useTranslation } from "react-i18next";
 
 interface FileTreeDiffProps {
   projectPath: string;
@@ -30,6 +31,7 @@ interface FileNode {
 }
 
 export function FileTreeDiff({ projectPath, taskId, worktreePath }: FileTreeDiffProps) {
+  const { t } = useTranslation();
   const [selectedFile, setSelectedFile] = useState<string | null>(null);
   const [diff, setDiff] = useState<string>("");
   const [fileTree, setFileTree] = useState<FileNode[]>([]);
@@ -226,7 +228,7 @@ export function FileTreeDiff({ projectPath, taskId, worktreePath }: FileTreeDiff
         <div className="p-3 border-b">
           <h3 className="font-medium text-sm flex items-center gap-2">
             <GitBranch className="h-4 w-4" />
-            文件变更
+            {t('git.fileChanges')}
           </h3>
         </div>
         <ScrollArea className="flex-1">
@@ -234,12 +236,12 @@ export function FileTreeDiff({ projectPath, taskId, worktreePath }: FileTreeDiff
             {!worktreePath ? (
               <div className="text-sm text-muted-foreground text-center py-8">
                 <GitBranch className="h-8 w-8 mx-auto mb-2 opacity-30" />
-                <p>任务尚未开始执行</p>
-                <p className="text-xs mt-1">执行任务后将显示文件变更</p>
+                <p>{t('git.taskNotStarted')}</p>
+                <p className="text-xs mt-1">{t('git.executeToShowChanges')}</p>
               </div>
             ) : fileTree.length === 0 ? (
               <div className="text-sm text-muted-foreground text-center py-4">
-                暂无文件变更
+                {t('git.noFileChanges')}
               </div>
             ) : (
               fileTree.map(node => renderFileNode(node))

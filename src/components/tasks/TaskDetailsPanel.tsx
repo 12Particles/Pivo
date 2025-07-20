@@ -9,6 +9,7 @@ import { FileTreeDiff } from "@/components/git/FileTreeDiff";
 import { IntegrationPanel } from "@/components/integration/IntegrationPanel";
 import { useState, useEffect } from "react";
 import { taskAttemptApi } from "@/lib/api";
+import { useTranslation } from "react-i18next";
 
 interface TaskDetailsPanelProps {
   task: Task | null;
@@ -21,6 +22,7 @@ export function TaskDetailsPanel({
   project,
   onRunTask,
 }: TaskDetailsPanelProps) {
+  const { t } = useTranslation();
   // Generate new taskAttemptId when task changes
   const taskAttemptId = task ? `attempt-${task.id}-${Date.now()}` : '';
   const [currentAttempt, setCurrentAttempt] = useState<TaskAttempt | null>(null);
@@ -62,7 +64,7 @@ export function TaskDetailsPanel({
           <div className="flex items-center justify-center h-full text-muted-foreground">
             <div className="text-center">
               <FolderGit className="h-12 w-12 mx-auto mb-2 opacity-50" />
-              <p>未关联项目</p>
+              <p>{t('terminal.notAssociatedProject')}</p>
             </div>
           </div>
         )}
@@ -73,9 +75,9 @@ export function TaskDetailsPanel({
         <CardContent className="flex-1 overflow-hidden p-0">
           <Tabs defaultValue="details" className="h-full flex flex-col">
             <TabsList className="grid w-full grid-cols-3 flex-shrink-0">
-              <TabsTrigger value="details">任务详情</TabsTrigger>
-              <TabsTrigger value="terminal">终端</TabsTrigger>
-              <TabsTrigger value="integration">集成</TabsTrigger>
+              <TabsTrigger value="details">{t('task.taskDetails')}</TabsTrigger>
+              <TabsTrigger value="terminal">{t('terminal.title')}</TabsTrigger>
+              <TabsTrigger value="integration">{t('integration.title')}</TabsTrigger>
             </TabsList>
 
             <div className="flex-1 overflow-hidden">
@@ -93,9 +95,9 @@ export function TaskDetailsPanel({
                 </div>
 
                 <div>
-                  <h3 className="font-medium mb-2">描述</h3>
+                  <h3 className="font-medium mb-2">{t('task.taskDescription')}</h3>
                   <p className="text-sm text-muted-foreground">
-                    {task.description || "暂无描述"}
+                    {task.description || t('project.noDescription')}
                   </p>
                 </div>
 
@@ -104,15 +106,15 @@ export function TaskDetailsPanel({
                   <div>
                     <h3 className="font-medium mb-2 flex items-center gap-2">
                       <GitBranch className="h-4 w-4" />
-                      工作树信息
+                      {t('task.worktreeInfo')}
                     </h3>
                     <dl className="grid grid-cols-2 gap-4 text-sm">
                       <div>
-                        <dt className="text-muted-foreground">工作树路径</dt>
+                        <dt className="text-muted-foreground">{t('task.worktreePath')}</dt>
                         <dd className="font-mono text-xs">{project.path}/worktrees/{task.id}</dd>
                       </div>
                       <div>
-                        <dt className="text-muted-foreground">分支名称</dt>
+                        <dt className="text-muted-foreground">{t('task.branchName')}</dt>
                         <dd className="font-mono text-xs">task/{task.id.slice(0, 8)}</dd>
                       </div>
                     </dl>
@@ -120,25 +122,25 @@ export function TaskDetailsPanel({
                 )}
 
                 <div>
-                  <h3 className="font-medium mb-2">元数据</h3>
+                  <h3 className="font-medium mb-2">{t('task.metadata')}</h3>
                   <dl className="grid grid-cols-2 gap-4 text-sm">
                     <div>
-                      <dt className="text-muted-foreground">创建时间</dt>
+                      <dt className="text-muted-foreground">{t('task.createdAt')}</dt>
                       <dd>{new Date(task.created_at).toLocaleString()}</dd>
                     </div>
                     <div>
-                      <dt className="text-muted-foreground">更新时间</dt>
+                      <dt className="text-muted-foreground">{t('task.updatedAt')}</dt>
                       <dd>{new Date(task.updated_at).toLocaleString()}</dd>
                     </div>
                     {task.assignee && (
                       <div>
-                        <dt className="text-muted-foreground">负责人</dt>
+                        <dt className="text-muted-foreground">{t('task.assignee')}</dt>
                         <dd>{task.assignee}</dd>
                       </div>
                     )}
                     {task.tags && task.tags.length > 0 && (
                       <div className="col-span-2">
-                        <dt className="text-muted-foreground mb-1">标签</dt>
+                        <dt className="text-muted-foreground mb-1">{t('task.tags')}</dt>
                         <dd className="flex flex-wrap gap-1">
                           {task.tags.map((tag) => (
                             <Badge key={tag} variant="secondary">
@@ -153,11 +155,11 @@ export function TaskDetailsPanel({
 
                 {/* Attempts Information */}
                 <div>
-                  <h3 className="font-medium mb-2">执行尝试 (Attempts)</h3>
+                  <h3 className="font-medium mb-2">{t('task.executeAttempts')}</h3>
                   {currentAttempt ? (
                     <div className="p-3 bg-muted rounded-lg text-sm space-y-2">
                       <div className="flex items-center justify-between">
-                        <span className="text-muted-foreground">当前尝试</span>
+                        <span className="text-muted-foreground">{t('task.currentAttempt')}</span>
                         <Badge variant={currentAttempt.status === "running" ? "default" : "secondary"}>
                           {currentAttempt.status}
                         </Badge>
@@ -166,11 +168,11 @@ export function TaskDetailsPanel({
                         ID: {currentAttempt.id.slice(0, 8)}
                       </div>
                       <div className="text-xs text-muted-foreground">
-                        创建于: {new Date(currentAttempt.created_at).toLocaleString()}
+                        {t('task.createdAt')}: {new Date(currentAttempt.created_at).toLocaleString()}
                       </div>
                     </div>
                   ) : (
-                    <p className="text-sm text-muted-foreground">暂无执行尝试</p>
+                    <p className="text-sm text-muted-foreground">{t('task.noAttempts')}</p>
                   )}
                   
                   <div className="mt-3">
@@ -184,7 +186,7 @@ export function TaskDetailsPanel({
                       className="w-full"
                     >
                       <Play className="h-4 w-4 mr-1" />
-                      创建新的执行尝试
+                      {t('task.createNewAttempt')}
                     </Button>
                   </div>
                 </div>
@@ -203,7 +205,7 @@ export function TaskDetailsPanel({
                   <IntegrationPanel task={task} project={project} />
                 ) : (
                   <div className="flex items-center justify-center h-full text-muted-foreground">
-                    未关联项目
+                    {t('terminal.notAssociatedProject')}
                   </div>
                 )}
               </TabsContent>
