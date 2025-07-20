@@ -213,5 +213,25 @@
     "clearFailed": "清空日志失败",
     "logsCleared": "日志已清空",
     "shortcut": "Ctrl/Cmd+L"
+  },
+  "mergeRequests": {
+    "title": "合并请求",
+    "noMergeRequests": "未找到合并请求",
+    "viewOnGitLab": "在 GitLab 中查看",
+    "hasConflicts": "存在冲突",
+    "pipeline": "流水线",
+    "createMR": "创建合并请求",
+    "updateMR": "更新合并请求",
+    "mrCreated": "合并请求创建成功",
+    "mrUpdated": "合并请求更新成功",
+    "mrError": "创建/更新合并请求失败"
+  },
+  "gitlab": {
+    "config": "GitLab 配置",
+    "personalAccessToken": "个人访问令牌",
+    "gitlabUrl": "GitLab 地址",
+    "defaultBranch": "默认目标分支",
+    "notConfigured": "GitLab 尚未配置。请在设置中配置 GitLab。",
+    "configureNow": "立即配置"
   }
 }

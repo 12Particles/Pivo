@@ -1,5 +1,6 @@
 use std::path::{Path, PathBuf};
 use std::process::Command;
+use crate::models::{DiffMode, DiffResult, FileDiff, FileStatus, DiffStats, RebaseStatus, WorktreeInfo};
 
 #[derive(Debug, Clone)]
 pub struct GitService {
@@ -48,6 +49,42 @@ impl GitService {
 
         log::info!("Successfully created worktree at {:?}", worktree_path);
         Ok(worktree_path)
+    }
+    
+    /// Create a new worktree with baseline tracking
+    pub fn create_worktree_with_baseline(
+        &self,
+        repo_path: &Path,
+        branch_name: &str,
+        base_branch: &str,
+    ) -> Result<WorktreeInfo, String> {
+        // First get the base commit
+        let base_commit = self.get_branch_commit(repo_path, base_branch)?;
+        
+        // Create the worktree
+        let worktree_path = self.create_worktree(repo_path, branch_name, base_branch)?;
+        
+        Ok(WorktreeInfo {
+            path: worktree_path.to_string_lossy().to_string(),
+            branch: branch_name.to_string(),
+            base_branch: base_branch.to_string(),
+            base_commit,
+        })
+    }
+    
+    /// Get the commit hash of a branch
+    pub fn get_branch_commit(&self, repo_path: &Path, branch: &str) -> Result<String, String> {
+        let output = Command::new("git")
+            .current_dir(repo_path)
+            .args(&["rev-parse", branch])
+            .output()
+            .map_err(|e| format!("Failed to get branch commit: {}", e))?;
+
+        if !output.status.success() {
+            return Err(String::from_utf8_lossy(&output.stderr).to_string());
+        }
+
+        Ok(String::from_utf8_lossy(&output.stdout).trim().to_string())
     }
 
     /// Remove a worktree
@@ -139,6 +176,281 @@ impl GitService {
         }
 
         Ok(String::from_utf8_lossy(&output.stdout).to_string())
+    }
+    
+    /// Get comprehensive diff based on mode
+    pub fn get_comprehensive_diff(&self, worktree_path: &Path, mode: DiffMode) -> Result<DiffResult, String> {
+        match mode {
+            DiffMode::WorkingDirectory => self.get_working_directory_diff(worktree_path),
+            DiffMode::BranchChanges { base_commit } => self.get_branch_diff(worktree_path, &base_commit),
+            DiffMode::AgainstRemote { remote_branch } => self.get_remote_diff(worktree_path, &remote_branch),
+            DiffMode::CommitRange { from, to } => self.get_commit_range_diff(worktree_path, &from, &to),
+            DiffMode::MergePreview { target_branch } => self.get_merge_preview_diff(worktree_path, &target_branch),
+        }
+    }
+    
+    /// Get working directory changes (staged and unstaged)
+    fn get_working_directory_diff(&self, repo_path: &Path) -> Result<DiffResult, String> {
+        let mut all_files = Vec::new();
+        let mut stats = DiffStats {
+            files_changed: 0,
+            additions: 0,
+            deletions: 0,
+        };
+        
+        // Get unstaged changes
+        let unstaged_output = Command::new("git")
+            .current_dir(repo_path)
+            .args(&["diff", "--numstat", "--name-status"])
+            .output()
+            .map_err(|e| format!("Failed to get unstaged diff: {}", e))?;
+            
+        // Get staged changes
+        let staged_output = Command::new("git")
+            .current_dir(repo_path)
+            .args(&["diff", "--staged", "--numstat", "--name-status"])
+            .output()
+            .map_err(|e| format!("Failed to get staged diff: {}", e))?;
+        
+        // Parse both outputs
+        self.parse_diff_output(&unstaged_output.stdout, &mut all_files, &mut stats)?;
+        self.parse_diff_output(&staged_output.stdout, &mut all_files, &mut stats)?;
+        
+        Ok(DiffResult {
+            mode: DiffMode::WorkingDirectory,
+            files: all_files,
+            stats,
+            has_conflicts: false,
+            large_files: vec![],
+        })
+    }
+    
+    /// Get all changes between base commit and current HEAD
+    fn get_branch_diff(&self, repo_path: &Path, base_commit: &str) -> Result<DiffResult, String> {
+        let output = Command::new("git")
+            .current_dir(repo_path)
+            .args(&["diff", base_commit, "HEAD", "--numstat", "--name-status"])
+            .output()
+            .map_err(|e| format!("Failed to get branch diff: {}", e))?;
+            
+        if !output.status.success() {
+            return Err(String::from_utf8_lossy(&output.stderr).to_string());
+        }
+        
+        let mut files = Vec::new();
+        let mut stats = DiffStats {
+            files_changed: 0,
+            additions: 0,
+            deletions: 0,
+        };
+        
+        self.parse_diff_output(&output.stdout, &mut files, &mut stats)?;
+        
+        Ok(DiffResult {
+            mode: DiffMode::BranchChanges { base_commit: base_commit.to_string() },
+            files,
+            stats,
+            has_conflicts: false,
+            large_files: vec![],
+        })
+    }
+    
+    /// Get diff against remote branch
+    fn get_remote_diff(&self, repo_path: &Path, remote_branch: &str) -> Result<DiffResult, String> {
+        // First fetch the latest remote
+        let fetch_output = Command::new("git")
+            .current_dir(repo_path)
+            .args(&["fetch", "origin", remote_branch])
+            .output()
+            .map_err(|e| format!("Failed to fetch remote: {}", e))?;
+            
+        if !fetch_output.status.success() {
+            log::warn!("Failed to fetch remote: {}", String::from_utf8_lossy(&fetch_output.stderr));
+        }
+        
+        // Get diff against remote
+        let remote_ref = format!("origin/{}", remote_branch);
+        let output = Command::new("git")
+            .current_dir(repo_path)
+            .args(&["diff", &remote_ref, "HEAD", "--numstat", "--name-status"])
+            .output()
+            .map_err(|e| format!("Failed to get remote diff: {}", e))?;
+            
+        if !output.status.success() {
+            return Err(String::from_utf8_lossy(&output.stderr).to_string());
+        }
+        
+        let mut files = Vec::new();
+        let mut stats = DiffStats {
+            files_changed: 0,
+            additions: 0,
+            deletions: 0,
+        };
+        
+        self.parse_diff_output(&output.stdout, &mut files, &mut stats)?;
+        
+        Ok(DiffResult {
+            mode: DiffMode::AgainstRemote { remote_branch: remote_branch.to_string() },
+            files,
+            stats,
+            has_conflicts: false,
+            large_files: vec![],
+        })
+    }
+    
+    /// Get diff for a commit range
+    fn get_commit_range_diff(&self, repo_path: &Path, from: &str, to: &str) -> Result<DiffResult, String> {
+        let output = Command::new("git")
+            .current_dir(repo_path)
+            .args(&["diff", from, to, "--numstat", "--name-status"])
+            .output()
+            .map_err(|e| format!("Failed to get commit range diff: {}", e))?;
+            
+        if !output.status.success() {
+            return Err(String::from_utf8_lossy(&output.stderr).to_string());
+        }
+        
+        let mut files = Vec::new();
+        let mut stats = DiffStats {
+            files_changed: 0,
+            additions: 0,
+            deletions: 0,
+        };
+        
+        self.parse_diff_output(&output.stdout, &mut files, &mut stats)?;
+        
+        Ok(DiffResult {
+            mode: DiffMode::CommitRange { from: from.to_string(), to: to.to_string() },
+            files,
+            stats,
+            has_conflicts: false,
+            large_files: vec![],
+        })
+    }
+    
+    /// Get merge preview diff
+    fn get_merge_preview_diff(&self, repo_path: &Path, target_branch: &str) -> Result<DiffResult, String> {
+        // This is a bit more complex - we need to simulate a merge
+        let output = Command::new("git")
+            .current_dir(repo_path)
+            .args(&["merge-tree", "--write-tree", target_branch, "HEAD"])
+            .output()
+            .map_err(|e| format!("Failed to get merge preview: {}", e))?;
+            
+        if !output.status.success() {
+            // Fallback to simple diff
+            return self.get_remote_diff(repo_path, target_branch);
+        }
+        
+        // Parse merge-tree output (this is simplified, real implementation would be more complex)
+        let mut files = Vec::new();
+        let mut stats = DiffStats {
+            files_changed: 0,
+            additions: 0,
+            deletions: 0,
+        };
+        
+        // For now, just get the diff against target branch
+        let diff_output = Command::new("git")
+            .current_dir(repo_path)
+            .args(&["diff", target_branch, "HEAD", "--numstat", "--name-status"])
+            .output()
+            .map_err(|e| format!("Failed to get diff: {}", e))?;
+            
+        self.parse_diff_output(&diff_output.stdout, &mut files, &mut stats)?;
+        
+        Ok(DiffResult {
+            mode: DiffMode::MergePreview { target_branch: target_branch.to_string() },
+            files,
+            stats,
+            has_conflicts: false,
+            large_files: vec![],
+        })
+    }
+    
+    /// Parse git diff output
+    fn parse_diff_output(&self, output: &[u8], files: &mut Vec<FileDiff>, stats: &mut DiffStats) -> Result<(), String> {
+        let output_str = String::from_utf8_lossy(output);
+        
+        // Parse numstat format
+        for line in output_str.lines() {
+            if line.is_empty() {
+                continue;
+            }
+            
+            let parts: Vec<&str> = line.split_whitespace().collect();
+            if parts.len() < 3 {
+                continue;
+            }
+            
+            // Check if it's a name-status line (starts with a letter)
+            if parts[0].len() == 1 && parts[0].chars().next().unwrap().is_alphabetic() {
+                let status_char = parts[0].chars().next().unwrap();
+                let path = parts[1].to_string();
+                
+                let status = match status_char {
+                    'A' => FileStatus::Added,
+                    'M' => FileStatus::Modified,
+                    'D' => FileStatus::Deleted,
+                    'R' => FileStatus::Renamed,
+                    'C' => FileStatus::Copied,
+                    '?' => FileStatus::Untracked,
+                    _ => FileStatus::Modified,
+                };
+                
+                // For now, create a simple file diff
+                let file_diff = FileDiff {
+                    path,
+                    old_path: None,
+                    status,
+                    chunks: vec![],
+                    additions: 0,
+                    deletions: 0,
+                    binary: false,
+                };
+                
+                files.push(file_diff);
+                stats.files_changed += 1;
+            }
+        }
+        
+        Ok(())
+    }
+    
+    /// Check if rebase is needed
+    pub fn check_rebase_status(&self, worktree_path: &Path, base_branch: &str) -> Result<RebaseStatus, String> {
+        // Fetch latest changes
+        let _fetch = Command::new("git")
+            .current_dir(worktree_path)
+            .args(&["fetch", "origin", base_branch])
+            .output()
+            .map_err(|e| format!("Failed to fetch: {}", e))?;
+        
+        // Get ahead/behind count
+        let remote_ref = format!("origin/{}", base_branch);
+        let output = Command::new("git")
+            .current_dir(worktree_path)
+            .args(&["rev-list", "--left-right", "--count", &format!("{}...HEAD", remote_ref)])
+            .output()
+            .map_err(|e| format!("Failed to get ahead/behind count: {}", e))?;
+            
+        if !output.status.success() {
+            return Err(String::from_utf8_lossy(&output.stderr).to_string());
+        }
+        
+        let counts = String::from_utf8_lossy(&output.stdout);
+        let parts: Vec<&str> = counts.trim().split_whitespace().collect();
+        
+        let behind = parts.get(0).and_then(|s| s.parse::<usize>().ok()).unwrap_or(0);
+        let ahead = parts.get(1).and_then(|s| s.parse::<usize>().ok()).unwrap_or(0);
+        
+        Ok(RebaseStatus {
+            needs_rebase: behind > 0,
+            commits_behind: behind,
+            commits_ahead: ahead,
+            can_fast_forward: ahead == 0 && behind > 0,
+            has_conflicts: false, // Would need to actually try merge to detect
+        })
     }
 
     /// Stage files

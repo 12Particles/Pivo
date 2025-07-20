@@ -162,26 +162,27 @@ impl TaskService {
         let branch = format!("task-{}-{}", task_id, id.to_string().split('-').next().unwrap());
         let base_branch = req.base_branch.unwrap_or_else(|| "main".to_string());
         
-        // Create worktree
+        // Create worktree with baseline tracking
         let git_service = GitService::new();
-        let worktree_path = git_service.create_worktree(
+        let worktree_info = git_service.create_worktree_with_baseline(
             Path::new(&project_path),
             &branch,
             &base_branch,
         ).map_err(|e| sqlx::Error::Io(std::io::Error::new(std::io::ErrorKind::Other, e)))?;
         
-        // Insert into database
+        // Insert into database with base commit
         sqlx::query(
             r#"
-            INSERT INTO task_attempts (id, task_id, worktree_path, branch, base_branch, executor, status, created_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'))
+            INSERT INTO task_attempts (id, task_id, worktree_path, branch, base_branch, base_commit, executor, status, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
             "#,
         )
         .bind(id.to_string())
         .bind(task_id)
-        .bind(worktree_path.to_string_lossy().to_string())
-        .bind(&branch)
-        .bind(&base_branch)
+        .bind(&worktree_info.path)
+        .bind(&worktree_info.branch)
+        .bind(&worktree_info.base_branch)
+        .bind(&worktree_info.base_commit)
         .bind(&req.executor)
         .bind("running")
         .execute(&self.pool)

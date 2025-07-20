@@ -7,6 +7,10 @@ pub mod terminal_service;
 pub mod mcp_server;
 pub mod cli_executor;
 pub mod git_info;
+pub mod git_platform;
+pub mod gitlab_service;
+pub mod config_service;
+pub mod merge_request_service;
 
 pub use task_service::*;
 pub use project_service::*;
@@ -17,3 +21,7 @@ pub use terminal_service::*;
 pub use mcp_server::*;
 pub use cli_executor::*;
 // pub use git_info::*;
+pub use git_platform::*;
+pub use gitlab_service::*;
+pub use config_service::*;
+pub use merge_request_service::*;

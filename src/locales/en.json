@@ -213,5 +213,25 @@
     "clearFailed": "Failed to clear logs",
     "logsCleared": "Logs cleared successfully",
     "shortcut": "Ctrl/Cmd+L"
+  },
+  "mergeRequests": {
+    "title": "Merge Requests",
+    "noMergeRequests": "No merge requests found",
+    "viewOnGitLab": "View on GitLab",
+    "hasConflicts": "Has conflicts",
+    "pipeline": "Pipeline",
+    "createMR": "Create Merge Request",
+    "updateMR": "Update Merge Request",
+    "mrCreated": "Merge request created successfully",
+    "mrUpdated": "Merge request updated successfully",
+    "mrError": "Failed to create/update merge request"
+  },
+  "gitlab": {
+    "config": "GitLab Configuration",
+    "personalAccessToken": "Personal Access Token",
+    "gitlabUrl": "GitLab URL",
+    "defaultBranch": "Default Target Branch",
+    "notConfigured": "GitLab is not configured. Please configure GitLab in settings.",
+    "configureNow": "Configure Now"
   }
 }

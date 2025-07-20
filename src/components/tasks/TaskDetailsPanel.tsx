@@ -3,9 +3,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Task, Project, TaskAttempt } from "@/types";
-import { Play, GitBranch, FolderGit } from "lucide-react";
+import { Play, GitBranch, FolderGit, FileText, GitCommit } from "lucide-react";
 import { Terminal } from "@/components/terminal/Terminal";
 import { FileTreeDiff } from "@/components/git/FileTreeDiff";
+import { DiffViewer } from "@/components/git/DiffViewer";
 import { IntegrationPanel } from "@/components/integration/IntegrationPanel";
 import { useState, useEffect } from "react";
 import { taskAttemptApi } from "@/lib/api";
@@ -52,30 +53,20 @@ export function TaskDetailsPanel({
 
   return (
     <div className="h-full flex flex-col overflow-hidden">
-      {/* File Tree and Diff - Takes 60% of height */}
-      <div className="h-[60%] min-h-0 border-x border-t overflow-hidden">
-        {project && task ? (
-          <FileTreeDiff 
-            projectPath={project.path} 
-            taskId={task.id} 
-            worktreePath={currentAttempt?.worktree_path}
-          />
-        ) : (
-          <div className="flex items-center justify-center h-full text-muted-foreground">
-            <div className="text-center">
-              <FolderGit className="h-12 w-12 mx-auto mb-2 opacity-50" />
-              <p>{t('terminal.notAssociatedProject')}</p>
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* Bottom Tabs - Takes remaining 40% */}
-      <Card className="rounded-t-none border-t h-[40%] flex flex-col overflow-hidden">
-        <CardContent className="flex-1 overflow-hidden p-0">
-          <Tabs defaultValue="details" className="h-full flex flex-col overflow-hidden">
-            <TabsList className="grid w-full grid-cols-3 flex-shrink-0">
+      {/* Main content area */}
+      <Card className="flex-1 overflow-hidden">
+        <CardContent className="h-full p-0">
+          <Tabs defaultValue="files" className="h-full flex flex-col">
+            <TabsList className="grid w-full grid-cols-5 flex-shrink-0">
               <TabsTrigger value="details">{t('task.taskDetails')}</TabsTrigger>
+              <TabsTrigger value="files">
+                <FileText className="h-4 w-4 mr-1" />
+                Files
+              </TabsTrigger>
+              <TabsTrigger value="changes">
+                <GitCommit className="h-4 w-4 mr-1" />
+                Changes
+              </TabsTrigger>
               <TabsTrigger value="terminal">{t('terminal.title')}</TabsTrigger>
               <TabsTrigger value="integration">{t('integration.title')}</TabsTrigger>
             </TabsList>
@@ -196,6 +187,41 @@ export function TaskDetailsPanel({
                     </Button>
                   </div>
                 </div>
+              </TabsContent>
+
+              <TabsContent value="files" className="h-full p-0">
+                {project && task ? (
+                  <FileTreeDiff 
+                    projectPath={project.path} 
+                    taskId={task.id} 
+                    worktreePath={currentAttempt?.worktree_path}
+                  />
+                ) : (
+                  <div className="flex items-center justify-center h-full text-muted-foreground">
+                    <div className="text-center">
+                      <FolderGit className="h-12 w-12 mx-auto mb-2 opacity-50" />
+                      <p>{t('terminal.notAssociatedProject')}</p>
+                    </div>
+                  </div>
+                )}
+              </TabsContent>
+
+              <TabsContent value="changes" className="h-full p-0">
+                {project && task && currentAttempt ? (
+                  <DiffViewer attempt={currentAttempt} />
+                ) : (
+                  <div className="flex items-center justify-center h-full text-muted-foreground">
+                    <div className="text-center">
+                      <GitCommit className="h-12 w-12 mx-auto mb-2 opacity-50" />
+                      <p>
+                        {!currentAttempt 
+                          ? t('task.noAttempts')
+                          : t('terminal.notAssociatedProject')
+                        }
+                      </p>
+                    </div>
+                  </div>
+                )}
               </TabsContent>
 
               <TabsContent value="terminal" className="h-full p-0">

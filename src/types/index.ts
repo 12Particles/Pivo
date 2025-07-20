@@ -82,8 +82,11 @@ export interface TaskAttempt {
   worktree_path: string;
   branch: string;
   base_branch: string;
+  base_commit?: string;
   executor?: string;
   status: AttemptStatus;
+  last_sync_commit?: string;
+  last_sync_at?: string;
   created_at: string;
   completed_at?: string;
 }

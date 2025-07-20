@@ -2,8 +2,16 @@ pub mod task;
 pub mod project;
 pub mod task_attempt;
 pub mod execution_process;
+pub mod git_diff;
+pub mod git_provider;
+pub mod config;
+pub mod merge_request;
 
 pub use task::*;
 pub use project::*;
 pub use task_attempt::*;
 pub use execution_process::*;
+pub use git_diff::*;
+pub use git_provider::*;
+pub use config::*;
+pub use merge_request::*;

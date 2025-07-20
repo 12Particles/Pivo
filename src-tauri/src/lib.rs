@@ -6,8 +6,9 @@ mod logging;
 mod menu;
 
 use std::sync::Arc;
-use services::{TaskService, ProjectService, ProcessService, TerminalService, McpServerManager, CliExecutorService};
+use services::{TaskService, ProjectService, ProcessService, TerminalService, McpServerManager, CliExecutorService, MergeRequestService, ConfigService};
 use tauri::Manager;
+use tokio::sync::Mutex;
 use commands::terminal::TerminalState;
 use commands::mcp::McpState;
 use commands::cli::CliState;
@@ -16,6 +17,7 @@ pub struct AppState {
     pub task_service: Arc<TaskService>,
     pub project_service: Arc<ProjectService>,
     pub process_service: Arc<ProcessService>,
+    pub merge_request_service: Arc<MergeRequestService>,
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -44,16 +46,25 @@ pub fn run() {
                 let task_service = Arc::new(TaskService::new(pool.clone()));
                 let project_service = Arc::new(ProjectService::new(pool.clone()));
                 let process_service = Arc::new(ProcessService::new(pool.clone()));
+                let merge_request_service = Arc::new(MergeRequestService::new(pool.clone()));
                 let terminal_service = Arc::new(TerminalService::new(handle.clone()));
                 let mcp_manager = Arc::new(McpServerManager::new(handle.clone()));
                 let cli_service = Arc::new(CliExecutorService::new(handle.clone()));
+                let mut config_service_inner = ConfigService::new(pool.clone());
+                config_service_inner.load_from_db().await
+                    .unwrap_or_else(|e| log::warn!("Failed to load config from db: {}", e));
+                let config_service = Arc::new(Mutex::new(config_service_inner));
                 
                 // Store app state
                 app.manage(AppState {
                     task_service,
                     project_service,
                     process_service,
+                    merge_request_service,
                 });
+                
+                // Store config service
+                app.manage(config_service);
                 
                 // Store terminal state
                 app.manage(TerminalState {
@@ -107,6 +118,9 @@ pub fn run() {
             commands::git::list_all_files,
             commands::git::read_file_content,
             commands::git::get_file_from_ref,
+            commands::git::get_git_diff,
+            commands::git::check_rebase_status,
+            commands::git::get_branch_commit,
             commands::ai::init_ai_session,
             commands::ai::send_ai_message,
             commands::ai::get_ai_session,
@@ -143,6 +157,15 @@ pub fn run() {
             commands::logging::open_log_file,
             commands::logging::clear_logs,
             commands::window::show_log_viewer,
+            commands::gitlab::get_gitlab_config,
+            commands::gitlab::update_gitlab_config,
+            commands::gitlab::create_gitlab_mr,
+            commands::gitlab::get_gitlab_mr_status,
+            commands::gitlab::push_to_gitlab,
+            commands::gitlab::detect_git_provider,
+            commands::gitlab::get_merge_requests_by_attempt,
+            commands::gitlab::get_merge_requests_by_task,
+            commands::gitlab::get_active_merge_requests,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -10,8 +10,11 @@ pub struct TaskAttempt {
     pub worktree_path: String,
     pub branch: String,
     pub base_branch: String,
+    pub base_commit: Option<String>,
     pub executor: Option<String>,
     pub status: AttemptStatus,
+    pub last_sync_commit: Option<String>,
+    pub last_sync_at: Option<DateTime<Utc>>,
     pub created_at: DateTime<Utc>,
     pub completed_at: Option<DateTime<Utc>>,
 }
@@ -23,8 +26,11 @@ pub struct TaskAttemptRow {
     pub worktree_path: String,
     pub branch: String,
     pub base_branch: String,
+    pub base_commit: Option<String>,
     pub executor: Option<String>,
     pub status: String,
+    pub last_sync_commit: Option<String>,
+    pub last_sync_at: Option<String>,
     pub created_at: String,
     pub completed_at: Option<String>,
 }
@@ -37,9 +43,16 @@ impl From<TaskAttemptRow> for TaskAttempt {
             worktree_path: row.worktree_path,
             branch: row.branch,
             base_branch: row.base_branch,
+            base_commit: row.base_commit,
             executor: row.executor,
             status: serde_json::from_str(&format!("\"{}\"", row.status))
                 .unwrap_or(AttemptStatus::Failed),
+            last_sync_commit: row.last_sync_commit,
+            last_sync_at: row.last_sync_at.and_then(|s| 
+                DateTime::parse_from_rfc3339(&s)
+                    .map(|dt| dt.with_timezone(&Utc))
+                    .ok()
+            ),
             created_at: DateTime::parse_from_rfc3339(&row.created_at)
                 .map(|dt| dt.with_timezone(&Utc))
                 .unwrap_or_else(|_| Utc::now()),

@@ -10,3 +10,4 @@ pub mod cli;
 pub mod git_info;
 pub mod logging;
 pub mod window;
+pub mod gitlab;
