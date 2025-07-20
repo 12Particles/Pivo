@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { gitApi } from "@/lib/api";
 import { GitStatus } from "@/types";
 import { 
@@ -11,10 +12,15 @@ import {
   Minus, 
   Edit,
   ChevronRight,
-  ChevronDown 
+  ChevronDown,
+  TreePine,
+  GitCompare,
+  X
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useTranslation } from "react-i18next";
+import ReactDiffViewer from "react-diff-viewer-continued";
+import { parseGitDiff } from "@/lib/git-diff-parser";
 
 interface FileTreeDiffProps {
   projectPath: string;
@@ -30,19 +36,31 @@ interface FileNode {
   children?: FileNode[];
 }
 
+interface OpenFile {
+  path: string;
+  name: string;
+  oldContent: string;
+  newContent: string;
+}
+
 export function FileTreeDiff({ projectPath, taskId, worktreePath }: FileTreeDiffProps) {
   const { t } = useTranslation();
   const [selectedFile, setSelectedFile] = useState<string | null>(null);
-  const [diff, setDiff] = useState<string>("");
   const [fileTree, setFileTree] = useState<FileNode[]>([]);
+  const [changedFilesOnly, setChangedFilesOnly] = useState<FileNode[]>([]);
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set());
+  const [showChangedOnly, setShowChangedOnly] = useState(true);
+  const [openFiles, setOpenFiles] = useState<OpenFile[]>([]);
+  const [activeTab, setActiveTab] = useState<string>("");
 
   useEffect(() => {
     // Reset state when task or worktree changes
     setSelectedFile(null);
-    setDiff("");
     setFileTree([]);
+    setChangedFilesOnly([]);
     setExpandedFolders(new Set());
+    setOpenFiles([]);
+    setActiveTab("");
     loadGitStatus();
   }, [projectPath, taskId, worktreePath]);
 
@@ -50,6 +68,7 @@ export function FileTreeDiff({ projectPath, taskId, worktreePath }: FileTreeDiff
     // Only load if we have a worktree path
     if (!worktreePath) {
       setFileTree([]);
+      setChangedFilesOnly([]);
       return;
     }
     
@@ -60,6 +79,7 @@ export function FileTreeDiff({ projectPath, taskId, worktreePath }: FileTreeDiff
       console.error("Failed to load git status:", error);
       // Clear the tree on error
       setFileTree([]);
+      setChangedFilesOnly([]);
     }
   };
 
@@ -70,6 +90,16 @@ export function FileTreeDiff({ projectPath, taskId, worktreePath }: FileTreeDiff
       ...status.deleted.map(f => ({ path: f, status: "deleted" as const })),
     ];
 
+    // Build changed files only list
+    const changedFiles: FileNode[] = allFiles.map(({ path, status }) => ({
+      name: path.split("/").pop() || path,
+      path,
+      type: "file" as const,
+      status,
+    }));
+    setChangedFilesOnly(changedFiles);
+
+    // Build full tree structure
     const root: FileNode[] = [];
     const folders = new Map<string, FileNode>();
 
@@ -113,37 +143,37 @@ export function FileTreeDiff({ projectPath, taskId, worktreePath }: FileTreeDiff
   const loadDiff = async (filePath: string) => {
     // Only load if we have a worktree path
     if (!worktreePath) {
-      setDiff("");
       return;
     }
     
     try {
       const diffContent = await gitApi.getDiff(worktreePath, false);
-      // Filter diff for specific file
-      const fileDiff = extractFileDiff(diffContent, filePath);
-      setDiff(fileDiff);
+      // Use the improved parser
+      const { oldContent, newContent } = parseGitDiff(diffContent, filePath);
+      
+      // Check if file is already open
+      const existingIndex = openFiles.findIndex(f => f.path === filePath);
+      const fileName = filePath.split("/").pop() || filePath;
+      
+      if (existingIndex === -1) {
+        // Add new file tab
+        const newFile: OpenFile = {
+          path: filePath,
+          name: fileName,
+          oldContent,
+          newContent,
+        };
+        setOpenFiles([...openFiles, newFile]);
+        setActiveTab(filePath);
+      } else {
+        // Just switch to existing tab
+        setActiveTab(filePath);
+      }
+      
+      setSelectedFile(filePath);
     } catch (error) {
       console.error("Failed to load diff:", error);
-      setDiff("");
     }
-  };
-
-  const extractFileDiff = (fullDiff: string, filePath: string): string => {
-    const lines = fullDiff.split("\n");
-    const fileHeader = `diff --git a/${filePath} b/${filePath}`;
-    const startIndex = lines.findIndex(line => line.includes(fileHeader));
-    
-    if (startIndex === -1) return "No changes found";
-    
-    let endIndex = lines.length;
-    for (let i = startIndex + 1; i < lines.length; i++) {
-      if (lines[i].startsWith("diff --git")) {
-        endIndex = i;
-        break;
-      }
-    }
-    
-    return lines.slice(startIndex, endIndex).join("\n");
   };
 
   const toggleFolder = (path: string) => {
@@ -158,10 +188,22 @@ export function FileTreeDiff({ projectPath, taskId, worktreePath }: FileTreeDiff
 
   const handleFileClick = (file: FileNode) => {
     if (file.type === "file") {
-      setSelectedFile(file.path);
       loadDiff(file.path);
     } else {
       toggleFolder(file.path);
+    }
+  };
+
+  const closeTab = (filePath: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    const newOpenFiles = openFiles.filter(f => f.path !== filePath);
+    setOpenFiles(newOpenFiles);
+    
+    if (activeTab === filePath && newOpenFiles.length > 0) {
+      setActiveTab(newOpenFiles[newOpenFiles.length - 1].path);
+    } else if (newOpenFiles.length === 0) {
+      setActiveTab("");
+      setSelectedFile(null);
     }
   };
 
@@ -221,15 +263,58 @@ export function FileTreeDiff({ projectPath, taskId, worktreePath }: FileTreeDiff
     );
   };
 
+  const renderChangedFilesList = () => {
+    return changedFilesOnly.map(file => {
+      const isSelected = selectedFile === file.path;
+      return (
+        <Button
+          key={file.path}
+          variant="ghost"
+          size="sm"
+          className={cn(
+            "w-full justify-start px-2 h-8",
+            isSelected && "bg-accent",
+            "hover:bg-accent/50"
+          )}
+          onClick={() => handleFileClick(file)}
+        >
+          <FileText className="h-3 w-3 mr-2" />
+          {getStatusIcon(file.status)}
+          <span className="text-sm truncate flex-1 text-left">{file.path}</span>
+        </Button>
+      );
+    });
+  };
+
   return (
     <div className="flex h-full">
       {/* File Tree */}
       <div className="w-64 border-r flex flex-col">
-        <div className="p-3 border-b">
+        <div className="p-3 border-b space-y-2">
           <h3 className="font-medium text-sm flex items-center gap-2">
             <GitBranch className="h-4 w-4" />
             {t('git.fileChanges')}
           </h3>
+          <div className="flex gap-1">
+            <Button
+              variant={showChangedOnly ? "default" : "ghost"}
+              size="sm"
+              className="flex-1 h-7"
+              onClick={() => setShowChangedOnly(true)}
+            >
+              <GitCompare className="h-3 w-3 mr-1" />
+              {t('git.changedFiles')}
+            </Button>
+            <Button
+              variant={!showChangedOnly ? "default" : "ghost"}
+              size="sm"
+              className="flex-1 h-7"
+              onClick={() => setShowChangedOnly(false)}
+            >
+              <TreePine className="h-3 w-3 mr-1" />
+              {t('git.allFiles')}
+            </Button>
+          </div>
         </div>
         <ScrollArea className="flex-1">
           <div className="p-2">
@@ -239,45 +324,90 @@ export function FileTreeDiff({ projectPath, taskId, worktreePath }: FileTreeDiff
                 <p>{t('git.taskNotStarted')}</p>
                 <p className="text-xs mt-1">{t('git.executeToShowChanges')}</p>
               </div>
-            ) : fileTree.length === 0 ? (
+            ) : fileTree.length === 0 && changedFilesOnly.length === 0 ? (
               <div className="text-sm text-muted-foreground text-center py-4">
                 {t('git.noFileChanges')}
               </div>
             ) : (
-              fileTree.map(node => renderFileNode(node))
+              showChangedOnly ? renderChangedFilesList() : fileTree.map(node => renderFileNode(node))
             )}
           </div>
         </ScrollArea>
       </div>
 
-      {/* Diff Viewer */}
+      {/* Diff Viewer with Tabs */}
       <div className="flex-1 flex flex-col">
-        {selectedFile ? (
+        {openFiles.length > 0 ? (
           <>
-            <div className="p-3 border-b">
-              <h3 className="font-medium text-sm">{selectedFile}</h3>
-            </div>
-            <ScrollArea className="flex-1">
-              <pre className="p-4 text-sm font-mono">
-                {diff.split("\n").map((line, index) => (
-                  <div
-                    key={index}
-                    className={cn(
-                      "px-2",
-                      line.startsWith("+") && !line.startsWith("+++") && "bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300",
-                      line.startsWith("-") && !line.startsWith("---") && "bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300",
-                      line.startsWith("@@") && "bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300"
-                    )}
-                  >
-                    {line}
-                  </div>
-                ))}
-              </pre>
-            </ScrollArea>
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col">
+              <div className="border-b">
+                <TabsList className="h-10 w-full justify-start rounded-none bg-transparent p-0">
+                  {openFiles.map(file => (
+                    <TabsTrigger
+                      key={file.path}
+                      value={file.path}
+                      className="relative h-10 rounded-none border-b-2 border-b-transparent data-[state=active]:border-b-primary data-[state=active]:shadow-none px-4"
+                    >
+                      <span className="text-sm">{file.name}</span>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-4 w-4 ml-2 hover:bg-accent"
+                        onClick={(e) => closeTab(file.path, e)}
+                      >
+                        <X className="h-3 w-3" />
+                      </Button>
+                    </TabsTrigger>
+                  ))}
+                </TabsList>
+              </div>
+              
+              {openFiles.map(file => (
+                <TabsContent
+                  key={file.path}
+                  value={file.path}
+                  className="flex-1 mt-0 border-0 p-0 outline-none"
+                >
+                  <ScrollArea className="h-full">
+                    <div className="p-2">
+                      <ReactDiffViewer
+                        oldValue={file.oldContent}
+                        newValue={file.newContent}
+                        splitView={true}
+                        useDarkTheme={document.documentElement.classList.contains('dark')}
+                        hideLineNumbers={false}
+                        styles={{
+                          variables: {
+                            dark: {
+                              diffViewerBackground: '#0a0a0a',
+                              addedBackground: '#0d2e1a',
+                              removedBackground: '#3d0f0f',
+                              wordAddedBackground: '#1a5232',
+                              wordRemovedBackground: '#6b1818',
+                              addedColor: '#87d96c',
+                              removedColor: '#ff9999',
+                            },
+                            light: {
+                              diffViewerBackground: '#ffffff',
+                              addedBackground: '#e6ffec',
+                              removedBackground: '#ffebe9',
+                              wordAddedBackground: '#abf2bc',
+                              wordRemovedBackground: '#ffb6ba',
+                              addedColor: '#24292f',
+                              removedColor: '#24292f',
+                            }
+                          }
+                        }}
+                      />
+                    </div>
+                  </ScrollArea>
+                </TabsContent>
+              ))}
+            </Tabs>
           </>
         ) : (
           <div className="flex-1 flex items-center justify-center text-muted-foreground">
-            选择一个文件查看变更
+            {t('git.selectFileToView')}
           </div>
         )}
       </div>

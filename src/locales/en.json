@@ -185,7 +185,10 @@
     "fileChanges": "File Changes",
     "taskNotStarted": "Task not started yet",
     "executeToShowChanges": "File changes will be shown after task execution",
-    "noFileChanges": "No file changes"
+    "noFileChanges": "No file changes",
+    "changedFiles": "Changed",
+    "allFiles": "All Files",
+    "selectFileToView": "Select a file to view changes"
   },
   "toast": {
     "error": "Error",
