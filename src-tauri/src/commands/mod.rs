@@ -1,0 +1,10 @@
+pub mod tasks;
+pub mod task_attempts;
+pub mod projects;
+pub mod process;
+pub mod git;
+pub mod ai;
+pub mod terminal;
+pub mod mcp;
+pub mod cli;
+pub mod git_info;
