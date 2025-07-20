@@ -51,9 +51,9 @@ export function TaskDetailsPanel({
   if (!task) return null;
 
   return (
-    <div className="h-full flex flex-col">
-      {/* File Tree and Diff - Upper Half */}
-      <div className="flex-1 min-h-0 border-x border-t">
+    <div className="h-full flex flex-col overflow-hidden">
+      {/* File Tree and Diff - Takes 60% of height */}
+      <div className="h-[60%] min-h-0 border-x border-t overflow-hidden">
         {project && task ? (
           <FileTreeDiff 
             projectPath={project.path} 
@@ -70,10 +70,10 @@ export function TaskDetailsPanel({
         )}
       </div>
 
-      {/* Bottom Tabs */}
-      <Card className="rounded-t-none border-t flex-1 flex flex-col overflow-hidden">
+      {/* Bottom Tabs - Takes remaining 40% */}
+      <Card className="rounded-t-none border-t h-[40%] flex flex-col overflow-hidden">
         <CardContent className="flex-1 overflow-hidden p-0">
-          <Tabs defaultValue="details" className="h-full flex flex-col">
+          <Tabs defaultValue="details" className="h-full flex flex-col overflow-hidden">
             <TabsList className="grid w-full grid-cols-3 flex-shrink-0">
               <TabsTrigger value="details">{t('task.taskDetails')}</TabsTrigger>
               <TabsTrigger value="terminal">{t('terminal.title')}</TabsTrigger>

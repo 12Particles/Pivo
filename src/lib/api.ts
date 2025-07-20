@@ -177,6 +177,18 @@ export const gitApi = {
   getDiff: async (repoPath: string, staged: boolean = false): Promise<string> => {
     return await invoke("get_diff", { repoPath, staged });
   },
+
+  listAllFiles: async (directoryPath: string): Promise<any[]> => {
+    return await invoke("list_all_files", { directoryPath });
+  },
+
+  readFileContent: async (filePath: string): Promise<string> => {
+    return await invoke("read_file_content", { filePath });
+  },
+
+  getFileFromRef: async (repoPath: string, fileRef: string): Promise<string> => {
+    return await invoke("get_file_from_ref", { repoPath, fileRef });
+  },
 };
 
 // Terminal API

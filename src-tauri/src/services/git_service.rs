@@ -228,6 +228,21 @@ impl GitService {
 
         Ok(files)
     }
+
+    pub fn get_file_from_ref(repo_path: &Path, file_ref: &str) -> Result<String, String> {
+        let output = Command::new("git")
+            .current_dir(repo_path)
+            .args(&["show", file_ref])
+            .output()
+            .map_err(|e| format!("Failed to get file from ref: {}", e))?;
+
+        if !output.status.success() {
+            // File might not exist in HEAD (new file)
+            return Ok(String::new());
+        }
+
+        Ok(String::from_utf8_lossy(&output.stdout).to_string())
+    }
 }
 
 #[derive(Debug, Default, Clone, serde::Serialize, serde::Deserialize)]

@@ -36,6 +36,10 @@ interface FileNode {
   children?: FileNode[];
 }
 
+interface GitStatusMap {
+  [path: string]: "added" | "modified" | "deleted";
+}
+
 interface OpenFile {
   path: string;
   name: string;
@@ -48,19 +52,25 @@ export function FileTreeDiff({ projectPath, taskId, worktreePath }: FileTreeDiff
   const [selectedFile, setSelectedFile] = useState<string | null>(null);
   const [fileTree, setFileTree] = useState<FileNode[]>([]);
   const [changedFilesOnly, setChangedFilesOnly] = useState<FileNode[]>([]);
+  const [changedFilesTree, setChangedFilesTree] = useState<FileNode[]>([]);
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set());
   const [showChangedOnly, setShowChangedOnly] = useState(true);
   const [openFiles, setOpenFiles] = useState<OpenFile[]>([]);
   const [activeTab, setActiveTab] = useState<string>("");
+  const [allFilesLoaded, setAllFilesLoaded] = useState(false);
+  const [gitStatusMap, setGitStatusMap] = useState<GitStatusMap>({});
 
   useEffect(() => {
     // Reset state when task or worktree changes
     setSelectedFile(null);
     setFileTree([]);
     setChangedFilesOnly([]);
+    setChangedFilesTree([]);
     setExpandedFolders(new Set());
     setOpenFiles([]);
     setActiveTab("");
+    setAllFilesLoaded(false);
+    setGitStatusMap({});
     loadGitStatus();
   }, [projectPath, taskId, worktreePath]);
 
@@ -69,6 +79,7 @@ export function FileTreeDiff({ projectPath, taskId, worktreePath }: FileTreeDiff
     if (!worktreePath) {
       setFileTree([]);
       setChangedFilesOnly([]);
+      setChangedFilesTree([]);
       return;
     }
     
@@ -80,6 +91,36 @@ export function FileTreeDiff({ projectPath, taskId, worktreePath }: FileTreeDiff
       // Clear the tree on error
       setFileTree([]);
       setChangedFilesOnly([]);
+      setChangedFilesTree([]);
+    }
+  };
+
+  const loadAllFiles = async () => {
+    if (!worktreePath || allFilesLoaded) return;
+    
+    try {
+      const files = await gitApi.listAllFiles(worktreePath);
+      
+      // Convert backend response to our FileNode format and add git status
+      const convertNodes = (nodes: any[]): FileNode[] => {
+        return nodes.map(node => {
+          // Get relative path from worktree
+          const relativePath = node.path.replace(worktreePath + '/', '');
+          return {
+            name: node.name,
+            path: node.path,
+            type: node.type === 'folder' ? 'folder' : 'file',
+            status: gitStatusMap[relativePath],
+            children: node.children ? convertNodes(node.children) : undefined
+          } as FileNode;
+        });
+      };
+      
+      const tree = convertNodes(files);
+      setFileTree(tree);
+      setAllFilesLoaded(true);
+    } catch (error) {
+      console.error("Failed to load all files:", error);
     }
   };
 
@@ -90,16 +131,23 @@ export function FileTreeDiff({ projectPath, taskId, worktreePath }: FileTreeDiff
       ...status.deleted.map(f => ({ path: f, status: "deleted" as const })),
     ];
 
+    // Build status map for quick lookup
+    const statusMap: GitStatusMap = {};
+    status.added.forEach(f => statusMap[f] = "added");
+    status.modified.forEach(f => statusMap[f] = "modified");
+    status.deleted.forEach(f => statusMap[f] = "deleted");
+    setGitStatusMap(statusMap);
+
     // Build changed files only list
     const changedFiles: FileNode[] = allFiles.map(({ path, status }) => ({
       name: path.split("/").pop() || path,
-      path,
+      path: worktreePath ? `${worktreePath}/${path}` : path,  // Use full path
       type: "file" as const,
       status,
     }));
     setChangedFilesOnly(changedFiles);
 
-    // Build full tree structure
+    // Build changed files tree structure
     const root: FileNode[] = [];
     const folders = new Map<string, FileNode>();
 
@@ -115,7 +163,7 @@ export function FileTreeDiff({ projectPath, taskId, worktreePath }: FileTreeDiff
           // It's a file
           currentLevel.push({
             name: part,
-            path: currentPath,
+            path: worktreePath ? `${worktreePath}/${currentPath}` : currentPath,  // Use full path
             type: "file",
             status,
           });
@@ -137,7 +185,7 @@ export function FileTreeDiff({ projectPath, taskId, worktreePath }: FileTreeDiff
       });
     });
 
-    setFileTree(root);
+    setChangedFilesTree(root);
   };
 
   const loadDiff = async (filePath: string) => {
@@ -147,30 +195,91 @@ export function FileTreeDiff({ projectPath, taskId, worktreePath }: FileTreeDiff
     }
     
     try {
-      const diffContent = await gitApi.getDiff(worktreePath, false);
-      // Use the improved parser
-      const { oldContent, newContent } = parseGitDiff(diffContent, filePath);
+      // Ensure we have the full path
+      const fullPath = filePath.startsWith('/') ? filePath : `${worktreePath}/${filePath}`;
+      
+      // Get relative path from full path
+      const relativePath = fullPath.startsWith(worktreePath + '/') 
+        ? fullPath.substring(worktreePath.length + 1)
+        : filePath;
+      
+      const fileName = fullPath.split("/").pop() || fullPath;
+      const fileStatus = gitStatusMap[relativePath];
       
       // Check if file is already open
-      const existingIndex = openFiles.findIndex(f => f.path === filePath);
-      const fileName = filePath.split("/").pop() || filePath;
+      const existingIndex = openFiles.findIndex(f => f.path === fullPath);
       
-      if (existingIndex === -1) {
-        // Add new file tab
-        const newFile: OpenFile = {
-          path: filePath,
-          name: fileName,
-          oldContent,
-          newContent,
-        };
-        setOpenFiles([...openFiles, newFile]);
-        setActiveTab(filePath);
+      if (fileStatus === 'added') {
+        // New file, show only the new content
+        const content = await gitApi.readFileContent(fullPath);
+        
+        if (existingIndex === -1) {
+          const newFile: OpenFile = {
+            path: fullPath,
+            name: fileName,
+            oldContent: '',
+            newContent: content,
+          };
+          setOpenFiles([...openFiles, newFile]);
+          setActiveTab(fullPath);
+        } else {
+          setActiveTab(fullPath);
+        }
+      } else if (fileStatus === 'deleted') {
+        // Deleted file, we need to get the content from git
+        const diffContent = await gitApi.getDiff(worktreePath, false);
+        const { oldContent } = parseGitDiff(diffContent, relativePath);
+        
+        if (existingIndex === -1) {
+          const newFile: OpenFile = {
+            path: fullPath,
+            name: fileName,
+            oldContent: oldContent,
+            newContent: '',
+          };
+          setOpenFiles([...openFiles, newFile]);
+          setActiveTab(fullPath);
+        } else {
+          setActiveTab(fullPath);
+        }
+      } else if (fileStatus === 'modified') {
+        // Modified file, get the current content and compare with git
+        const currentContent = await gitApi.readFileContent(fullPath);
+        
+        // Get the original content from git
+        const gitShowResult = await gitApi.getFileFromRef(worktreePath, `HEAD:${relativePath}`);
+        
+        if (existingIndex === -1) {
+          const newFile: OpenFile = {
+            path: fullPath,
+            name: fileName,
+            oldContent: gitShowResult,
+            newContent: currentContent,
+          };
+          setOpenFiles([...openFiles, newFile]);
+          setActiveTab(fullPath);
+        } else {
+          setActiveTab(fullPath);
+        }
       } else {
-        // Just switch to existing tab
-        setActiveTab(filePath);
+        // File has no changes, just display current content
+        const content = await gitApi.readFileContent(fullPath);
+        
+        if (existingIndex === -1) {
+          const newFile: OpenFile = {
+            path: fullPath,
+            name: fileName,
+            oldContent: content,
+            newContent: content,
+          };
+          setOpenFiles([...openFiles, newFile]);
+          setActiveTab(fullPath);
+        } else {
+          setActiveTab(fullPath);
+        }
       }
       
-      setSelectedFile(filePath);
+      setSelectedFile(fullPath);
     } catch (error) {
       console.error("Failed to load diff:", error);
     }
@@ -263,31 +372,15 @@ export function FileTreeDiff({ projectPath, taskId, worktreePath }: FileTreeDiff
     );
   };
 
-  const renderChangedFilesList = () => {
-    return changedFilesOnly.map(file => {
-      const isSelected = selectedFile === file.path;
-      return (
-        <Button
-          key={file.path}
-          variant="ghost"
-          size="sm"
-          className={cn(
-            "w-full justify-start px-2 h-8",
-            isSelected && "bg-accent",
-            "hover:bg-accent/50"
-          )}
-          onClick={() => handleFileClick(file)}
-        >
-          <FileText className="h-3 w-3 mr-2" />
-          {getStatusIcon(file.status)}
-          <span className="text-sm truncate flex-1 text-left">{file.path}</span>
-        </Button>
-      );
-    });
-  };
+  // Effect to reload all files when switching to All Files view and status is available
+  useEffect(() => {
+    if (!showChangedOnly && !allFilesLoaded && worktreePath && Object.keys(gitStatusMap).length > 0) {
+      loadAllFiles();
+    }
+  }, [showChangedOnly, allFilesLoaded, worktreePath, gitStatusMap]);
 
   return (
-    <div className="flex h-full">
+    <div className="flex h-full overflow-hidden">
       {/* File Tree */}
       <div className="w-64 border-r flex flex-col">
         <div className="p-3 border-b space-y-2">
@@ -309,7 +402,10 @@ export function FileTreeDiff({ projectPath, taskId, worktreePath }: FileTreeDiff
               variant={!showChangedOnly ? "default" : "ghost"}
               size="sm"
               className="flex-1 h-7"
-              onClick={() => setShowChangedOnly(false)}
+              onClick={() => {
+                setShowChangedOnly(false);
+                loadAllFiles();
+              }}
             >
               <TreePine className="h-3 w-3 mr-1" />
               {t('git.allFiles')}
@@ -329,24 +425,24 @@ export function FileTreeDiff({ projectPath, taskId, worktreePath }: FileTreeDiff
                 {t('git.noFileChanges')}
               </div>
             ) : (
-              showChangedOnly ? renderChangedFilesList() : fileTree.map(node => renderFileNode(node))
+              showChangedOnly ? changedFilesTree.map(node => renderFileNode(node)) : fileTree.map(node => renderFileNode(node))
             )}
           </div>
         </ScrollArea>
       </div>
 
       {/* Diff Viewer with Tabs */}
-      <div className="flex-1 flex flex-col">
+      <div className="flex-1 flex flex-col overflow-hidden">
         {openFiles.length > 0 ? (
           <>
-            <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col">
-              <div className="border-b">
-                <TabsList className="h-10 w-full justify-start rounded-none bg-transparent p-0">
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="flex flex-col h-full">
+              <div className="border-b flex-shrink-0">
+                <TabsList className="h-10 w-full justify-start rounded-none bg-transparent p-0 overflow-x-auto">
                   {openFiles.map(file => (
                     <TabsTrigger
                       key={file.path}
                       value={file.path}
-                      className="relative h-10 rounded-none border-b-2 border-b-transparent data-[state=active]:border-b-primary data-[state=active]:shadow-none px-4"
+                      className="relative h-10 rounded-none border-b-2 border-b-transparent data-[state=active]:border-b-primary data-[state=active]:shadow-none px-4 flex-shrink-0"
                     >
                       <span className="text-sm">{file.name}</span>
                       <Button
@@ -366,16 +462,16 @@ export function FileTreeDiff({ projectPath, taskId, worktreePath }: FileTreeDiff
                 <TabsContent
                   key={file.path}
                   value={file.path}
-                  className="flex-1 mt-0 border-0 p-0 outline-none"
+                  className="flex-1 overflow-hidden mt-0 border-0 p-0 outline-none"
                 >
-                  <ScrollArea className="h-full">
-                    <div className="p-2">
-                      <ReactDiffViewer
+                  <div className="h-full overflow-auto p-2">
+                    <ReactDiffViewer
                         oldValue={file.oldContent}
                         newValue={file.newContent}
-                        splitView={true}
+                        splitView={false}
                         useDarkTheme={document.documentElement.classList.contains('dark')}
                         hideLineNumbers={false}
+                        showDiffOnly={false}
                         styles={{
                           variables: {
                             dark: {
@@ -386,6 +482,9 @@ export function FileTreeDiff({ projectPath, taskId, worktreePath }: FileTreeDiff
                               wordRemovedBackground: '#6b1818',
                               addedColor: '#87d96c',
                               removedColor: '#ff9999',
+                              codeFoldBackground: '#1a1a1a',
+                              codeFoldGutterBackground: '#2a2a2a',
+                              codeFoldContentColor: '#808080',
                             },
                             light: {
                               diffViewerBackground: '#ffffff',
@@ -395,12 +494,22 @@ export function FileTreeDiff({ projectPath, taskId, worktreePath }: FileTreeDiff
                               wordRemovedBackground: '#ffb6ba',
                               addedColor: '#24292f',
                               removedColor: '#24292f',
+                              codeFoldBackground: '#f6f8fa',
+                              codeFoldGutterBackground: '#e1e4e8',
+                              codeFoldContentColor: '#586069',
                             }
+                          },
+                          contentText: {
+                            fontFamily: 'ui-monospace, SFMono-Regular, "SF Mono", Consolas, "Liberation Mono", Menlo, monospace',
+                            fontSize: '13px',
+                            lineHeight: '20px',
+                          },
+                          gutter: {
+                            minWidth: '50px',
                           }
                         }}
                       />
-                    </div>
-                  </ScrollArea>
+                  </div>
                 </TabsContent>
               ))}
             </Tabs>
