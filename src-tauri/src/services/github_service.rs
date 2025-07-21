@@ -259,25 +259,6 @@ impl GitPlatformService for GitHubService {
         self.get_merge_request(remote_info, pr_number).await
     }
     
-    async fn list_merge_requests(
-        &self,
-        remote_info: &GitRemoteInfo,
-        source_branch: Option<&str>,
-    ) -> Result<Vec<MergeRequestInfo>, String> {
-        let mut url = self.get_api_url(remote_info, "pulls?state=all");
-        
-        if let Some(branch) = source_branch {
-            url.push_str(&format!("&head={}", branch));
-        }
-        
-        let prs: Vec<GitHubPullRequest> = self.make_request(
-            &url,
-            reqwest::Method::GET,
-            None,
-        ).await?;
-        
-        Ok(prs.into_iter().map(MergeRequestInfo::from).collect())
-    }
     
     async fn push_branch(
         &self,

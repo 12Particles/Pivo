@@ -153,7 +153,6 @@ pub async fn push_to_github(
 
 use serde::{Serialize, Deserialize};
 use serde_json::json;
-use std::collections::HashMap;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct DeviceCodeResponse {

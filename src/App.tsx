@@ -1,10 +1,10 @@
 import { useState, useEffect, useRef } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { TaskKanbanBoard } from "./components/tasks/TaskKanbanBoard";
-import { TaskDetailsPanel } from "./components/tasks/TaskDetailsPanel";
+import { TaskKanbanBoard } from "./components/tasks/kanban/TaskKanbanBoard";
+import { TaskDetailsPanel } from "./components/tasks/details/TaskDetailsPanel";
 import { TaskConversation } from "./components/tasks/TaskConversation";
-import { CreateTaskDialog } from "./components/tasks/CreateTaskDialog";
-import { EditTaskDialog } from "./components/tasks/EditTaskDialog";
+import { CreateTaskDialog } from "./components/tasks/dialogs/CreateTaskDialog";
+import { EditTaskDialog } from "./components/tasks/dialogs/EditTaskDialog";
 import { ProjectList } from "./components/projects/ProjectList";
 import { ProjectForm } from "./components/projects/ProjectForm";
 import { ProjectSettingsPage } from "./components/projects/ProjectSettingsPage";
@@ -527,7 +527,7 @@ function App() {
             direction="horizontal"
             defaultSizes={[20, 50, 30]}
             minSizes={[15, 30, 20]}
-            maxSizes={[30, undefined, 40]}
+            maxSizes={[30, 100, 40]}
             storageKey="main-layout"
             panelRefs={[leftPanelRef, centerPanelRef, rightPanelRef]}
           >

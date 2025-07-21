@@ -143,20 +143,7 @@ impl GitService {
         Ok(branches)
     }
 
-    /// Create a new branch
-    pub fn create_branch(repo_path: &Path, branch_name: &str, base_branch: &str) -> Result<(), String> {
-        let output = Command::new("git")
-            .current_dir(repo_path)
-            .args(&["checkout", "-b", branch_name, base_branch])
-            .output()
-            .map_err(|e| format!("Failed to create branch: {}", e))?;
-
-        if !output.status.success() {
-            return Err(String::from_utf8_lossy(&output.stderr).to_string());
-        }
-
-        Ok(())
-    }
+    // Removed unused method create_branch
 
     /// Get git diff
     pub fn get_diff(repo_path: &Path, staged: bool) -> Result<String, String> {
@@ -676,11 +663,4 @@ pub struct RemoteInfo {
     pub url: String,
 }
 
-impl GitStatus {
-    pub fn has_changes(&self) -> bool {
-        !self.modified.is_empty()
-            || !self.added.is_empty()
-            || !self.deleted.is_empty()
-            || !self.untracked.is_empty()
-    }
-}
+// Removed unused GitStatus implementation

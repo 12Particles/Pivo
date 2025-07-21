@@ -59,10 +59,6 @@ struct ClaudeUsage {
 
 #[async_trait]
 impl AIExecutor for ClaudeExecutor {
-    fn executor_type(&self) -> &str {
-        "claude"
-    }
-
     async fn init_session(
         &self,
         task_id: &str,
@@ -205,12 +201,6 @@ impl AIExecutor for ClaudeExecutor {
         })
     }
 
-    async fn resume_session(
-        &self,
-        session: &ExecutorSession,
-    ) -> Result<ExecutorSession, String> {
-        Ok(session.clone())
-    }
 
     fn get_available_tools(&self) -> Vec<ToolDefinition> {
         vec![

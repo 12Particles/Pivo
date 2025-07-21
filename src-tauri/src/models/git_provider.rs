@@ -29,23 +29,7 @@ impl GitProvider {
         }
     }
     
-    /// Get the merge request terminology
-    pub fn merge_request_term(&self) -> &str {
-        match self {
-            GitProvider::GitHub => "Pull Request",
-            GitProvider::GitLab => "Merge Request",
-            GitProvider::Other => "Merge Request",
-        }
-    }
-    
-    /// Get the short merge request terminology
-    pub fn merge_request_short(&self) -> &str {
-        match self {
-            GitProvider::GitHub => "PR",
-            GitProvider::GitLab => "MR",
-            GitProvider::Other => "MR",
-        }
-    }
+    // Removed unused methods merge_request_term and merge_request_short
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -175,22 +159,4 @@ pub enum PipelineStatus {
     Scheduled,
 }
 
-impl PipelineStatus {
-    pub fn is_running(&self) -> bool {
-        matches!(self, 
-            PipelineStatus::Created | 
-            PipelineStatus::WaitingForResource | 
-            PipelineStatus::Preparing | 
-            PipelineStatus::Pending | 
-            PipelineStatus::Running
-        )
-    }
-    
-    pub fn is_success(&self) -> bool {
-        matches!(self, PipelineStatus::Success)
-    }
-    
-    pub fn is_failed(&self) -> bool {
-        matches!(self, PipelineStatus::Failed | PipelineStatus::Canceled)
-    }
-}
+// Removed unused PipelineStatus methods

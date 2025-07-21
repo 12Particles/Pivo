@@ -144,25 +144,6 @@ impl GitPlatformService for GitLabService {
         Ok(mr_info)
     }
     
-    async fn list_merge_requests(
-        &self,
-        remote_info: &GitRemoteInfo,
-        source_branch: Option<&str>,
-    ) -> Result<Vec<MergeRequestInfo>, String> {
-        let mut url = self.get_api_url(remote_info, "merge_requests?state=opened");
-        
-        if let Some(branch) = source_branch {
-            url.push_str(&format!("&source_branch={}", urlencoding::encode(branch)));
-        }
-        
-        let response: Vec<GitLabMergeRequest> = self.make_request(
-            &url,
-            reqwest::Method::GET,
-            None,
-        ).await?;
-        
-        Ok(response.into_iter().map(|mr| mr.into()).collect())
-    }
     
     async fn push_branch(
         &self,
@@ -252,8 +233,10 @@ struct GitLabMergeRequestDetailed {
 
 #[derive(Debug, Deserialize)]
 struct GitLabPipeline {
+    #[allow(dead_code)]
     id: i64,
     status: Option<String>,
+    #[allow(dead_code)]
     web_url: String,
 }
 

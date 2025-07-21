@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Task, Project, TaskAttempt } from "@/types";
 import { Play, GitBranch } from "lucide-react";
 import { Terminal } from "@/components/terminal/Terminal";
-import { FileTreeDiff } from "@/components/git/FileTreeDiff";
+import { FileTreeDiff } from "@/components/vcs/common/FileTreeDiff";
 import { IntegrationPanel } from "@/components/integration/IntegrationPanel";
 import { ResizableLayout } from "@/components/layout/ResizableLayout";
 import { useState, useEffect } from "react";

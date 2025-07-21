@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 use serde_json;
 use tauri::{AppHandle, Emitter};
 use uuid::Uuid;
-use log::{info, debug, error};
+use log::{info, debug};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CliExecution {

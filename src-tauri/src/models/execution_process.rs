@@ -84,9 +84,4 @@ pub enum ProcessStatus {
     Killed,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
-pub struct ProcessOutput {
-    pub stdout: Option<String>,
-    pub stderr: Option<String>,
-    pub exit_code: Option<i32>,
-}
+// ProcessOutput struct removed as it's not being used

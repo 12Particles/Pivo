@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect } from 'react';
 import { LayoutToggleButtons } from './LayoutToggleButtons';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 
@@ -23,12 +23,9 @@ export const TitleBar: React.FC<TitleBarProps> = ({
   onToggleRight,
   onResetLayout,
 }) => {
-  const [appWindow, setAppWindow] = useState<any>(null);
-
   useEffect(() => {
     const setupWindow = async () => {
-      const window = await getCurrentWindow();
-      setAppWindow(window);
+      await getCurrentWindow();
     };
     setupWindow();
   }, []);

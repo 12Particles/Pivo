@@ -94,19 +94,7 @@ pub fn setup_menu_events(app: &tauri::App) -> Result<(), Box<dyn std::error::Err
     Ok(())
 }
 
-// Helper function to emit log viewer event
-pub fn emit_view_logs(app_handle: &tauri::AppHandle) {
-    app_handle.emit("menu-view-logs", ()).unwrap();
-}
-
-// Helper function to clear logs
-pub fn emit_clear_logs(app_handle: &tauri::AppHandle) {
-    if let Err(e) = clear_logs_internal() {
-        log::error!("Failed to clear logs: {}", e);
-    } else {
-        app_handle.emit("menu-logs-cleared", ()).unwrap();
-    }
-}
+// Removed unused functions emit_view_logs and emit_clear_logs
 
 fn clear_logs_internal() -> Result<(), Box<dyn std::error::Error>> {
     let log_path = crate::logging::get_log_file_path();

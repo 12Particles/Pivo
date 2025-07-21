@@ -8,7 +8,7 @@ import { Loader2, Save, AlertCircle, CheckCircle, KeyRound, Trash2 } from 'lucid
 import { githubService, type GitHubConfig } from '@/lib/services/githubService';
 import { useTranslation } from 'react-i18next';
 import { toast } from '@/hooks/use-toast';
-import { GitHubAuthDialog } from '@/components/github/GitHubAuthDialog';
+import { GitHubAuthDialog } from '@/components/vcs/github/GitHubAuthDialog';
 
 export function GitHubSettings() {
   const { t } = useTranslation();

@@ -28,12 +28,6 @@ pub trait GitPlatformService: Send + Sync {
         mr_number: i64,
     ) -> Result<MergeRequestInfo, String>;
     
-    /// List merge requests for a branch
-    async fn list_merge_requests(
-        &self,
-        remote_info: &GitRemoteInfo,
-        source_branch: Option<&str>,
-    ) -> Result<Vec<MergeRequestInfo>, String>;
     
     /// Push branch to remote with authentication
     async fn push_branch(

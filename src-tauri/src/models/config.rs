@@ -38,13 +38,9 @@ impl GitLabConfig {
         self.gitlab_url.as_deref().unwrap_or("https://gitlab.com")
     }
     
-    pub fn default_mr_base(&self) -> &str {
-        self.default_mr_base.as_deref().unwrap_or("main")
-    }
+    // Removed unused method default_mr_base
 }
 
 impl GitHubConfig {
-    pub fn default_pr_base(&self) -> &str {
-        self.default_pr_base.as_deref().unwrap_or("main")
-    }
+    // Removed unused method default_pr_base
 }

@@ -3,7 +3,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Sparkles, Loader2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Message } from "../types";
-import { MessageItem } from "./MessageItem";
+import { MessageRenderer } from "./MessageRenderer";
 import { CliExecution } from "@/types";
 
 interface MessageListProps {
@@ -45,7 +45,7 @@ export function MessageList({
           </div>
         ) : (
           messages.map((message) => (
-            <MessageItem
+            <MessageRenderer
               key={message.id}
               message={message}
               isCollapsed={collapsedMessages.has(message.id)}

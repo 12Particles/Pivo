@@ -1,4 +1,3 @@
-use tauri::{AppHandle, Manager};
 use crate::models::{AppConfig, GitLabConfig, GitHubConfig};
 use sqlx::SqlitePool;
 
@@ -17,32 +16,7 @@ impl ConfigService {
         }
     }
     
-    pub fn from_app_handle(app_handle: &AppHandle) -> Result<Self, Box<dyn std::error::Error>> {
-        let app_dir = app_handle
-            .path()
-            .app_config_dir()
-            .expect("Failed to get app config directory");
-        
-        // Create config directory if it doesn't exist
-        std::fs::create_dir_all(&app_dir)?;
-        
-        let config_path = app_dir.join("config.json");
-        
-        // Load existing config or create default
-        let _config = if config_path.exists() {
-            let content = std::fs::read_to_string(&config_path)?;
-            serde_json::from_str(&content).unwrap_or_default()
-        } else {
-            AppConfig::default()
-        };
-        
-        // TODO: Get pool from somewhere
-        unimplemented!("Need to get pool from app state")
-    }
-    
-    pub fn get_config(&self) -> &AppConfig {
-        &self.config
-    }
+    // Removed unused methods from_app_handle and get_config
     
     pub fn get_gitlab_config(&self) -> Option<&GitLabConfig> {
         self.config.gitlab.as_ref()

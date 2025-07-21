@@ -34,34 +34,7 @@ pub enum McpServerStatus {
     Error(String),
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct McpTool {
-    pub name: String,
-    pub description: String,
-    pub parameters: Value,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct McpResource {
-    pub name: String,
-    pub uri: String,
-    pub description: Option<String>,
-    pub mime_type: Option<String>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct McpPrompt {
-    pub name: String,
-    pub description: Option<String>,
-    pub arguments: Vec<McpPromptArgument>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct McpPromptArgument {
-    pub name: String,
-    pub description: Option<String>,
-    pub required: bool,
-}
+// Removed unused McpTool, McpResource, McpPrompt and McpPromptArgument structs
 
 pub struct McpServerManager {
     servers: Arc<Mutex<HashMap<String, McpServerInstance>>>,
@@ -264,19 +237,4 @@ pub struct ToolExecutionRequest {
     pub arguments: Value,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ToolExecutionResult {
-    pub content: Vec<ToolContent>,
-    pub is_error: bool,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(tag = "type")]
-pub enum ToolContent {
-    #[serde(rename = "text")]
-    Text { text: String },
-    #[serde(rename = "image")]
-    Image { data: String, mime_type: String },
-    #[serde(rename = "resource")]
-    Resource { uri: String, text: Option<String> },
-}
+// Removed unused ToolExecutionResult and ToolContent types

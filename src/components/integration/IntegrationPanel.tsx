@@ -1,8 +1,8 @@
 import { useState, useEffect } from "react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Task, Project, TaskAttempt } from "@/types";
-import { MergeRequestList } from "@/components/MergeRequestList";
-import { PullRequestList } from "@/components/github/PullRequestList";
+import { MergeRequestList } from "@/components/vcs/MergeRequestList";
+import { PullRequestList } from "@/components/vcs/github/PullRequestList";
 import { gitlabService } from "@/lib/services/gitlabService";
 import { gitApi } from "@/lib/gitApi";
 import { taskAttemptApi } from "@/lib/api";

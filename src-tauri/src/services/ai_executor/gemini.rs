@@ -73,6 +73,7 @@ struct GeminiResponse {
 #[derive(Debug, Deserialize)]
 struct Candidate {
     content: GeminiContent,
+    #[allow(dead_code)]
     finish_reason: Option<String>,
 }
 
@@ -85,9 +86,6 @@ struct UsageMetadata {
 
 #[async_trait]
 impl AIExecutor for GeminiExecutor {
-    fn executor_type(&self) -> &str {
-        "gemini"
-    }
 
     async fn init_session(
         &self,
@@ -232,12 +230,6 @@ impl AIExecutor for GeminiExecutor {
         })
     }
 
-    async fn resume_session(
-        &self,
-        session: &ExecutorSession,
-    ) -> Result<ExecutorSession, String> {
-        Ok(session.clone())
-    }
 
     fn get_available_tools(&self) -> Vec<ToolDefinition> {
         vec![

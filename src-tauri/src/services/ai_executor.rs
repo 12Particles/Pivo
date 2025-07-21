@@ -1,7 +1,6 @@
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use std::sync::Arc;
 use uuid::Uuid;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -64,9 +63,6 @@ pub struct Usage {
 
 #[async_trait]
 pub trait AIExecutor: Send + Sync {
-    /// Get the executor type name
-    fn executor_type(&self) -> &str;
-
     /// Initialize a new session
     async fn init_session(
         &self,
@@ -81,11 +77,6 @@ pub trait AIExecutor: Send + Sync {
         message: &str,
     ) -> Result<ExecutorResponse, String>;
 
-    /// Resume an existing session
-    async fn resume_session(
-        &self,
-        session: &ExecutorSession,
-    ) -> Result<ExecutorSession, String>;
 
     /// Get available tools for this executor
     fn get_available_tools(&self) -> Vec<ToolDefinition>;
@@ -146,26 +137,4 @@ pub mod claude;
 pub mod gemini;
 
 // Executor Manager
-pub struct ExecutorManager {
-    executors: HashMap<String, Arc<dyn AIExecutor>>,
-}
-
-impl ExecutorManager {
-    pub fn new() -> Self {
-        Self {
-            executors: HashMap::new(),
-        }
-    }
-
-    pub fn register_executor(&mut self, name: String, executor: Arc<dyn AIExecutor>) {
-        self.executors.insert(name, executor);
-    }
-
-    pub fn get_executor(&self, name: &str) -> Option<&Arc<dyn AIExecutor>> {
-        self.executors.get(name)
-    }
-
-    pub fn list_executors(&self) -> Vec<String> {
-        self.executors.keys().cloned().collect()
-    }
-}
+// Removed unused ExecutorManager struct
