@@ -10,7 +10,7 @@
 
 **Pivo** is a task-focused programming environment designed for the right vibe. Built with Tauri, React, and Rust, it provides a seamless experience for managing Git-based projects with integrated AI assistance and terminal capabilities.
 
-![Pivo Interface](assets/@Xnip2025-07-21_11-53-12.jpg)
+![Pivo Interface](assets/screenshot.jpg)
 *Main interface showing task management, file changes, and AI conversation features*
 
 ## ✨ Key Features
