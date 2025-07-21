@@ -120,47 +120,47 @@ export function TaskKanbanBoard({
 
   return (
     <div className="h-full flex flex-col">
-      <div className="flex items-center gap-4 p-4 border-b flex-shrink-0">
+      <div className="flex items-center gap-3 p-3 border-b flex-shrink-0 bg-background/95 backdrop-blur">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
             placeholder="Search tasks..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-10"
+            className="pl-10 bg-background/50 border-muted/50 focus:bg-background transition-colors"
           />
         </div>
-        <Button onClick={onAddTask} size="sm">
+        <Button onClick={onAddTask} size="sm" className="bg-primary hover:bg-primary/90">
           <Plus className="h-4 w-4 mr-1" />
           Add Task
         </Button>
       </div>
 
-      <div className="flex-1 overflow-y-auto">
+      <div className="flex-1 overflow-y-auto bg-muted/10">
         <DragDropContext onDragEnd={handleDragEnd}>
-          <div className="flex flex-col gap-4 p-4">
+          <div className="flex flex-col gap-3 p-3">
             {statusColumns.map((column) => (
               <Droppable key={column.status} droppableId={column.status}>
                 {(provided, snapshot) => (
                   <Card
                     className={cn(
-                      "flex flex-col",
-                      snapshot.isDraggingOver && "ring-2 ring-primary"
+                      "flex flex-col border-0 shadow-sm hover:shadow-md transition-shadow",
+                      snapshot.isDraggingOver && "ring-2 ring-primary shadow-lg"
                     )}
                   >
-                    <CardHeader className="pb-3 cursor-pointer" onClick={() => toggleColumn(column.status)}>
+                    <CardHeader className="pb-2 pt-3 px-3 cursor-pointer hover:bg-muted/50 transition-colors rounded-t-lg" onClick={() => toggleColumn(column.status)}>
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
                           {collapsedColumns.has(column.status) ? (
-                            <ChevronRight className="h-4 w-4" />
+                            <ChevronRight className="h-4 w-4 text-muted-foreground" />
                           ) : (
-                            <ChevronDown className="h-4 w-4" />
+                            <ChevronDown className="h-4 w-4 text-muted-foreground" />
                           )}
-                          <CardTitle className="text-sm font-medium">
+                          <CardTitle className="text-sm font-semibold text-foreground/90">
                             {column.title}
                           </CardTitle>
                         </div>
-                        <Badge variant="secondary" className="text-xs">
+                        <Badge variant="secondary" className="text-xs px-2 py-0.5 bg-muted/50">
                           {tasksByStatus[column.status].length}
                         </Badge>
                       </div>
@@ -169,8 +169,7 @@ export function TaskKanbanBoard({
                       ref={provided.innerRef}
                       {...provided.droppableProps}
                       className={cn(
-                        "p-3 min-h-[100px]",
-                        column.color,
+                        "p-2 min-h-[80px] rounded-b-lg transition-colors",
                         collapsedColumns.has(column.status) && "hidden"
                       )}
                       style={{ display: collapsedColumns.has(column.status) ? 'none' : undefined }}

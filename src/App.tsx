@@ -510,7 +510,19 @@ function App() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <div className="h-screen bg-background overflow-hidden">
+      <div className="h-screen bg-background overflow-hidden relative">
+        {/* Layout toggle buttons - positioned at top right */}
+        <div className="absolute top-2 right-2 z-50">
+          <LayoutToggleButtons
+            leftPanelVisible={leftPanelVisible}
+            bottomPanelVisible={bottomPanelVisible}
+            rightPanelVisible={rightPanelVisible}
+            onToggleLeft={toggleLeftPanel}
+            onToggleBottom={toggleBottomPanel}
+            onToggleRight={toggleRightPanel}
+            onResetLayout={resetLayout}
+          />
+        </div>
           <ResizableLayout
             direction="horizontal"
             defaultSizes={[20, 50, 30]}
@@ -520,19 +532,20 @@ function App() {
             panelRefs={[leftPanelRef, centerPanelRef, rightPanelRef]}
           >
             {/* 任务管理区 - 纵向布局 */}
-            <div className="border-r flex flex-col h-full">
-              <div className="p-4 border-b flex-shrink-0">
-                <div className="flex items-center justify-between mb-2">
-                  <h3 className="font-medium">{currentProject.name}</h3>
+            <div className="border-r flex flex-col h-full bg-background/50">
+              <div className="p-3 border-b flex-shrink-0 bg-background/95 backdrop-blur">
+                <div className="flex items-center justify-between mb-1">
+                  <h3 className="font-semibold text-sm">{currentProject.name}</h3>
                   <Button
-                    variant="outline"
+                    variant="ghost"
                     size="icon"
+                    className="h-7 w-7 hover:bg-muted/50"
                     onClick={() => setShowProjectSettings(true)}
                   >
-                    <Settings className="h-4 w-4" />
+                    <Settings className="h-3.5 w-3.5" />
                   </Button>
                 </div>
-                <p className="text-sm text-muted-foreground">
+                <p className="text-xs text-muted-foreground line-clamp-2">
                   {currentProject.description || t('project.noDescription')}
                 </p>
               </div>
@@ -584,7 +597,7 @@ function App() {
           {/* 任务功能区 - 主工作区 */}
           <div className="flex flex-col overflow-hidden relative">
               {/* Layout toggle buttons - positioned absolutely */}
-              <div className="absolute top-2 right-2 z-10">
+              {/* <div className="absolute top-2 right-2 z-10">
                 <LayoutToggleButtons
                   leftPanelVisible={leftPanelVisible}
                   bottomPanelVisible={bottomPanelVisible}
@@ -594,7 +607,7 @@ function App() {
                   onToggleRight={toggleRightPanel}
                   onResetLayout={resetLayout}
                 />
-              </div>
+              </div> */}
               {selectedTask ? (
               <TaskDetailsPanel
                 key={selectedTask.id}
