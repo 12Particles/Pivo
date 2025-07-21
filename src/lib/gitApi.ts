@@ -131,6 +131,12 @@ export const gitApi = {
     deleted: string[];
     untracked: string[];
     remotes: Array<{ name: string; url: string }>;
+    branch?: string;
+    tracking?: string;
+    ahead?: number;
+    behind?: number;
+    staged: string[];
+    changed: string[];
   }> => {
     return invoke("get_git_status", { repoPath });
   },

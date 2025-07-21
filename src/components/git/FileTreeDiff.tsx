@@ -2,8 +2,8 @@ import { useState, useEffect } from "react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { gitApi, aiApi } from "@/lib/api";
-import { GitStatus, ExecutorConfig } from "@/types";
+import { gitApi } from "@/lib/api";
+import { GitStatus } from "@/types";
 import { CodeComment } from "@/types/comment";
 import { 
   FileText, 
@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useTranslation } from "react-i18next";
+import { toast } from "@/hooks/use-toast";
 import { EnhancedDiffViewer } from "./EnhancedDiffViewer";
 import { CommentPanel } from "./CommentPanel";
 import { parseGitDiff } from "@/lib/git-diff-parser";
@@ -501,6 +502,29 @@ export function FileTreeDiff({ projectPath, taskId, worktreePath, refreshKey = 0
     setShowCommentPanel(true);
   };
 
+  const handleCommentSubmit = (selection: { text: string; startLine?: number; endLine?: number; side?: 'old' | 'new' }, comment: string) => {
+    // Get relative file path
+    const relativePath = (worktreePath && activeTab.startsWith(worktreePath + '/')) 
+      ? activeTab.substring(worktreePath.length + 1)
+      : activeTab.split('/').pop() || activeTab;
+
+    const newComment: CodeComment = {
+      id: generateId(),
+      filePath: activeTab, // Full path
+      relativeFilePath: relativePath, // Relative path from project root
+      selectedText: selection.text,
+      comment: comment,
+      timestamp: new Date(),
+      lineNumber: selection.startLine, // Keep for backward compatibility
+      startLine: selection.startLine,
+      endLine: selection.endLine,
+      side: selection.side
+    };
+    setComments([...comments, newComment]);
+    setSelectedText("");
+    setSelectedLineInfo(null);
+  };
+
   const handleAddComment = (comment: Omit<CodeComment, 'id' | 'timestamp'>) => {
     const newComment: CodeComment = {
       ...comment,
@@ -523,25 +547,14 @@ export function FileTreeDiff({ projectPath, taskId, worktreePath, refreshKey = 0
       // Build prompt with comments and code context
       const prompt = buildPromptFromComments();
       
-      // Create AI session config
-      const config: ExecutorConfig = {
-        name: "claude", // executor name
-        api_key: "", // This should come from user settings
-        model: "claude-3-opus-20240229", // Or from user preference
-        temperature: 0.7,
-        max_tokens: 4000,
-      };
-      
-      // Initialize AI session
-      const sessionId = await aiApi.initSession(
-        "claude", // executor type
-        taskId,
-        prompt,
-        config
-      );
-      
-      console.log("AI session created:", sessionId);
-      console.log("Prompt sent:", prompt);
+      // Send message to TaskConversation via custom event
+      const event = new CustomEvent('send-to-conversation', {
+        detail: {
+          taskId: taskId,
+          message: prompt
+        }
+      });
+      window.dispatchEvent(event);
       
       // Clear comments after successful submission
       setComments([]);
@@ -551,10 +564,19 @@ export function FileTreeDiff({ projectPath, taskId, worktreePath, refreshKey = 0
       const storageKey = `task-comments-${taskId}`;
       localStorage.removeItem(storageKey);
       
-      // TODO: Show notification or redirect to AI chat interface
+      // Show success notification
+      toast({
+        title: t('comments.submitted', '评论已提交'),
+        description: t('comments.submittedToAgent', '评论已发送到任务对话'),
+      });
+      
     } catch (error) {
       console.error("Failed to submit to agent:", error);
-      // TODO: Show error notification
+      toast({
+        title: t('common.error'),
+        description: t('comments.submitError', '提交评论失败'),
+        variant: "destructive",
+      });
     }
   };
 
@@ -563,12 +585,20 @@ export function FileTreeDiff({ projectPath, taskId, worktreePath, refreshKey = 0
     
     comments.forEach((comment, index) => {
       prompt += `Comment ${index + 1}:\n`;
-      prompt += `File: ${comment.filePath}\n`;
-      if (comment.lineNumber) {
-        prompt += `Line: ${comment.lineNumber}\n`;
+      prompt += `File: ${comment.relativeFilePath || comment.filePath}\n`;
+      
+      if (comment.startLine && comment.endLine && comment.startLine !== comment.endLine) {
+        prompt += `Lines: ${comment.startLine}-${comment.endLine}\n`;
+      } else if (comment.startLine || comment.lineNumber) {
+        prompt += `Line: ${comment.startLine || comment.lineNumber}\n`;
       }
-      prompt += `Code: \`\`\`\n${comment.selectedText}\n\`\`\`\n`;
-      prompt += `Request: ${comment.comment}\n\n`;
+      
+      if (comment.side) {
+        prompt += `Side: ${comment.side}\n`;
+      }
+      
+      prompt += `Selected Code:\n\`\`\`\n${comment.selectedText}\n\`\`\`\n`;
+      prompt += `Comment: ${comment.comment}\n\n`;
     });
     
     return prompt;
@@ -744,6 +774,8 @@ export function FileTreeDiff({ projectPath, taskId, worktreePath, refreshKey = 0
                       splitView={false}
                       useDarkTheme={document.documentElement.classList.contains('dark')}
                       onTextSelected={handleTextSelected}
+                      onCommentSubmit={handleCommentSubmit}
+                      fileName={file.name}
                     />
                   </div>
                 </TabsContent>

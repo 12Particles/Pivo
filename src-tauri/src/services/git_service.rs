@@ -535,10 +535,35 @@ impl GitService {
             let filename = line[3..].to_string();
 
             match status {
-                "??" => files.untracked.push(filename),
-                " M" | "MM" => files.modified.push(filename),
-                "A " | "AM" => files.added.push(filename),
-                "D " | "DM" => files.deleted.push(filename),
+                "??" => files.untracked.push(filename.clone()),
+                " M" => {
+                    files.modified.push(filename.clone());
+                    files.changed.push(filename);
+                }
+                "MM" => {
+                    files.modified.push(filename.clone());
+                    files.staged.push(filename.clone());
+                    files.changed.push(filename);
+                }
+                "M " => files.staged.push(filename),
+                "A " => {
+                    files.added.push(filename.clone());
+                    files.staged.push(filename);
+                }
+                "AM" => {
+                    files.added.push(filename.clone());
+                    files.staged.push(filename.clone());
+                    files.changed.push(filename);
+                }
+                "D " => {
+                    files.deleted.push(filename.clone());
+                    files.staged.push(filename);
+                }
+                "DM" => {
+                    files.deleted.push(filename.clone());
+                    files.staged.push(filename.clone());
+                    files.changed.push(filename);
+                }
                 _ => {}
             }
         }
@@ -568,6 +593,48 @@ impl GitService {
                 });
             }
         }
+        
+        // Get current branch
+        let branch_output = Command::new("git")
+            .current_dir(repo_path)
+            .args(&["rev-parse", "--abbrev-ref", "HEAD"])
+            .output()
+            .map_err(|e| format!("Failed to get current branch: {}", e))?;
+        if branch_output.status.success() {
+            files.branch = Some(String::from_utf8_lossy(&branch_output.stdout).trim().to_string());
+        }
+        
+        // Get tracking branch and ahead/behind info
+        if let Some(branch) = &files.branch {
+            // Get tracking branch
+            let tracking_output = Command::new("git")
+                .current_dir(repo_path)
+                .args(&["rev-parse", "--abbrev-ref", &format!("{}@{{upstream}}", branch)])
+                .output();
+            
+            if let Ok(output) = tracking_output {
+                if output.status.success() {
+                    files.tracking = Some(String::from_utf8_lossy(&output.stdout).trim().to_string());
+                    
+                    // Get ahead/behind counts
+                    let rev_list_output = Command::new("git")
+                        .current_dir(repo_path)
+                        .args(&["rev-list", "--left-right", "--count", &format!("{}...{}@{{upstream}}", branch, branch)])
+                        .output();
+                    
+                    if let Ok(output) = rev_list_output {
+                        if output.status.success() {
+                            let counts = String::from_utf8_lossy(&output.stdout);
+                            let parts: Vec<&str> = counts.trim().split('\t').collect();
+                            if parts.len() == 2 {
+                                files.ahead = parts[0].parse().ok();
+                                files.behind = parts[1].parse().ok();
+                            }
+                        }
+                    }
+                }
+            }
+        }
 
         Ok(files)
     }
@@ -595,6 +662,12 @@ pub struct GitStatus {
     pub deleted: Vec<String>,
     pub untracked: Vec<String>,
     pub remotes: Vec<RemoteInfo>,
+    pub branch: Option<String>,
+    pub tracking: Option<String>,
+    pub ahead: Option<usize>,
+    pub behind: Option<usize>,
+    pub staged: Vec<String>,
+    pub changed: Vec<String>,
 }
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]

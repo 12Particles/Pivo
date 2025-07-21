@@ -1,18 +1,29 @@
 import { useState, useEffect } from "react";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Task, Project, TaskAttempt } from "@/types";
 import { MergeRequestList } from "@/components/MergeRequestList";
-import { DiffViewer } from "@/components/git/DiffViewer";
+import { PullRequestList } from "@/components/github/PullRequestList";
 import { gitlabService } from "@/lib/services/gitlabService";
 import { gitApi } from "@/lib/gitApi";
 import { taskAttemptApi } from "@/lib/api";
-import { GitMerge, GitCommit, AlertCircle, GitBranch } from "lucide-react";
+import { GitMerge, AlertCircle, GitBranch, GitCommit, FileText } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { Separator } from "@/components/ui/separator";
+import { Badge } from "@/components/ui/badge";
+import { Card } from "@/components/ui/card";
 
 interface IntegrationPanelProps {
   task: Task;
   project: Project;
+}
+
+interface GitStatus {
+  ahead: number;
+  behind: number;
+  staged: number;
+  unstaged: number;
+  branch: string;
+  tracking?: string;
 }
 
 export function IntegrationPanel({ task, project }: IntegrationPanelProps) {
@@ -20,11 +31,31 @@ export function IntegrationPanel({ task, project }: IntegrationPanelProps) {
   const [provider, setProvider] = useState<string>("");
   const [currentAttempt, setCurrentAttempt] = useState<TaskAttempt | null>(null);
   const [loading, setLoading] = useState(true);
+  const [gitStatus, setGitStatus] = useState<GitStatus | null>(null);
 
   useEffect(() => {
-    detectGitProvider();
     loadLatestAttempt();
   }, [project, task]);
+  
+  useEffect(() => {
+    if (currentAttempt || project) {
+      detectGitProvider();
+    }
+  }, [currentAttempt, project]);
+
+  useEffect(() => {
+    // Only load git status if we have a current attempt with worktree path
+    if (currentAttempt?.worktree_path) {
+      loadGitStatus(currentAttempt.worktree_path);
+      
+      // Set up interval to refresh git status every 5 seconds
+      const interval = setInterval(() => {
+        loadGitStatus(currentAttempt.worktree_path);
+      }, 5000);
+      
+      return () => clearInterval(interval);
+    }
+  }, [currentAttempt]);
 
   const detectGitProvider = async () => {
     try {
@@ -36,8 +67,15 @@ export function IntegrationPanel({ task, project }: IntegrationPanelProps) {
         // Fallback to detection from URL
         const detectedProvider = await gitlabService.detectGitProvider(project.git_repo);
         setProvider(detectedProvider.toLowerCase());
+      } else if (currentAttempt?.worktree_path) {
+        // Try to detect from worktree git config
+        const status = await gitApi.getStatus(currentAttempt.worktree_path);
+        if (status.remotes && status.remotes.length > 0) {
+          const detectedProvider = await gitlabService.detectGitProvider(status.remotes[0].url);
+          setProvider(detectedProvider.toLowerCase());
+        }
       } else {
-        // Try to detect from local git config
+        // Fallback to project path
         const status = await gitApi.getStatus(project.path);
         if (status.remotes && status.remotes.length > 0) {
           const detectedProvider = await gitlabService.detectGitProvider(status.remotes[0].url);
@@ -63,10 +101,37 @@ export function IntegrationPanel({ task, project }: IntegrationPanelProps) {
     }
   };
 
+  const loadGitStatus = async (attemptPath: string) => {
+    try {
+      const status = await gitApi.getStatus(attemptPath);
+      setGitStatus({
+        ahead: status.ahead || 0,
+        behind: status.behind || 0,
+        staged: status.staged?.length || 0,
+        unstaged: status.changed?.length || 0,
+        branch: status.branch || 'unknown',
+        tracking: status.tracking
+      });
+    } catch (error) {
+      console.error("Failed to load git status:", error);
+    }
+  };
+
   if (loading) {
     return (
       <div className="h-full flex items-center justify-center text-muted-foreground">
         {t('common.loading')}
+      </div>
+    );
+  }
+  
+  if (!currentAttempt) {
+    return (
+      <div className="h-full flex items-center justify-center text-muted-foreground">
+        <div className="text-center">
+          <GitBranch className="h-12 w-12 mx-auto mb-2 opacity-50" />
+          <p>{t('task.noAttempts')}</p>
+        </div>
       </div>
     );
   }
@@ -84,15 +149,15 @@ export function IntegrationPanel({ task, project }: IntegrationPanelProps) {
     );
   }
 
-  // Currently only GitLab is implemented
-  if (provider !== "gitlab") {
+  // Currently only GitLab and GitHub are implemented
+  if (provider !== "gitlab" && provider !== "github") {
     return (
       <div className="h-full flex items-center justify-center">
         <Alert className="max-w-md">
           <AlertCircle className="h-4 w-4" />
           <AlertDescription>
             {provider.charAt(0).toUpperCase() + provider.slice(1)} integration is not yet implemented. 
-            Currently only GitLab is supported.
+            Currently only GitLab and GitHub are supported.
           </AlertDescription>
         </Alert>
       </div>
@@ -100,42 +165,89 @@ export function IntegrationPanel({ task, project }: IntegrationPanelProps) {
   }
 
   return (
-    <div className="h-full flex flex-col">
-      <Tabs defaultValue="mrs" className="h-full flex flex-col">
-        <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="mrs" className="flex items-center gap-1">
-            <GitMerge className="h-4 w-4" />
-            {t('mergeRequests.title')}
-          </TabsTrigger>
-          <TabsTrigger value="diff" className="flex items-center gap-1">
-            <GitCommit className="h-4 w-4" />
-            {t('git.fileChanges')}
-          </TabsTrigger>
-        </TabsList>
+    <div className="h-full flex flex-col p-4 space-y-4">
+      {/* Local Git Status Section */}
+      <div className="space-y-2">
+        <h3 className="text-sm font-medium flex items-center gap-2">
+          <GitBranch className="h-4 w-4" />
+          {t('git.localStatus')}
+        </h3>
+        <Card className="p-3">
+          <div className="space-y-2">
+            {gitStatus ? (
+              <>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-muted-foreground">{t('git.currentBranch')}</span>
+                  <Badge variant="outline">{gitStatus.branch}</Badge>
+                </div>
+                {gitStatus.tracking && (
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-muted-foreground">{t('git.tracking')}</span>
+                    <span className="text-sm">{gitStatus.tracking}</span>
+                  </div>
+                )}
+                <div className="flex items-center gap-4 text-sm">
+                  {gitStatus.ahead > 0 && (
+                    <span className="flex items-center gap-1">
+                      <GitCommit className="h-3 w-3" />
+                      <span className="text-green-600">{gitStatus.ahead} {t('git.ahead')}</span>
+                    </span>
+                  )}
+                  {gitStatus.behind > 0 && (
+                    <span className="flex items-center gap-1">
+                      <GitCommit className="h-3 w-3" />
+                      <span className="text-orange-600">{gitStatus.behind} {t('git.behind')}</span>
+                    </span>
+                  )}
+                </div>
+                {(gitStatus.staged > 0 || gitStatus.unstaged > 0) && (
+                  <div className="flex items-center gap-4 text-sm">
+                    {gitStatus.staged > 0 && (
+                      <span className="flex items-center gap-1">
+                        <FileText className="h-3 w-3" />
+                        <span className="text-blue-600">{gitStatus.staged} {t('git.staged')}</span>
+                      </span>
+                    )}
+                    {gitStatus.unstaged > 0 && (
+                      <span className="flex items-center gap-1">
+                        <FileText className="h-3 w-3" />
+                        <span className="text-yellow-600">{gitStatus.unstaged} {t('git.unstaged')}</span>
+                      </span>
+                    )}
+                  </div>
+                )}
+              </>
+            ) : (
+              <div className="text-sm text-muted-foreground">{t('git.loadingStatus')}</div>
+            )}
+          </div>
+        </Card>
+      </div>
 
-        <div className="flex-1 overflow-hidden">
-          <TabsContent value="mrs" className="h-full p-4">
+      <Separator />
+
+      {/* Remote Operations Section */}
+      <div className="flex-1 flex flex-col space-y-2 min-h-0">
+        <h3 className="text-sm font-medium flex items-center gap-2">
+          <GitMerge className="h-4 w-4" />
+          {provider === 'github' ? t('pullRequests.title') : t('mergeRequests.title')}
+        </h3>
+        <div className="flex-1 overflow-auto">
+          {provider === 'github' ? (
+            <PullRequestList 
+              taskId={task.id} 
+              taskAttemptId={currentAttempt?.id}
+              project={project} 
+            />
+          ) : (
             <MergeRequestList 
               taskId={task.id} 
               taskAttemptId={currentAttempt?.id}
               project={project} 
             />
-          </TabsContent>
-
-          <TabsContent value="diff" className="h-full p-0">
-            {currentAttempt ? (
-              <DiffViewer attempt={currentAttempt} />
-            ) : (
-              <div className="h-full flex items-center justify-center text-muted-foreground">
-                <div className="text-center">
-                  <GitBranch className="h-12 w-12 mx-auto mb-2 opacity-50" />
-                  <p>{t('task.noAttempts')}</p>
-                </div>
-              </div>
-            )}
-          </TabsContent>
+          )}
         </div>
-      </Tabs>
+      </div>
     </div>
   );
 }

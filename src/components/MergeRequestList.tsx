@@ -114,11 +114,35 @@ export function MergeRequestList({ taskId, taskAttemptId, project }: MergeReques
 
   if (mergeRequests.length === 0) {
     return (
-      <Card>
-        <CardContent className="p-6 text-center text-muted-foreground">
-          {t('mergeRequests.noMergeRequests')}
-        </CardContent>
-      </Card>
+      <div className="space-y-4">
+        <Card>
+          <CardContent className="p-6 text-center">
+            <GitMerge className="h-12 w-12 mx-auto mb-3 text-muted-foreground/50" />
+            <p className="text-muted-foreground mb-4">{t('mergeRequests.noMergeRequests')}</p>
+            {currentAttempt && project && (
+              <Button
+                variant="default"
+                size="sm"
+                onClick={() => setShowCreateDialog(true)}
+              >
+                <Plus className="h-4 w-4 mr-1" />
+                {t('mergeRequests.createMR')}
+              </Button>
+            )}
+          </CardContent>
+        </Card>
+        
+        {/* Create MR Dialog */}
+        {currentAttempt && project && (
+          <CreateMergeRequestDialog
+            open={showCreateDialog}
+            onOpenChange={setShowCreateDialog}
+            taskAttempt={currentAttempt}
+            projectPath={project.path}
+            onSuccess={loadMergeRequests}
+          />
+        )}
+      </div>
     );
   }
 
