@@ -6,13 +6,15 @@ import { McpServerManager } from "@/components/mcp/McpServerManager";
 import { GeneralSettings } from "./GeneralSettings";
 import { McpConfigManager } from "./McpConfigManager";
 import { GitLabSettings } from "./GitLabSettings";
+import { GitHubSettings } from "./GitHubSettings";
 import { useTranslation } from "react-i18next";
 
 interface SettingsPageProps {
   onBack: () => void;
+  initialTab?: string;
 }
 
-export function SettingsPage({ onBack }: SettingsPageProps) {
+export function SettingsPage({ onBack, initialTab }: SettingsPageProps) {
   const { t } = useTranslation();
   
   return (
@@ -34,10 +36,11 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
       </div>
 
       <div className="container mx-auto p-6">
-        <Tabs defaultValue="general" className="w-full">
-          <TabsList className="grid w-full grid-cols-4 max-w-[800px]">
+        <Tabs defaultValue={initialTab || "general"} className="w-full">
+          <TabsList className="grid w-full grid-cols-5 max-w-[1000px]">
             <TabsTrigger value="general">{t('settings.generalSettings')}</TabsTrigger>
             <TabsTrigger value="gitlab">GitLab</TabsTrigger>
+            <TabsTrigger value="github">GitHub</TabsTrigger>
             <TabsTrigger value="mcp">{t('settings.mcpServers')}</TabsTrigger>
             <TabsTrigger value="mcp-config">{t('settings.mcpConfiguration')}</TabsTrigger>
           </TabsList>
@@ -48,6 +51,10 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
 
           <TabsContent value="gitlab" className="space-y-4">
             <GitLabSettings />
+          </TabsContent>
+
+          <TabsContent value="github" className="space-y-4">
+            <GitHubSettings />
           </TabsContent>
 
           <TabsContent value="mcp" className="space-y-4">

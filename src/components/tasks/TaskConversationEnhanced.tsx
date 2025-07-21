@@ -75,6 +75,46 @@ export function TaskConversationEnhanced({ task, project }: TaskConversationEnha
     loadAttempts();
   }, [task.id]);
 
+  // Listen for external messages (e.g., from comment submissions)
+  useEffect(() => {
+    const handleExternalMessage = (event: CustomEvent) => {
+      const { taskId, message } = event.detail;
+      if (taskId === task.id && message) {
+        // Directly add the message and send it
+        const userMessage: Message = {
+          id: `user-${Date.now()}`,
+          type: "user",
+          content: message,
+          timestamp: new Date(),
+        };
+        setMessages(prev => [...prev, userMessage]);
+        
+        // Send the message programmatically
+        if (session) {
+          setIsSending(true);
+          cliApi.sendInput(session.id, message)
+            .then(() => {
+              setIsSending(false);
+            })
+            .catch((error: any) => {
+              console.error("Failed to send external message:", error);
+              setIsSending(false);
+            });
+        } else {
+          // No active session, start one and send the message
+          setIsSending(true);
+          startSession(false, message);
+        }
+      }
+    };
+
+    window.addEventListener('send-to-conversation', handleExternalMessage as EventListener);
+    
+    return () => {
+      window.removeEventListener('send-to-conversation', handleExternalMessage as EventListener);
+    };
+  }, [task.id, session]);
+
   // Auto-start session and send initial prompt only for brand new tasks
   useEffect(() => {
     if (task.status === "Working" && !session && !isLoading && !currentAttempt && messages.length === 0) {

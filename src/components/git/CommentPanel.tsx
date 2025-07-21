@@ -85,10 +85,20 @@ export function CommentPanel({
           {comments.map((comment) => (
             <Card key={comment.id} className="p-3 space-y-2">
               <div className="flex items-start justify-between">
-                <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                  <FileCode className="h-3 w-3" />
-                  <span>{comment.filePath.split('/').pop()}</span>
-                  {comment.lineNumber && <span>• Line {comment.lineNumber}</span>}
+                <div className="space-y-1 text-xs text-muted-foreground">
+                  <div className="flex items-center gap-2">
+                    <FileCode className="h-3 w-3" />
+                    <span className="font-medium">{comment.relativeFilePath || comment.filePath.split('/').pop()}</span>
+                  </div>
+                  {(comment.startLine || comment.lineNumber) && (
+                    <div className="ml-5">
+                      {comment.startLine && comment.endLine && comment.startLine !== comment.endLine 
+                        ? `Lines ${comment.startLine}-${comment.endLine}`
+                        : `Line ${comment.startLine || comment.lineNumber}`
+                      }
+                      {comment.side && <span className="ml-2 text-xs bg-muted px-1 rounded">({comment.side})</span>}
+                    </div>
+                  )}
                 </div>
                 <Button
                   size="sm"

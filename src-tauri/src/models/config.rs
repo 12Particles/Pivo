@@ -15,10 +15,12 @@ pub struct GitLabConfig {
     pub gitlab_url: Option<String>,       // GitLab instance URL (defaults to "https://gitlab.com")
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct GitHubConfig {
-    pub pat: Option<String>,              // Personal Access Token
+    pub access_token: Option<String>,     // OAuth Access Token
     pub username: Option<String>,         // GitHub username
+    #[serde(rename = "defaultBranch")]
     pub default_pr_base: Option<String>,  // Default target branch (defaults to "main")
 }
 

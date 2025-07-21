@@ -7,6 +7,7 @@ import { CreateTaskDialog } from "./components/tasks/CreateTaskDialog";
 import { EditTaskDialog } from "./components/tasks/EditTaskDialog";
 import { ProjectList } from "./components/projects/ProjectList";
 import { ProjectForm } from "./components/projects/ProjectForm";
+import { ProjectSettingsPage } from "./components/projects/ProjectSettingsPage";
 import { SettingsPage } from "./components/settings/SettingsPage";
 import { Button } from "./components/ui/button";
 import { Card } from "./components/ui/card";
@@ -35,6 +36,8 @@ function App() {
   const [currentProject, setCurrentProject] = useState<Project | null>(null);
   const [showProjectForm, setShowProjectForm] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  const [settingsInitialTab, setSettingsInitialTab] = useState<string | undefined>();
+  const [showProjectSettings, setShowProjectSettings] = useState(false);
   const [showCreateTaskDialog, setShowCreateTaskDialog] = useState(false);
   const [showEditTaskDialog, setShowEditTaskDialog] = useState(false);
   const [taskToEdit, setTaskToEdit] = useState<Task | null>(null);
@@ -72,6 +75,19 @@ function App() {
       });
     });
     
+    // Listen for File > Settings menu event
+    const unlistenSettings = listen('menu-settings', () => {
+      setShowSettings(true);
+    });
+    
+    // Listen for custom open-settings event (from components)
+    const handleOpenSettings = (event: CustomEvent) => {
+      const { tab } = event.detail || {};
+      setSettingsInitialTab(tab);
+      setShowSettings(true);
+    };
+    window.addEventListener('open-settings', handleOpenSettings as EventListener);
+    
     // Add keyboard shortcut for logs (Cmd/Ctrl + L)
     const handleKeyDown = async (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === 'l') {
@@ -95,7 +111,9 @@ function App() {
       logger.destroy();
       unlistenMenuLogs.then(fn => fn());
       unlistenLogsClear.then(fn => fn());
+      unlistenSettings.then(fn => fn());
       window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('open-settings', handleOpenSettings as EventListener);
     };
   }, []);
 
@@ -348,7 +366,30 @@ function App() {
   if (showSettings) {
     return (
       <QueryClientProvider client={queryClient}>
-        <SettingsPage onBack={() => setShowSettings(false)} />
+        <SettingsPage onBack={() => {
+          setShowSettings(false);
+          setSettingsInitialTab(undefined);
+        }} initialTab={settingsInitialTab} />
+        <Toaster />
+      </QueryClientProvider>
+    );
+  }
+
+  if (showProjectSettings && currentProject) {
+    return (
+      <QueryClientProvider client={queryClient}>
+        <ProjectSettingsPage
+          project={currentProject}
+          onBack={() => setShowProjectSettings(false)}
+          onUpdate={(updated) => {
+            setCurrentProject(updated);
+            setShowProjectSettings(false);
+          }}
+          onDelete={() => {
+            setCurrentProject(null);
+            setShowProjectSettings(false);
+          }}
+        />
         <Toaster />
       </QueryClientProvider>
     );
@@ -408,7 +449,7 @@ function App() {
               <Button
                 variant="outline"
                 size="icon"
-                onClick={() => setShowSettings(true)}
+                onClick={() => setShowProjectSettings(true)}
               >
                 <Settings className="h-4 w-4" />
               </Button>

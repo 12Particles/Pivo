@@ -1,6 +1,8 @@
 import { invoke } from '@tauri-apps/api/core';
 import type { MergeRequest, MergeRequestInfo } from '../types/mergeRequest';
 
+export type { MergeRequestInfo } from '../types/mergeRequest';
+
 export interface GitLabConfig {
   pat?: string;
   gitlabUrl?: string;
