@@ -8,9 +8,11 @@
 
 [English](README.md) | [中文](README-zh.md)
 
-**Pivo** 是一个以任务为中心的编程环境，旨在提供合适的开发氛围。基于Tauri、React和Rust构建，为基于Git的项目管理提供无缝体验，集成AI助手和终端功能。
+> **以任务为中心的 Vibe 编程环境**
 
-![Pivo Interface](assets/screenshot.jpg)
+**Pivo** 基于Tauri、React和Rust构建，为基于Git的项目管理提供无缝体验，集成AI助手和终端功能。
+
+![Pivo 界面](assets/screenshot.jpg)
 *主界面展示了任务管理、文件变更和AI对话功能*
 
 ## ✨ 主要特性
