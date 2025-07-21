@@ -104,6 +104,8 @@
     "createTaskSuccess": "Task created successfully",
     "createTaskError": "Failed to create task",
     "updateTaskError": "Failed to update task status",
+    "updateTaskSuccess": "Task updated successfully",
+    "updateTaskDetails": "Update task details",
     "runTaskError": "Failed to run task",
     "taskStarted": "Task started",
     "interactWithAi": "Please interact with AI assistant in task conversation",
