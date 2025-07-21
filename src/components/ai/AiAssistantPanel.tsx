@@ -7,7 +7,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { cliApi } from "@/lib/api";
-import { CliSession, CliOutput, CliOutputType, CliSessionStatus, Task, Project } from "@/types";
+import { CliExecution, CliOutput, CliOutputType, CliExecutionStatus, Task, Project } from "@/types";
 import { listen } from "@tauri-apps/api/event";
 import { 
   Bot, 

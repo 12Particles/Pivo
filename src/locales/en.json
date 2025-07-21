@@ -187,7 +187,7 @@
     "mcpConfiguration": "MCP Configuration"
   },
   "ai": {
-    "sessionStarted": "{{type}} session started",
+    "executionStarted": "{{type}} execution started",
     "thinking": "Thinking",
     "toolResult": "Tool Result",
     "usingTool": "Using tool: {{tool}}",
@@ -203,7 +203,7 @@
     "executionStopped": "AI assistant has stopped execution",
     "stopExecutionError": "Failed to stop execution",
     "sendMessageError": "Failed to send message",
-    "startSessionError": "Failed to start session",
+    "startExecutionError": "Failed to start execution",
     "selectImageError": "Failed to select images",
     "showAllLines": "Show all {{count}} lines",
     "collapse": "Collapse",

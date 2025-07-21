@@ -1,4 +1,4 @@
-use crate::services::cli_executor::{CliExecutorService, CliSession};
+use crate::services::cli_executor::{CliExecutorService, CliExecution};
 use std::sync::Arc;
 use tauri::State;
 use std::fs;
@@ -9,14 +9,14 @@ pub struct CliState {
 }
 
 #[tauri::command]
-pub async fn start_claude_session(
+pub async fn start_claude_execution(
     state: State<'_, CliState>,
     task_id: String,
     working_directory: String,
     project_path: Option<String>,
     stored_claude_session_id: Option<String>,
-) -> Result<CliSession, String> {
-    state.service.start_claude_session(
+) -> Result<CliExecution, String> {
+    state.service.start_claude_execution(
         &task_id,
         &working_directory,
         project_path.as_deref(),
@@ -25,13 +25,13 @@ pub async fn start_claude_session(
 }
 
 #[tauri::command]
-pub async fn start_gemini_session(
+pub async fn start_gemini_execution(
     state: State<'_, CliState>,
     task_id: String,
     working_directory: String,
     context_files: Vec<String>,
-) -> Result<CliSession, String> {
-    state.service.start_gemini_session(
+) -> Result<CliExecution, String> {
+    state.service.start_gemini_execution(
         &task_id,
         &working_directory,
         context_files,
@@ -41,33 +41,33 @@ pub async fn start_gemini_session(
 #[tauri::command]
 pub async fn send_cli_input(
     state: State<'_, CliState>,
-    session_id: String,
+    execution_id: String,
     input: String,
 ) -> Result<(), String> {
-    state.service.send_input(&session_id, &input)
+    state.service.send_input(&execution_id, &input)
 }
 
 #[tauri::command]
-pub async fn stop_cli_session(
+pub async fn stop_cli_execution(
     state: State<'_, CliState>,
-    session_id: String,
+    execution_id: String,
 ) -> Result<(), String> {
-    state.service.stop_session(&session_id)
+    state.service.stop_execution(&execution_id)
 }
 
 #[tauri::command]
-pub async fn get_cli_session(
+pub async fn get_cli_execution(
     state: State<'_, CliState>,
-    session_id: String,
-) -> Result<Option<CliSession>, String> {
-    Ok(state.service.get_session(&session_id))
+    execution_id: String,
+) -> Result<Option<CliExecution>, String> {
+    Ok(state.service.get_execution(&execution_id))
 }
 
 #[tauri::command]
-pub async fn list_cli_sessions(
+pub async fn list_cli_executions(
     state: State<'_, CliState>,
-) -> Result<Vec<CliSession>, String> {
-    Ok(state.service.list_sessions())
+) -> Result<Vec<CliExecution>, String> {
+    Ok(state.service.list_executions())
 }
 
 #[tauri::command]

@@ -187,7 +187,7 @@
     "mcpConfiguration": "MCP 配置"
   },
   "ai": {
-    "sessionStarted": "{{type}} 会话已启动",
+    "executionStarted": "{{type}} 执行已启动",
     "thinking": "思考中",
     "toolResult": "工具结果",
     "usingTool": "使用工具: {{tool}}",
@@ -203,7 +203,7 @@
     "executionStopped": "AI 助手已停止执行",
     "stopExecutionError": "停止执行失败",
     "sendMessageError": "发送消息失败",
-    "startSessionError": "启动会话失败",
+    "startExecutionError": "启动执行失败",
     "selectImageError": "选择图片失败",
     "showAllLines": "显示全部 {{count}} 行",
     "collapse": "折叠",

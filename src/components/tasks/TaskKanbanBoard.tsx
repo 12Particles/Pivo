@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Task, TaskStatus, CliSession, CliSessionStatus } from "@/types";
+import { Task, TaskStatus, CliExecution, CliExecutionStatus } from "@/types";
 import { Plus, Search, ChevronDown, ChevronRight, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { listen } from "@tauri-apps/api/event";
@@ -62,15 +62,15 @@ export function TaskKanbanBoard({
   }, {} as Record<TaskStatus, Task[]>);
 
   useEffect(() => {
-    // Listen for CLI session status updates to track running tasks
-    const unlistenSession = listen<CliSession>("cli-session-status", (event) => {
-      const session = event.payload;
-      if (session.task_id && session.status === CliSessionStatus.Running) {
-        setRunningTasks(prev => new Set(prev).add(session.task_id));
-      } else if (session.task_id && session.status !== CliSessionStatus.Running) {
+    // Listen for CLI execution status updates to track running tasks
+    const unlistenExecution = listen<CliExecution>("cli-execution-status", (event) => {
+      const execution = event.payload;
+      if (execution.task_id && execution.status === CliExecutionStatus.Running) {
+        setRunningTasks(prev => new Set(prev).add(execution.task_id));
+      } else if (execution.task_id && execution.status !== CliExecutionStatus.Running) {
         setRunningTasks(prev => {
           const newSet = new Set(prev);
-          newSet.delete(session.task_id);
+          newSet.delete(execution.task_id);
           return newSet;
         });
       }
@@ -88,7 +88,7 @@ export function TaskKanbanBoard({
     });
 
     return () => {
-      unlistenSession.then((fn) => fn());
+      unlistenExecution.then((fn) => fn());
       unlistenComplete.then((fn) => fn());
     };
   }, []);

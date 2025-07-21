@@ -10,12 +10,12 @@ use uuid::Uuid;
 use log::{info, debug, error};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct CliSession {
+pub struct CliExecution {
     pub id: String,
     pub task_id: String,
     pub executor_type: CliExecutorType,
     pub working_directory: String,
-    pub status: CliSessionStatus,
+    pub status: CliExecutionStatus,
     pub created_at: chrono::DateTime<chrono::Utc>,
 }
 
@@ -26,7 +26,7 @@ pub enum CliExecutorType {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-pub enum CliSessionStatus {
+pub enum CliExecutionStatus {
     Starting,
     Running,
     Stopped,
@@ -35,7 +35,7 @@ pub enum CliSessionStatus {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CliOutput {
-    pub session_id: String,
+    pub execution_id: String,
     pub task_id: String,
     pub output_type: CliOutputType,
     pub content: String,
@@ -50,12 +50,12 @@ pub enum CliOutputType {
 }
 
 pub struct CliExecutorService {
-    sessions: Arc<Mutex<HashMap<String, CliProcess>>>,
+    executions: Arc<Mutex<HashMap<String, CliProcess>>>,
     app_handle: AppHandle,
 }
 
 struct CliProcess {
-    session: CliSession,
+    execution: CliExecution,
     child: Option<Child>,
     stdin: Option<ChildStdin>,
     claude_session_id: Option<String>,
@@ -64,61 +64,61 @@ struct CliProcess {
 impl CliExecutorService {
     pub fn new(app_handle: AppHandle) -> Self {
         Self {
-            sessions: Arc::new(Mutex::new(HashMap::new())),
+            executions: Arc::new(Mutex::new(HashMap::new())),
             app_handle,
         }
     }
 
-    pub fn start_claude_session(
+    pub fn start_claude_execution(
         &self,
         task_id: &str,
         working_directory: &str,
         _project_path: Option<&str>,
         stored_claude_session_id: Option<&str>,
-    ) -> Result<CliSession, String> {
-        info!("Starting Claude Code session for task: {}", task_id);
-        let session_id = Uuid::new_v4().to_string();
-        let session = CliSession {
-            id: session_id.clone(),
+    ) -> Result<CliExecution, String> {
+        info!("Starting Claude Code execution for task: {}", task_id);
+        let execution_id = Uuid::new_v4().to_string();
+        let execution = CliExecution {
+            id: execution_id.clone(),
             task_id: task_id.to_string(),
             executor_type: CliExecutorType::ClaudeCode,
             working_directory: working_directory.to_string(),
-            status: CliSessionStatus::Running,
+            status: CliExecutionStatus::Running,
             created_at: chrono::Utc::now(),
         };
 
         // Store the session info
-        let mut sessions = self.sessions.lock().unwrap();
+        let mut executions = self.executions.lock().unwrap();
         // Check if there's already a session for this task and remove it
-        sessions.retain(|_, process| process.session.task_id != task_id);
+        executions.retain(|_, process| process.execution.task_id != task_id);
         
-        sessions.insert(session_id.clone(), CliProcess {
-            session: session.clone(),
+        executions.insert(execution_id.clone(), CliProcess {
+            execution: execution.clone(),
             child: None,
             stdin: None,
             claude_session_id: stored_claude_session_id.map(|s| s.to_string()),
         });
-        drop(sessions);
+        drop(executions);
         
         // Emit session created event
-        self.emit_session_status(&session);
+        self.emit_execution_status(&execution);
         
-        Ok(session)
+        Ok(execution)
     }
 
-    pub fn start_gemini_session(
+    pub fn start_gemini_execution(
         &self,
         task_id: &str,
         working_directory: &str,
         context_files: Vec<String>,
-    ) -> Result<CliSession, String> {
-        let session_id = Uuid::new_v4().to_string();
-        let mut session = CliSession {
-            id: session_id.clone(),
+    ) -> Result<CliExecution, String> {
+        let execution_id = Uuid::new_v4().to_string();
+        let mut execution = CliExecution {
+            id: execution_id.clone(),
             task_id: task_id.to_string(),
             executor_type: CliExecutorType::GeminiCli,
             working_directory: working_directory.to_string(),
-            status: CliSessionStatus::Starting,
+            status: CliExecutionStatus::Starting,
             created_at: chrono::Utc::now(),
         };
 
@@ -137,14 +137,14 @@ impl CliExecutorService {
         // Add interactive mode
         cmd.arg("-i");
 
-        self.spawn_cli_process(cmd, &mut session)?;
-        Ok(session)
+        self.spawn_cli_process(cmd, &mut execution)?;
+        Ok(execution)
     }
 
     fn spawn_cli_process(
         &self,
         mut cmd: Command,
-        session: &mut CliSession,
+        execution: &mut CliExecution,
     ) -> Result<(), String> {
         info!("Spawning process with command: {:?}", cmd);
         let mut child = cmd.spawn()
@@ -157,17 +157,17 @@ impl CliExecutorService {
         let stderr = child.stderr.take()
             .ok_or_else(|| "Failed to get stderr".to_string())?;
 
-        let session_id = session.id.clone();
-        let task_id = session.task_id.clone();
+        let execution_id = execution.id.clone();
+        let task_id = execution.task_id.clone();
 
         // Don't test immediate write for Claude Code
 
         // Handle stdout
-        let session_id_clone = session_id.clone();
+        let execution_id_clone = execution_id.clone();
         let task_id_clone = task_id.clone();
         let app_handle_clone = self.app_handle.clone();
         thread::spawn(move || {
-            debug!("Starting stdout reader thread for session: {}", session_id_clone);
+            debug!("Starting stdout reader thread for execution: {}", execution_id_clone);
             let reader = BufReader::new(stdout);
             for line in reader.lines() {
                 if let Ok(line) = line {
@@ -259,7 +259,7 @@ impl CliExecutorService {
                     };
                     
                     let output = CliOutput {
-                        session_id: session_id_clone.clone(),
+                        execution_id: execution_id_clone.clone(),
                         task_id: task_id_clone.clone(),
                         output_type: CliOutputType::Stdout,
                         content,
@@ -268,21 +268,21 @@ impl CliExecutorService {
                     let _ = app_handle_clone.emit("cli-output", &output);
                 }
             }
-            debug!("Stdout reader thread ended for session: {}", session_id_clone);
+            debug!("Stdout reader thread ended for session: {}", execution_id_clone);
         });
 
         // Handle stderr
-        let session_id_clone = session_id.clone();
+        let execution_id_clone = execution_id.clone();
         let task_id_clone = task_id.clone();
         let app_handle_clone = self.app_handle.clone();
         thread::spawn(move || {
-            debug!("Starting stderr reader thread for session: {}", session_id_clone);
+            debug!("Starting stderr reader thread for execution: {}", execution_id_clone);
             let reader = BufReader::new(stderr);
             for line in reader.lines() {
                 if let Ok(line) = line {
                     debug!("CLI stderr: {}", line);
                     let output = CliOutput {
-                        session_id: session_id_clone.clone(),
+                        execution_id: execution_id_clone.clone(),
                         task_id: task_id_clone.clone(),
                         output_type: CliOutputType::Stderr,
                         content: line,
@@ -291,16 +291,16 @@ impl CliExecutorService {
                     let _ = app_handle_clone.emit("cli-output", &output);
                 }
             }
-            debug!("Stderr reader thread ended for session: {}", session_id_clone);
+            debug!("Stderr reader thread ended for session: {}", execution_id_clone);
         });
 
-        session.status = CliSessionStatus::Running;
-        self.emit_session_status(session);
+        execution.status = CliExecutionStatus::Running;
+        self.emit_execution_status(execution);
 
         // Store process
-        let mut sessions = self.sessions.lock().unwrap();
-        sessions.insert(session_id, CliProcess {
-            session: session.clone(),
+        let mut executions = self.executions.lock().unwrap();
+        executions.insert(execution_id, CliProcess {
+            execution: execution.clone(),
             child: Some(child),
             stdin,
             claude_session_id: None,  // Gemini doesn't use Claude session ID
@@ -309,18 +309,18 @@ impl CliExecutorService {
         Ok(())
     }
 
-    pub fn send_input(&self, session_id: &str, input: &str) -> Result<(), String> {
-        info!("Sending input to session {}: {}", session_id, input);
+    pub fn send_input(&self, execution_id: &str, input: &str) -> Result<(), String> {
+        info!("Sending input to session {}: {}", execution_id, input);
         
         // Get session info
-        let sessions = self.sessions.lock().unwrap();
-        let process = sessions.get(session_id)
+        let executions = self.executions.lock().unwrap();
+        let process = executions.get(execution_id)
             .ok_or_else(|| "Session not found".to_string())?;
         
-        let working_directory = process.session.working_directory.clone();
-        let task_id = process.session.task_id.clone();
+        let working_directory = process.execution.working_directory.clone();
+        let task_id = process.execution.task_id.clone();
         let claude_session_id = process.claude_session_id.clone();
-        drop(sessions);
+        drop(executions);
 
         // Build Claude Code command
         let mut cmd = Command::new("npx");
@@ -363,12 +363,12 @@ impl CliExecutorService {
         
         // Handle stdout in a thread
         if let Some(stdout) = child.stdout.take() {
-            let session_id_clone = session_id.to_string();
+            let execution_id_clone = execution_id.to_string();
             let task_id_clone = task_id.clone();
             let app_handle_clone = self.app_handle.clone();
-            let sessions_clone = self.sessions.clone();
+            let sessions_clone = self.executions.clone();
             thread::spawn(move || {
-                debug!("Reading Claude Code output for session: {}", session_id_clone);
+                debug!("Reading Claude Code output for session: {}", execution_id_clone);
                 let reader = BufReader::new(stdout);
                 for line in reader.lines() {
                     if let Ok(line) = line {
@@ -376,18 +376,18 @@ impl CliExecutorService {
                         
                         // Parse JSON output from Claude Code
                         let content = if let Ok(json_data) = serde_json::from_str::<serde_json::Value>(&line) {
-                            // Check for session_id in the JSON
+                            // Check for execution_id in the JSON
                             if let Some(claude_session_id) = json_data.get("session_id").and_then(|s| s.as_str()) {
                                 // Store the Claude session ID
-                                let mut sessions = sessions_clone.lock().unwrap();
-                                if let Some(process) = sessions.get_mut(&session_id_clone) {
+                                let mut executions = sessions_clone.lock().unwrap();
+                                if let Some(process) = executions.get_mut(&execution_id_clone) {
                                     process.claude_session_id = Some(claude_session_id.to_string());
                                     info!("Stored Claude session ID: {}", claude_session_id);
                                     
                                     // Emit event to frontend to save Claude session ID
                                     let _ = app_handle_clone.emit("claude-session-id-received", serde_json::json!({
                                         "task_id": task_id_clone.clone(),
-                                        "session_id": session_id_clone.clone(),
+                                        "execution_id": execution_id_clone.clone(),
                                         "claude_session_id": claude_session_id
                                     }));
                                 }
@@ -492,7 +492,7 @@ impl CliExecutorService {
                         };
                         
                         let output = CliOutput {
-                            session_id: session_id_clone.clone(),
+                            execution_id: execution_id_clone.clone(),
                             task_id: task_id_clone.clone(),
                             output_type: CliOutputType::Stdout,
                             content,
@@ -501,7 +501,7 @@ impl CliExecutorService {
                         let _ = app_handle_clone.emit("cli-output", &output);
                     }
                 }
-                debug!("Claude Code output reading completed for session: {}", session_id_clone);
+                debug!("Claude Code output reading completed for session: {}", execution_id_clone);
                 
                 // When Claude Code completes, update task status to Reviewing
                 let app_handle_for_status = app_handle_clone.clone();
@@ -510,7 +510,7 @@ impl CliExecutorService {
                     info!("Updating task status to Reviewing for task: {}", task_id_for_status);
                     let _ = app_handle_for_status.emit("cli-process-completed", serde_json::json!({
                         "task_id": task_id_for_status,
-                        "session_id": session_id_clone
+                        "execution_id": execution_id_clone
                     }));
                 });
             });
@@ -518,7 +518,7 @@ impl CliExecutorService {
         
         // Handle stderr in a thread
         if let Some(stderr) = child.stderr.take() {
-            let session_id_clone = session_id.to_string();
+            let execution_id_clone = execution_id.to_string();
             let task_id_clone = task_id.clone();
             let app_handle_clone = self.app_handle.clone();
             thread::spawn(move || {
@@ -527,7 +527,7 @@ impl CliExecutorService {
                     if let Ok(line) = line {
                         debug!("Claude stderr: {}", line);
                         let output = CliOutput {
-                            session_id: session_id_clone.clone(),
+                            execution_id: execution_id_clone.clone(),
                             task_id: task_id_clone.clone(),
                             output_type: CliOutputType::Stderr,
                             content: line,
@@ -541,7 +541,7 @@ impl CliExecutorService {
         
         // Emit the input as well for UI display
         let output = CliOutput {
-            session_id: session_id.to_string(),
+            execution_id: execution_id.to_string(),
             task_id: task_id.clone(),
             output_type: CliOutputType::Stdout,
             content: format!("> {}", input),
@@ -552,9 +552,9 @@ impl CliExecutorService {
         Ok(())
     }
 
-    pub fn stop_session(&self, session_id: &str) -> Result<(), String> {
-        let mut sessions = self.sessions.lock().unwrap();
-        if let Some(mut process) = sessions.remove(session_id) {
+    pub fn stop_execution(&self, execution_id: &str) -> Result<(), String> {
+        let mut executions = self.executions.lock().unwrap();
+        if let Some(mut process) = executions.remove(execution_id) {
             if let Some(mut child) = process.child {
                 // Try graceful shutdown first
                 if let Some(stdin) = &mut process.stdin {
@@ -570,25 +570,25 @@ impl CliExecutorService {
                 let _ = child.wait();
             }
 
-            process.session.status = CliSessionStatus::Stopped;
-            self.emit_session_status(&process.session);
+            process.execution.status = CliExecutionStatus::Stopped;
+            self.emit_execution_status(&process.execution);
         }
 
         Ok(())
     }
 
-    pub fn get_session(&self, session_id: &str) -> Option<CliSession> {
-        let sessions = self.sessions.lock().unwrap();
-        sessions.get(session_id).map(|p| p.session.clone())
+    pub fn get_execution(&self, execution_id: &str) -> Option<CliExecution> {
+        let executions = self.executions.lock().unwrap();
+        executions.get(execution_id).map(|p| p.execution.clone())
     }
 
-    pub fn list_sessions(&self) -> Vec<CliSession> {
-        let sessions = self.sessions.lock().unwrap();
-        sessions.values().map(|p| p.session.clone()).collect()
+    pub fn list_executions(&self) -> Vec<CliExecution> {
+        let executions = self.executions.lock().unwrap();
+        executions.values().map(|p| p.execution.clone()).collect()
     }
 
-    fn emit_session_status(&self, session: &CliSession) {
-        let _ = self.app_handle.emit("cli-session-status", session);
+    fn emit_execution_status(&self, execution: &CliExecution) {
+        let _ = self.app_handle.emit("cli-execution-status", execution);
     }
 
     pub fn configure_claude_api_key(&self, api_key: &str) -> Result<(), String> {

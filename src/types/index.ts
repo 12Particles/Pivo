@@ -295,13 +295,12 @@ export interface CliExecutionContext {
   claude_session_id?: string;  // For resuming Claude conversations
 }
 
-// Backward compatibility - will be removed
-export interface CliSession {
+export interface CliExecution {
   id: string;
   task_id: string;
   executor_type: CliExecutorType;
   working_directory: string;
-  status: CliSessionStatus;
+  status: CliExecutionStatus;
   created_at: string;
 }
 
@@ -310,7 +309,7 @@ export enum CliExecutorType {
   GeminiCli = "GeminiCli",
 }
 
-export enum CliSessionStatus {
+export enum CliExecutionStatus {
   Starting = "Starting",
   Running = "Running",
   Stopped = "Stopped",
@@ -318,7 +317,7 @@ export enum CliSessionStatus {
 }
 
 export interface CliOutput {
-  session_id: string;
+  execution_id: string;
   output_type: CliOutputType;
   content: string;
   timestamp: string;

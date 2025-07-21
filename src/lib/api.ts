@@ -16,7 +16,7 @@ import {
   ExecutorSession,
   McpServer,
   ToolExecutionRequest,
-  CliSession,
+  CliExecution,
   GitInfo,
   TaskAttempt,
   AttemptStatus
@@ -322,14 +322,14 @@ export const cliApi = {
     });
   },
 
-  // Legacy API - kept for backward compatibility
-  startClaudeSession: async (
+  // Execution management API
+  startClaudeExecution: async (
     taskId: string,
     workingDirectory: string,
     projectPath?: string,
     storedClaudeSessionId?: string
-  ): Promise<CliSession> => {
-    return await invoke("start_claude_session", {
+  ): Promise<CliExecution> => {
+    return await invoke("start_claude_execution", {
       taskId,
       workingDirectory,
       projectPath,
@@ -337,32 +337,32 @@ export const cliApi = {
     });
   },
 
-  startGeminiSession: async (
+  startGeminiExecution: async (
     taskId: string,
     workingDirectory: string,
     contextFiles: string[]
-  ): Promise<CliSession> => {
-    return await invoke("start_gemini_session", {
+  ): Promise<CliExecution> => {
+    return await invoke("start_gemini_execution", {
       taskId,
       workingDirectory,
       contextFiles,
     });
   },
 
-  sendInput: async (sessionId: string, input: string): Promise<void> => {
-    return await invoke("send_cli_input", { sessionId, input });
+  sendInput: async (executionId: string, input: string): Promise<void> => {
+    return await invoke("send_cli_input", { executionId, input });
   },
 
-  stopSession: async (sessionId: string): Promise<void> => {
-    return await invoke("stop_cli_session", { sessionId });
+  stopExecution: async (executionId: string): Promise<void> => {
+    return await invoke("stop_cli_execution", { executionId });
   },
 
-  getSession: async (sessionId: string): Promise<CliSession | null> => {
-    return await invoke("get_cli_session", { sessionId });
+  getExecution: async (executionId: string): Promise<CliExecution | null> => {
+    return await invoke("get_cli_execution", { executionId });
   },
 
-  listSessions: async (): Promise<CliSession[]> => {
-    return await invoke("list_cli_sessions");
+  listExecutions: async (): Promise<CliExecution[]> => {
+    return await invoke("list_cli_executions");
   },
 
   configureClaudeApiKey: async (apiKey: string): Promise<void> => {
