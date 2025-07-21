@@ -104,6 +104,8 @@
     "createTaskSuccess": "任务创建成功",
     "createTaskError": "创建任务失败",
     "updateTaskError": "更新任务状态失败",
+    "updateTaskSuccess": "任务更新成功",
+    "updateTaskDetails": "更新任务详情",
     "runTaskError": "运行任务失败",
     "taskStarted": "任务已开始",
     "interactWithAi": "请在任务会话中与 AI 助手交互",

@@ -4,6 +4,7 @@ import { TaskKanbanBoard } from "./components/tasks/TaskKanbanBoard";
 import { TaskDetailsPanel } from "./components/tasks/TaskDetailsPanel";
 import { TaskConversationEnhanced } from "./components/tasks/TaskConversationEnhanced";
 import { CreateTaskDialog } from "./components/tasks/CreateTaskDialog";
+import { EditTaskDialog } from "./components/tasks/EditTaskDialog";
 import { ProjectList } from "./components/projects/ProjectList";
 import { ProjectForm } from "./components/projects/ProjectForm";
 import { SettingsPage } from "./components/settings/SettingsPage";
@@ -14,7 +15,8 @@ import {
   TaskStatus, 
   Project,
   CreateProjectRequest,
-  CreateTaskRequest 
+  CreateTaskRequest,
+  UpdateTaskRequest 
 } from "./types";
 import { projectApi, taskApi, gitInfoApi, gitApi } from "./lib/api";
 import { ArrowLeft, Settings } from "lucide-react";
@@ -34,6 +36,8 @@ function App() {
   const [showProjectForm, setShowProjectForm] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [showCreateTaskDialog, setShowCreateTaskDialog] = useState(false);
+  const [showEditTaskDialog, setShowEditTaskDialog] = useState(false);
+  const [taskToEdit, setTaskToEdit] = useState<Task | null>(null);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [loading, setLoading] = useState(false);
@@ -254,6 +258,37 @@ function App() {
     }
   };
 
+  const handleEditTask = async (taskId: string, data: UpdateTaskRequest) => {
+    try {
+      const updatedTask = await taskApi.update(taskId, data);
+      setTasks((prevTasks) =>
+        prevTasks.map((task) =>
+          task.id === taskId ? updatedTask : task
+        )
+      );
+      
+      // Update selected task if it's the one being edited
+      if (selectedTask?.id === taskId) {
+        setSelectedTask(updatedTask);
+      }
+      
+      setShowEditTaskDialog(false);
+      setTaskToEdit(null);
+      
+      toast({
+        title: t('common.success'),
+        description: t('task.updateTaskSuccess'),
+      });
+    } catch (error) {
+      console.error("Failed to update task:", error);
+      toast({
+        title: t('common.error'),
+        description: `${t('task.updateTaskError')}: ${error}`,
+        variant: "destructive",
+      });
+    }
+  };
+
 
   const handleCreateProject = async (data: CreateProjectRequest) => {
     try {
@@ -394,12 +429,9 @@ function App() {
                 onTaskClick={handleTaskClick}
                 onAddTask={handleAddTask}
                 onExecuteTask={handleRunTask}
-                onEditTask={() => {
-                  // TODO: Implement edit task dialog
-                  toast({
-                    title: t('task.editTask'),
-                    description: t('task.editFeatureComing'),
-                  });
+                onEditTask={(task) => {
+                  setTaskToEdit(task);
+                  setShowEditTaskDialog(true);
                 }}
                 onDeleteTask={async (task) => {
                   // Simple confirmation using window.confirm
@@ -467,12 +499,20 @@ function App() {
         </div>
 
         {currentProject && (
-          <CreateTaskDialog
-            open={showCreateTaskDialog}
-            onOpenChange={setShowCreateTaskDialog}
-            projectId={currentProject.id}
-            onSubmit={handleCreateTask}
-          />
+          <>
+            <CreateTaskDialog
+              open={showCreateTaskDialog}
+              onOpenChange={setShowCreateTaskDialog}
+              projectId={currentProject.id}
+              onSubmit={handleCreateTask}
+            />
+            <EditTaskDialog
+              open={showEditTaskDialog}
+              onOpenChange={setShowEditTaskDialog}
+              task={taskToEdit}
+              onSubmit={handleEditTask}
+            />
+          </>
         )}
       </div>
       <Toaster />
