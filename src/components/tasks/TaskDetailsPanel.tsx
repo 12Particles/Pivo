@@ -7,6 +7,7 @@ import { Play, GitBranch } from "lucide-react";
 import { Terminal } from "@/components/terminal/Terminal";
 import { FileTreeDiff } from "@/components/git/FileTreeDiff";
 import { IntegrationPanel } from "@/components/integration/IntegrationPanel";
+import { ResizableLayout } from "@/components/layout/ResizableLayout";
 import { useState, useEffect } from "react";
 import { taskAttemptApi } from "@/lib/api";
 import { useTranslation } from "react-i18next";
@@ -17,12 +18,14 @@ interface TaskDetailsPanelProps {
   task: Task | null;
   project: Project | null;
   onRunTask?: (task: Task) => void;
+  bottomPanelVisible?: boolean;
 }
 
 export function TaskDetailsPanel({
   task,
   project,
   onRunTask,
+  bottomPanelVisible = true,
 }: TaskDetailsPanelProps) {
   const { t } = useTranslation();
   // Generate new taskAttemptId when task changes
@@ -99,10 +102,37 @@ export function TaskDetailsPanel({
   
   if (!task) return null;
 
+  if (!bottomPanelVisible) {
+    return (
+      <Card className="h-full">
+        <CardContent className="h-full p-0">
+          {project && task ? (
+            <FileTreeDiff 
+              projectPath={project.path} 
+              taskId={task.id} 
+              worktreePath={currentAttempt?.worktree_path}
+              refreshKey={refreshKey}
+              changedFilePath={changedFilePath}
+            />
+          ) : (
+            <div className="flex items-center justify-center h-full text-muted-foreground">
+              {t('git.selectFileToView')}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    );
+  }
+
   return (
-    <div className="h-full flex flex-col gap-4 overflow-hidden">
+    <ResizableLayout
+      direction="vertical"
+      defaultSizes={[50, 50]}
+      minSizes={[20, 20]}
+      storageKey={`task-details-${task.id}`}
+    >
       {/* Top section - File changes */}
-      <Card className="flex-1 min-h-0">
+      <Card className="h-full">
         <CardContent className="h-full p-0">
           {project && task ? (
             <FileTreeDiff 
@@ -121,7 +151,7 @@ export function TaskDetailsPanel({
       </Card>
 
       {/* Bottom section - Tabs */}
-      <Card className="flex-1 min-h-0">
+      <Card className="h-full">
         <CardContent className="h-full p-0">
           <Tabs defaultValue="details" className="h-full flex flex-col">
             <TabsList className="grid w-full grid-cols-3 flex-shrink-0">
@@ -270,6 +300,6 @@ export function TaskDetailsPanel({
           </Tabs>
         </CardContent>
       </Card>
-    </div>
+    </ResizableLayout>
   );
 }

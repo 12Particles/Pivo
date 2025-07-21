@@ -1,6 +1,25 @@
+@import './styles/resizable-layout.css';
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* macOS transparent titlebar styles */
+@supports (-webkit-backdrop-filter: none) or (backdrop-filter: none) {
+  .backdrop-blur {
+    -webkit-backdrop-filter: blur(10px);
+    backdrop-filter: blur(10px);
+  }
+}
+
+/* Ensure the titlebar is draggable */
+[data-tauri-drag-region] {
+  -webkit-app-region: drag;
+}
+
+[data-tauri-drag-region] button {
+  -webkit-app-region: no-drag;
+}
 
 @layer base {
   :root {

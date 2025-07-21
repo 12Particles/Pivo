@@ -1,0 +1,141 @@
+/* React Resizable Panels custom styles */
+
+/* Base resize handle styles */
+.resize-handle {
+  position: relative;
+  outline: none;
+  transition: background-color 0.1s ease;
+}
+
+/* Horizontal resize handle (vertical splitter) */
+.resize-handle-horizontal {
+  width: 11px;
+  margin: 0 -5px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: col-resize;
+}
+
+.resize-handle-horizontal::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 1px;
+  background-color: hsl(var(--border));
+  transition: background-color 0.1s ease, width 0.1s ease;
+}
+
+.resize-handle-horizontal:hover::before,
+.resize-handle-horizontal[data-resize-handle-active]::before {
+  background-color: hsl(var(--primary));
+  width: 3px;
+}
+
+/* Vertical resize handle (horizontal splitter) */
+.resize-handle-vertical {
+  height: 11px;
+  margin: -5px 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: row-resize;
+}
+
+.resize-handle-vertical::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  height: 1px;
+  background-color: hsl(var(--border));
+  transition: background-color 0.1s ease, height 0.1s ease;
+}
+
+.resize-handle-vertical:hover::before,
+.resize-handle-vertical[data-resize-handle-active]::before {
+  background-color: hsl(var(--primary));
+  height: 3px;
+}
+
+/* Handle dots/grip indicator */
+.resize-handle-inner {
+  position: relative;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.resize-handle:hover .resize-handle-inner,
+.resize-handle[data-resize-handle-active] .resize-handle-inner {
+  opacity: 1;
+}
+
+/* Horizontal handle dots */
+.resize-handle-horizontal .resize-handle-inner::before,
+.resize-handle-horizontal .resize-handle-inner::after {
+  content: '';
+  position: absolute;
+  width: 3px;
+  height: 3px;
+  background-color: hsl(var(--muted-foreground));
+  border-radius: 50%;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.resize-handle-horizontal .resize-handle-inner::before {
+  top: calc(50% - 8px);
+}
+
+.resize-handle-horizontal .resize-handle-inner::after {
+  top: calc(50% + 5px);
+}
+
+/* Vertical handle dots */
+.resize-handle-vertical .resize-handle-inner::before,
+.resize-handle-vertical .resize-handle-inner::after {
+  content: '';
+  position: absolute;
+  width: 3px;
+  height: 3px;
+  background-color: hsl(var(--muted-foreground));
+  border-radius: 50%;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.resize-handle-vertical .resize-handle-inner::before {
+  left: calc(50% - 8px);
+}
+
+.resize-handle-vertical .resize-handle-inner::after {
+  left: calc(50% + 5px);
+}
+
+/* Ensure panels take full height */
+[data-panel-group] {
+  height: 100%;
+}
+
+[data-panel] {
+  overflow: hidden;
+}
+
+/* Dark mode adjustments */
+.dark .resize-handle-horizontal::before {
+  background-color: hsl(var(--border));
+}
+
+.dark .resize-handle-vertical::before {
+  background-color: hsl(var(--border));
+}
+
+/* Remove any default panel borders */
+[data-panel] > * {
+  height: 100%;
+}

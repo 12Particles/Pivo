@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { TaskKanbanBoard } from "./components/tasks/TaskKanbanBoard";
 import { TaskDetailsPanel } from "./components/tasks/TaskDetailsPanel";
@@ -11,6 +11,9 @@ import { ProjectSettingsPage } from "./components/projects/ProjectSettingsPage";
 import { SettingsPage } from "./components/settings/SettingsPage";
 import { Button } from "./components/ui/button";
 import { Card } from "./components/ui/card";
+import { ResizableLayout } from "./components/layout/ResizableLayout";
+import { LayoutToggleButtons } from "./components/layout/LayoutToggleButtons";
+import { ImperativePanelHandle } from "react-resizable-panels";
 import { 
   Task, 
   TaskStatus, 
@@ -44,6 +47,16 @@ function App() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [loading, setLoading] = useState(false);
+  
+  // Panel visibility states
+  const [leftPanelVisible, setLeftPanelVisible] = useState(true);
+  const [bottomPanelVisible, setBottomPanelVisible] = useState(true);
+  const [rightPanelVisible, setRightPanelVisible] = useState(true);
+  
+  // Panel refs for imperative control
+  const leftPanelRef = useRef<ImperativePanelHandle>(null);
+  const centerPanelRef = useRef<ImperativePanelHandle>(null);
+  const rightPanelRef = useRef<ImperativePanelHandle>(null);
 
   // Initialize logger on app start
   useEffect(() => {
@@ -116,6 +129,31 @@ function App() {
       window.removeEventListener('open-settings', handleOpenSettings as EventListener);
     };
   }, []);
+  
+  // Keyboard shortcuts for layout toggle
+  useEffect(() => {
+    const handleLayoutKeyDown = (e: KeyboardEvent) => {
+      if (e.metaKey || e.ctrlKey) {
+        switch (e.key.toLowerCase()) {
+          case 'b':
+            e.preventDefault();
+            toggleLeftPanel();
+            break;
+          case 'j':
+            e.preventDefault();
+            toggleBottomPanel();
+            break;
+          case 'k':
+            e.preventDefault();
+            toggleRightPanel();
+            break;
+        }
+      }
+    };
+    
+    window.addEventListener('keydown', handleLayoutKeyDown);
+    return () => window.removeEventListener('keydown', handleLayoutKeyDown);
+  }, [leftPanelVisible, bottomPanelVisible, rightPanelVisible]);
 
   useEffect(() => {
     if (currentProject) {
@@ -318,6 +356,38 @@ function App() {
     }
   };
 
+  // Layout toggle functions
+  const toggleLeftPanel = () => {
+    if (leftPanelVisible) {
+      leftPanelRef.current?.collapse();
+    } else {
+      leftPanelRef.current?.expand();
+    }
+    setLeftPanelVisible(!leftPanelVisible);
+  };
+  
+  const toggleBottomPanel = () => {
+    setBottomPanelVisible(!bottomPanelVisible);
+  };
+  
+  const toggleRightPanel = () => {
+    if (rightPanelVisible) {
+      rightPanelRef.current?.collapse();
+    } else {
+      rightPanelRef.current?.expand();
+    }
+    setRightPanelVisible(!rightPanelVisible);
+  };
+  
+  const resetLayout = () => {
+    leftPanelRef.current?.resize(20);
+    centerPanelRef.current?.resize(50);
+    rightPanelRef.current?.resize(30);
+    setLeftPanelVisible(true);
+    setBottomPanelVisible(true);
+    setRightPanelVisible(true);
+  };
+
   const handleSelectGitDirectory = async () => {
     try {
       const selected = await open({
@@ -440,104 +510,126 @@ function App() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <div className="h-screen flex bg-background overflow-hidden">
-        {/* 任务管理区 - 纵向布局 */}
-        <div className="w-80 border-r flex flex-col h-full">
-          <div className="p-4 border-b flex-shrink-0">
-            <div className="flex items-center justify-between mb-2">
-              <h3 className="font-medium">{currentProject.name}</h3>
-              <Button
-                variant="outline"
-                size="icon"
-                onClick={() => setShowProjectSettings(true)}
-              >
-                <Settings className="h-4 w-4" />
-              </Button>
-            </div>
-            <p className="text-sm text-muted-foreground">
-              {currentProject.description || t('project.noDescription')}
-            </p>
-          </div>
-          <div className="flex-1 overflow-hidden">
-            {loading ? (
-              <div className="flex items-center justify-center h-64">
-                <div className="text-muted-foreground">{t('common.loading')}</div>
+      <div className="h-screen bg-background overflow-hidden">
+          <ResizableLayout
+            direction="horizontal"
+            defaultSizes={[20, 50, 30]}
+            minSizes={[15, 30, 20]}
+            maxSizes={[30, undefined, 40]}
+            storageKey="main-layout"
+            panelRefs={[leftPanelRef, centerPanelRef, rightPanelRef]}
+          >
+            {/* 任务管理区 - 纵向布局 */}
+            <div className="border-r flex flex-col h-full">
+              <div className="p-4 border-b flex-shrink-0">
+                <div className="flex items-center justify-between mb-2">
+                  <h3 className="font-medium">{currentProject.name}</h3>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={() => setShowProjectSettings(true)}
+                  >
+                    <Settings className="h-4 w-4" />
+                  </Button>
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  {currentProject.description || t('project.noDescription')}
+                </p>
               </div>
-            ) : (
-              <TaskKanbanBoard
-                tasks={tasks}
-                onTaskStatusChange={handleTaskStatusChange}
-                onTaskClick={handleTaskClick}
-                onAddTask={handleAddTask}
-                onExecuteTask={handleRunTask}
-                onEditTask={(task) => {
-                  setTaskToEdit(task);
-                  setShowEditTaskDialog(true);
-                }}
-                onDeleteTask={async (task) => {
-                  // Simple confirmation using window.confirm
-                  const confirmed = window.confirm(t('task.deleteConfirm', { title: task.title }));
-                  if (!confirmed) return;
-                  
-                  try {
-                    await taskApi.delete(task.id);
-                    setTasks(tasks.filter((t) => t.id !== task.id));
-                    if (selectedTask?.id === task.id) {
-                      setSelectedTask(null);
+            <div className="flex-1 overflow-hidden">
+              {loading ? (
+                <div className="flex items-center justify-center h-64">
+                  <div className="text-muted-foreground">{t('common.loading')}</div>
+                </div>
+              ) : (
+                <TaskKanbanBoard
+                  tasks={tasks}
+                  onTaskStatusChange={handleTaskStatusChange}
+                  onTaskClick={handleTaskClick}
+                  onAddTask={handleAddTask}
+                  onExecuteTask={handleRunTask}
+                  onEditTask={(task) => {
+                    setTaskToEdit(task);
+                    setShowEditTaskDialog(true);
+                  }}
+                  onDeleteTask={async (task) => {
+                    // Simple confirmation using window.confirm
+                    const confirmed = window.confirm(t('task.deleteConfirm', { title: task.title }));
+                    if (!confirmed) return;
+                    
+                    try {
+                      await taskApi.delete(task.id);
+                      setTasks(tasks.filter((t) => t.id !== task.id));
+                      if (selectedTask?.id === task.id) {
+                        setSelectedTask(null);
+                      }
+                      toast({
+                        title: t('common.success'),
+                        description: t('task.taskDeleted'),
+                      });
+                    } catch (error) {
+                      console.error("Failed to delete task:", error);
+                      toast({
+                        title: t('common.error'),
+                        description: `${t('task.deleteTaskError')}: ${error}`,
+                        variant: "destructive",
+                      });
                     }
-                    toast({
-                      title: t('common.success'),
-                      description: t('task.taskDeleted'),
-                    });
-                  } catch (error) {
-                    console.error("Failed to delete task:", error);
-                    toast({
-                      title: t('common.error'),
-                      description: `${t('task.deleteTaskError')}: ${error}`,
-                      variant: "destructive",
-                    });
-                  }
-                }}
-              />
-            )}
-          </div>
-        </div>
-
-        {/* 任务功能区 - 主工作区 */}
-        <div className="flex-1 flex flex-col overflow-hidden">
-          {selectedTask ? (
-            <TaskDetailsPanel
-              key={selectedTask.id}
-              task={selectedTask}
-              project={currentProject}
-              onRunTask={handleRunTask}
-            />
-          ) : (
-            <div className="h-full flex items-center justify-center text-muted-foreground">
-              {t('task.selectTaskToView')}
+                  }}
+                />
+              )}
             </div>
-          )}
-        </div>
-
-        {/* 右侧面板 - 任务会话 */}
-        <div className="w-[480px] border-l flex flex-col h-full">
-          <div className="flex items-center justify-between p-4 border-b flex-shrink-0">
-            <h3 className="font-medium">{t('task.taskConversation')}</h3>
           </div>
-          <div className="flex-1 overflow-hidden">
-            {selectedTask && currentProject ? (
-              <TaskConversationEnhanced
+
+          {/* 任务功能区 - 主工作区 */}
+          <div className="flex flex-col overflow-hidden relative">
+              {/* Layout toggle buttons - positioned absolutely */}
+              <div className="absolute top-2 right-2 z-10">
+                <LayoutToggleButtons
+                  leftPanelVisible={leftPanelVisible}
+                  bottomPanelVisible={bottomPanelVisible}
+                  rightPanelVisible={rightPanelVisible}
+                  onToggleLeft={toggleLeftPanel}
+                  onToggleBottom={toggleBottomPanel}
+                  onToggleRight={toggleRightPanel}
+                  onResetLayout={resetLayout}
+                />
+              </div>
+              {selectedTask ? (
+              <TaskDetailsPanel
                 key={selectedTask.id}
                 task={selectedTask}
                 project={currentProject}
+                onRunTask={handleRunTask}
+                bottomPanelVisible={bottomPanelVisible}
               />
             ) : (
-              <div className="flex items-center justify-center h-full text-muted-foreground">
-                {t('task.selectTaskToChat')}
+              <div className="h-full flex items-center justify-center text-muted-foreground">
+                {t('task.selectTaskToView')}
               </div>
             )}
           </div>
-        </div>
+
+          {/* 右侧面板 - 任务会话 */}
+          <div className="border-l flex flex-col h-full">
+              <div className="flex items-center justify-between p-4 border-b flex-shrink-0">
+                <h3 className="font-medium">{t('task.taskConversation')}</h3>
+              </div>
+            <div className="flex-1 overflow-hidden">
+              {selectedTask && currentProject ? (
+                <TaskConversationEnhanced
+                  key={selectedTask.id}
+                  task={selectedTask}
+                  project={currentProject}
+                />
+              ) : (
+                <div className="flex items-center justify-center h-full text-muted-foreground">
+                  {t('task.selectTaskToChat')}
+                </div>
+              )}
+            </div>
+          </div>
+        </ResizableLayout>
 
         {currentProject && (
           <>
