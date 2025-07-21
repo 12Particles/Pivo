@@ -1,4 +1,4 @@
-# Pivo - AI驱动的项目管理与任务执行工具
+# Pivo - 以任务为中心的 Vibe 编程环境
 
 ![License](https://img.shields.io/badge/License-MIT-blue.svg)
 ![Tauri](https://img.shields.io/badge/Tauri-2.x-orange.svg)
