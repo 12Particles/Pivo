@@ -2,8 +2,9 @@ import { useState, useEffect } from "react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { gitApi } from "@/lib/api";
-import { GitStatus } from "@/types";
+import { gitApi, aiApi } from "@/lib/api";
+import { GitStatus, ExecutorConfig } from "@/types";
+import { CodeComment } from "@/types/comment";
 import { 
   FileText, 
   FolderOpen, 
@@ -15,17 +16,24 @@ import {
   ChevronDown,
   TreePine,
   GitCompare,
-  X
+  X,
+  PanelRightOpen,
+  PanelRightClose
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useTranslation } from "react-i18next";
-import ReactDiffViewer from "react-diff-viewer-continued";
+import { EnhancedDiffViewer } from "./EnhancedDiffViewer";
+import { CommentPanel } from "./CommentPanel";
 import { parseGitDiff } from "@/lib/git-diff-parser";
+// Simple unique ID generator
+const generateId = () => `comment-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 
 interface FileTreeDiffProps {
   projectPath: string;
   taskId: string;
   worktreePath?: string;
+  refreshKey?: number;
+  changedFilePath?: string | null;
 }
 
 interface FileNode {
@@ -47,7 +55,7 @@ interface OpenFile {
   newContent: string;
 }
 
-export function FileTreeDiff({ projectPath, taskId, worktreePath }: FileTreeDiffProps) {
+export function FileTreeDiff({ projectPath, taskId, worktreePath, refreshKey = 0, changedFilePath }: FileTreeDiffProps) {
   const { t } = useTranslation();
   const [selectedFile, setSelectedFile] = useState<string | null>(null);
   const [fileTree, setFileTree] = useState<FileNode[]>([]);
@@ -59,6 +67,41 @@ export function FileTreeDiff({ projectPath, taskId, worktreePath }: FileTreeDiff
   const [activeTab, setActiveTab] = useState<string>("");
   const [allFilesLoaded, setAllFilesLoaded] = useState(false);
   const [gitStatusMap, setGitStatusMap] = useState<GitStatusMap>({});
+  
+  // Comment-related state
+  const [comments, setComments] = useState<CodeComment[]>([]);
+  const [showCommentPanel, setShowCommentPanel] = useState(false);
+  const [selectedText, setSelectedText] = useState<string>("");
+  const [selectedLineInfo, setSelectedLineInfo] = useState<{ lineNumber?: number; side?: 'old' | 'new' } | null>(null);
+
+  // Load comments from localStorage when component mounts
+  useEffect(() => {
+    if (taskId) {
+      const storageKey = `task-comments-${taskId}`;
+      const savedComments = localStorage.getItem(storageKey);
+      if (savedComments) {
+        try {
+          const parsed = JSON.parse(savedComments);
+          // Convert timestamp strings back to Date objects
+          const commentsWithDates = parsed.map((c: any) => ({
+            ...c,
+            timestamp: new Date(c.timestamp)
+          }));
+          setComments(commentsWithDates);
+        } catch (error) {
+          console.error("Failed to load saved comments:", error);
+        }
+      }
+    }
+  }, [taskId]);
+
+  // Save comments to localStorage whenever they change
+  useEffect(() => {
+    if (taskId && comments.length > 0) {
+      const storageKey = `task-comments-${taskId}`;
+      localStorage.setItem(storageKey, JSON.stringify(comments));
+    }
+  }, [taskId, comments]);
 
   useEffect(() => {
     // Reset state when task or worktree changes
@@ -71,8 +114,25 @@ export function FileTreeDiff({ projectPath, taskId, worktreePath }: FileTreeDiff
     setActiveTab("");
     setAllFilesLoaded(false);
     setGitStatusMap({});
+    setComments([]);
+    setSelectedText("");
+    setSelectedLineInfo(null);
     loadGitStatus();
   }, [projectPath, taskId, worktreePath]);
+
+  // Reload git status when refreshKey changes (file watcher triggered)
+  useEffect(() => {
+    if (refreshKey > 0 && worktreePath) {
+      loadGitStatus();
+    }
+  }, [refreshKey, worktreePath]);
+
+  // Refresh open files when specific file changes and git status is updated
+  useEffect(() => {
+    if (refreshKey > 0 && worktreePath && changedFilePath && openFiles.length > 0 && Object.keys(gitStatusMap).length > 0) {
+      refreshChangedFile(changedFilePath);
+    }
+  }, [refreshKey, worktreePath, changedFilePath, gitStatusMap]);
 
   const loadGitStatus = async () => {
     // Only load if we have a worktree path
@@ -92,6 +152,54 @@ export function FileTreeDiff({ projectPath, taskId, worktreePath }: FileTreeDiff
       setFileTree([]);
       setChangedFilesOnly([]);
       setChangedFilesTree([]);
+    }
+  };
+
+  const refreshChangedFile = async (filePath: string) => {
+    if (!worktreePath) return;
+
+    // Check if the changed file is in our open files
+    const fileIndex = openFiles.findIndex(f => f.path === filePath);
+    if (fileIndex === -1) return; // File is not open, no need to refresh
+
+    try {
+      const file = openFiles[fileIndex];
+      // Get relative path from full path
+      const relativePath = file.path.startsWith(worktreePath + '/') 
+        ? file.path.substring(worktreePath.length + 1)
+        : file.path.split('/').pop() || file.path;
+      
+      const fileStatus = gitStatusMap[relativePath];
+      let updatedFile: OpenFile;
+      
+      if (fileStatus === 'added') {
+        // New file, only new content
+        const content = await gitApi.readFileContent(worktreePath, relativePath);
+        updatedFile = { ...file, newContent: content };
+      } else if (fileStatus === 'deleted') {
+        // Deleted file, keep old content only
+        updatedFile = file;
+      } else if (fileStatus === 'modified') {
+        // Modified file, update both old and new content
+        const [gitShowResult, currentContent] = await Promise.all([
+          gitApi.getFileFromRef(worktreePath, `HEAD:${relativePath}`),
+          gitApi.readFileContent(worktreePath, relativePath)
+        ]);
+        updatedFile = { ...file, oldContent: gitShowResult, newContent: currentContent };
+      } else {
+        // Unchanged file, reload current content
+        const content = await gitApi.readFileContent(worktreePath, relativePath);
+        updatedFile = { ...file, oldContent: content, newContent: content };
+      }
+      
+      // Update only the changed file in the openFiles array
+      const newOpenFiles = [...openFiles];
+      newOpenFiles[fileIndex] = updatedFile;
+      setOpenFiles(newOpenFiles);
+      
+      console.log(`Refreshed open file: ${filePath}`);
+    } catch (error) {
+      console.error(`Failed to refresh file ${filePath}:`, error);
     }
   };
 
@@ -386,6 +494,86 @@ export function FileTreeDiff({ projectPath, taskId, worktreePath }: FileTreeDiff
     }
   };
 
+  // Comment handling functions
+  const handleTextSelected = (text: string, lineNumber?: number, side?: 'old' | 'new') => {
+    setSelectedText(text);
+    setSelectedLineInfo({ lineNumber, side });
+    setShowCommentPanel(true);
+  };
+
+  const handleAddComment = (comment: Omit<CodeComment, 'id' | 'timestamp'>) => {
+    const newComment: CodeComment = {
+      ...comment,
+      id: generateId(),
+      timestamp: new Date(),
+      lineNumber: selectedLineInfo?.lineNumber,
+      side: selectedLineInfo?.side
+    };
+    setComments([...comments, newComment]);
+    setSelectedText("");
+    setSelectedLineInfo(null);
+  };
+
+  const handleDeleteComment = (id: string) => {
+    setComments(comments.filter(c => c.id !== id));
+  };
+
+  const handleSubmitToAgent = async () => {
+    try {
+      // Build prompt with comments and code context
+      const prompt = buildPromptFromComments();
+      
+      // Create AI session config
+      const config: ExecutorConfig = {
+        name: "claude", // executor name
+        api_key: "", // This should come from user settings
+        model: "claude-3-opus-20240229", // Or from user preference
+        temperature: 0.7,
+        max_tokens: 4000,
+      };
+      
+      // Initialize AI session
+      const sessionId = await aiApi.initSession(
+        "claude", // executor type
+        taskId,
+        prompt,
+        config
+      );
+      
+      console.log("AI session created:", sessionId);
+      console.log("Prompt sent:", prompt);
+      
+      // Clear comments after successful submission
+      setComments([]);
+      setShowCommentPanel(false);
+      
+      // Clear from localStorage
+      const storageKey = `task-comments-${taskId}`;
+      localStorage.removeItem(storageKey);
+      
+      // TODO: Show notification or redirect to AI chat interface
+    } catch (error) {
+      console.error("Failed to submit to agent:", error);
+      // TODO: Show error notification
+    }
+  };
+
+  const buildPromptFromComments = () => {
+    let prompt = `Please review and apply the following code changes based on the comments:\n\n`;
+    
+    comments.forEach((comment, index) => {
+      prompt += `Comment ${index + 1}:\n`;
+      prompt += `File: ${comment.filePath}\n`;
+      if (comment.lineNumber) {
+        prompt += `Line: ${comment.lineNumber}\n`;
+      }
+      prompt += `Code: \`\`\`\n${comment.selectedText}\n\`\`\`\n`;
+      prompt += `Request: ${comment.comment}\n\n`;
+    });
+    
+    return prompt;
+  };
+
   const getStatusIcon = (status?: string) => {
     switch (status) {
       case "added":
@@ -449,6 +637,7 @@ export function FileTreeDiff({ projectPath, taskId, worktreePath }: FileTreeDiff
     }
   }, [showChangedOnly, allFilesLoaded, worktreePath, gitStatusMap]);
 
+
   return (
     <div className="flex h-full overflow-hidden">
       {/* File Tree */}
@@ -506,8 +695,8 @@ export function FileTreeDiff({ projectPath, taskId, worktreePath }: FileTreeDiff
         {openFiles.length > 0 ? (
           <>
             <Tabs value={activeTab} onValueChange={setActiveTab} className="flex flex-col h-full">
-              <div className="border-b flex-shrink-0">
-                <TabsList className="h-10 w-full justify-start rounded-none bg-transparent p-0 overflow-x-auto">
+              <div className="border-b flex-shrink-0 flex items-center justify-between">
+                <TabsList className="h-10 flex-1 justify-start rounded-none bg-transparent p-0 overflow-x-auto">
                   {openFiles.map(file => (
                     <TabsTrigger
                       key={file.path}
@@ -524,6 +713,22 @@ export function FileTreeDiff({ projectPath, taskId, worktreePath }: FileTreeDiff
                     </TabsTrigger>
                   ))}
                 </TabsList>
+                <div className="px-2 flex items-center gap-1">
+                  <Button
+                    size="sm"
+                    variant={showCommentPanel ? "default" : "ghost"}
+                    onClick={() => setShowCommentPanel(!showCommentPanel)}
+                    className="h-7"
+                  >
+                    {showCommentPanel ? <PanelRightClose className="h-3 w-3 mr-1" /> : <PanelRightOpen className="h-3 w-3 mr-1" />}
+                    <span className="text-xs">{t('comments.title', 'Comments')}</span>
+                    {comments.length > 0 && (
+                      <span className="ml-1 text-xs bg-primary text-primary-foreground rounded-full px-1.5 py-0.5 min-w-[20px] text-center">
+                        {comments.length}
+                      </span>
+                    )}
+                  </Button>
+                </div>
               </div>
               
               {openFiles.map(file => (
@@ -533,50 +738,13 @@ export function FileTreeDiff({ projectPath, taskId, worktreePath }: FileTreeDiff
                   className="flex-1 overflow-hidden mt-0 border-0 p-0 outline-none"
                 >
                   <div className="h-full overflow-auto p-2">
-                    <ReactDiffViewer
-                        oldValue={file.oldContent}
-                        newValue={file.newContent}
-                        splitView={false}
-                        useDarkTheme={document.documentElement.classList.contains('dark')}
-                        hideLineNumbers={false}
-                        showDiffOnly={false}
-                        styles={{
-                          variables: {
-                            dark: {
-                              diffViewerBackground: '#0a0a0a',
-                              addedBackground: '#0d2e1a',
-                              removedBackground: '#3d0f0f',
-                              wordAddedBackground: '#1a5232',
-                              wordRemovedBackground: '#6b1818',
-                              addedColor: '#87d96c',
-                              removedColor: '#ff9999',
-                              codeFoldBackground: '#1a1a1a',
-                              codeFoldGutterBackground: '#2a2a2a',
-                              codeFoldContentColor: '#808080',
-                            },
-                            light: {
-                              diffViewerBackground: '#ffffff',
-                              addedBackground: '#e6ffec',
-                              removedBackground: '#ffebe9',
-                              wordAddedBackground: '#abf2bc',
-                              wordRemovedBackground: '#ffb6ba',
-                              addedColor: '#24292f',
-                              removedColor: '#24292f',
-                              codeFoldBackground: '#f6f8fa',
-                              codeFoldGutterBackground: '#e1e4e8',
-                              codeFoldContentColor: '#586069',
-                            }
-                          },
-                          contentText: {
-                            fontFamily: 'ui-monospace, SFMono-Regular, "SF Mono", Consolas, "Liberation Mono", Menlo, monospace',
-                            fontSize: '13px',
-                            lineHeight: '20px',
-                          },
-                          gutter: {
-                            minWidth: '50px',
-                          }
-                        }}
-                      />
+                    <EnhancedDiffViewer
+                      oldValue={file.oldContent}
+                      newValue={file.newContent}
+                      splitView={false}
+                      useDarkTheme={document.documentElement.classList.contains('dark')}
+                      onTextSelected={handleTextSelected}
+                    />
                   </div>
                 </TabsContent>
               ))}
@@ -588,6 +756,20 @@ export function FileTreeDiff({ projectPath, taskId, worktreePath }: FileTreeDiff
           </div>
         )}
       </div>
+
+      {/* Comment Panel */}
+      {showCommentPanel && (
+        <div className="w-96 border-l flex flex-col overflow-hidden">
+          <CommentPanel
+            comments={comments}
+            onAddComment={handleAddComment}
+            onDeleteComment={handleDeleteComment}
+            onSubmitToAgent={handleSubmitToAgent}
+            selectedText={selectedText}
+            selectedFile={activeTab}
+          />
+        </div>
+      )}
     </div>
   );
 }

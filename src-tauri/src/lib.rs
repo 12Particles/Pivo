@@ -6,7 +6,7 @@ mod logging;
 mod menu;
 
 use std::sync::Arc;
-use services::{TaskService, ProjectService, ProcessService, TerminalService, McpServerManager, CliExecutorService, MergeRequestService, ConfigService};
+use services::{TaskService, ProjectService, ProcessService, TerminalService, McpServerManager, CliExecutorService, MergeRequestService, ConfigService, FileWatcherService};
 use tauri::Manager;
 use tokio::sync::Mutex;
 use commands::terminal::TerminalState;
@@ -54,6 +54,7 @@ pub fn run() {
                 config_service_inner.load_from_db().await
                     .unwrap_or_else(|e| log::warn!("Failed to load config from db: {}", e));
                 let config_service = Arc::new(Mutex::new(config_service_inner));
+                let file_watcher_service = Arc::new(FileWatcherService::new(handle.clone()));
                 
                 // Store app state
                 app.manage(AppState {
@@ -80,6 +81,9 @@ pub fn run() {
                 app.manage(CliState {
                     service: cli_service,
                 });
+                
+                // Store file watcher service
+                app.manage(file_watcher_service);
             });
             
             Ok(())
@@ -169,6 +173,9 @@ pub fn run() {
             commands::gitlab::get_merge_requests_by_attempt,
             commands::gitlab::get_merge_requests_by_task,
             commands::gitlab::get_active_merge_requests,
+            services::watch_worktree,
+            services::unwatch_worktree,
+            services::unwatch_all,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

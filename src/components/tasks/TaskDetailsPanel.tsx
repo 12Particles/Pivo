@@ -10,6 +10,8 @@ import { IntegrationPanel } from "@/components/integration/IntegrationPanel";
 import { useState, useEffect } from "react";
 import { taskAttemptApi } from "@/lib/api";
 import { useTranslation } from "react-i18next";
+import { listen } from "@tauri-apps/api/event";
+import { invoke } from "@tauri-apps/api/core";
 
 interface TaskDetailsPanelProps {
   task: Task | null;
@@ -26,6 +28,8 @@ export function TaskDetailsPanel({
   // Generate new taskAttemptId when task changes
   const taskAttemptId = task ? `attempt-${task.id}-${Date.now()}` : '';
   const [currentAttempt, setCurrentAttempt] = useState<TaskAttempt | null>(null);
+  const [refreshKey, setRefreshKey] = useState(0);
+  const [changedFilePath, setChangedFilePath] = useState<string | null>(null);
   
   useEffect(() => {
     if (task) {
@@ -47,6 +51,51 @@ export function TaskDetailsPanel({
       console.error("Failed to load attempts:", error);
     }
   };
+
+  // Effect to watch for file changes when worktree is available
+  useEffect(() => {
+    const worktreePath = currentAttempt?.worktree_path;
+    if (!worktreePath) return;
+
+    let unlisten: (() => void) | undefined;
+
+    const setupFileWatcher = async () => {
+      try {
+        // Start watching the worktree
+        await invoke("watch_worktree", { worktreePath });
+        console.log("Started watching worktree:", worktreePath);
+
+        // Listen for file change events
+        unlisten = await listen("file-change", (event) => {
+          const payload = event.payload as { worktree_path: string; file_path: string; kind: string };
+          
+          // Only refresh if the event is for our worktree
+          if (payload.worktree_path === worktreePath) {
+            console.log("File changed in worktree:", payload.file_path, payload.kind);
+            // Set the changed file path and trigger refresh
+            setChangedFilePath(payload.file_path);
+            setRefreshKey(prev => prev + 1);
+          }
+        });
+      } catch (error) {
+        console.error("Failed to setup file watcher:", error);
+      }
+    };
+
+    setupFileWatcher();
+
+    // Cleanup
+    return () => {
+      if (unlisten) {
+        unlisten();
+      }
+      // Unwatch the worktree when component unmounts or worktree changes
+      if (worktreePath) {
+        invoke("unwatch_worktree", { worktreePath }).catch(console.error);
+        console.log("Stopped watching worktree:", worktreePath);
+      }
+    };
+  }, [currentAttempt?.worktree_path]);
   
   if (!task) return null;
 
@@ -60,6 +109,8 @@ export function TaskDetailsPanel({
               projectPath={project.path} 
               taskId={task.id} 
               worktreePath={currentAttempt?.worktree_path}
+              refreshKey={refreshKey}
+              changedFilePath={changedFilePath}
             />
           ) : (
             <div className="flex items-center justify-center h-full text-muted-foreground">
