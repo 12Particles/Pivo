@@ -39,6 +39,20 @@ export function TaskDetailsPanel({
       loadLatestAttempt();
     }
   }, [task?.id]);
+
+  // Listen for attempt creation events
+  useEffect(() => {
+    const unlisten = listen("task-attempt-created", (event: any) => {
+      if (event.payload.task_id === task?.id) {
+        // Reload attempts when a new attempt is created for this task
+        loadLatestAttempt();
+      }
+    });
+
+    return () => {
+      unlisten.then(fn => fn());
+    };
+  }, [task?.id]);
   
   const loadLatestAttempt = async () => {
     if (!task) return;

@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { TaskKanbanBoard } from "./components/tasks/TaskKanbanBoard";
 import { TaskDetailsPanel } from "./components/tasks/TaskDetailsPanel";
-import { TaskConversationEnhanced } from "./components/tasks/TaskConversationEnhanced";
+import { TaskConversation } from "./components/tasks/TaskConversation";
 import { CreateTaskDialog } from "./components/tasks/CreateTaskDialog";
 import { EditTaskDialog } from "./components/tasks/EditTaskDialog";
 import { ProjectList } from "./components/projects/ProjectList";
@@ -241,19 +241,19 @@ function App() {
   const handleCreateTask = async (data: CreateTaskRequest, shouldStart?: boolean) => {
     try {
       const newTask = await taskApi.create(data);
-      setTasks([...tasks, newTask]);
       setShowCreateTaskDialog(false);
       
       if (shouldStart) {
         // Automatically start the task after creation
         const updatedTask = await taskApi.updateStatus(newTask.id, TaskStatus.Working);
-        setTasks(tasks.map(t => t.id === newTask.id ? updatedTask : t));
+        setTasks(prevTasks => [...prevTasks, updatedTask]);
         setSelectedTask(updatedTask);
         toast({
           title: t('task.createTaskSuccess'),
           description: t('task.taskStarted'),
         });
       } else {
+        setTasks(prevTasks => [...prevTasks, newTask]);
         toast({
           title: t('common.success'),
           description: t('task.createTaskSuccess'),
@@ -630,7 +630,7 @@ function App() {
               </div>
             <div className="flex-1 overflow-hidden">
               {selectedTask && currentProject ? (
-                <TaskConversationEnhanced
+                <TaskConversation
                   key={selectedTask.id}
                   task={selectedTask}
                   project={currentProject}
