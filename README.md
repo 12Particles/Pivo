@@ -198,4 +198,4 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 If you find this project helpful, please consider giving it a ⭐ on GitHub!
 
-For support, please open an issue or contact us at [yishuiliunian@gmail.com](mailto:yishuiliunian@gmail.com)
+For support, please open an issue.
