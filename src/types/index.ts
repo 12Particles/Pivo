@@ -287,43 +287,43 @@ export type ToolContent =
   | { type: "image"; data: string; mime_type: string }
   | { type: "resource"; uri: string; text?: string };
 
-export interface CliExecutionContext {
+export interface CodingAgentExecutionContext {
   id: string;
   task_id: string;
-  executor_type: CliExecutorType;
+  executor_type: CodingAgentType;
   working_directory: string;
   claude_session_id?: string;  // For resuming Claude conversations
 }
 
-export interface CliExecution {
+export interface CodingAgentExecution {
   id: string;
   task_id: string;
-  executor_type: CliExecutorType;
+  executor_type: CodingAgentType;
   working_directory: string;
-  status: CliExecutionStatus;
+  status: CodingAgentExecutionStatus;
   created_at: string;
 }
 
-export enum CliExecutorType {
+export enum CodingAgentType {
   ClaudeCode = "ClaudeCode",
   GeminiCli = "GeminiCli",
 }
 
-export enum CliExecutionStatus {
+export enum CodingAgentExecutionStatus {
   Starting = "Starting",
   Running = "Running",
   Stopped = "Stopped",
   Error = "Error",
 }
 
-export interface CliOutput {
+export interface CodingAgentOutput {
   execution_id: string;
-  output_type: CliOutputType;
+  output_type: CodingAgentOutputType;
   content: string;
   timestamp: string;
 }
 
-export enum CliOutputType {
+export enum CodingAgentOutputType {
   Stdout = "Stdout",
   Stderr = "Stderr",
   System = "System",

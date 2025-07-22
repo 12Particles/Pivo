@@ -16,7 +16,7 @@ import {
   ExecutorSession,
   McpServer,
   ToolExecutionRequest,
-  CliExecution,
+  CodingAgentExecution,
   GitInfo,
   TaskAttempt,
   AttemptStatus
@@ -325,12 +325,14 @@ export const cliApi = {
   // Execution management API
   startClaudeExecution: async (
     taskId: string,
+    attemptId: string,
     workingDirectory: string,
     projectPath?: string,
     storedClaudeSessionId?: string
-  ): Promise<CliExecution> => {
+  ): Promise<CodingAgentExecution> => {
     return await invoke("start_claude_execution", {
       taskId,
+      attemptId,
       workingDirectory,
       projectPath,
       storedClaudeSessionId,
@@ -341,7 +343,7 @@ export const cliApi = {
     taskId: string,
     workingDirectory: string,
     contextFiles: string[]
-  ): Promise<CliExecution> => {
+  ): Promise<CodingAgentExecution> => {
     return await invoke("start_gemini_execution", {
       taskId,
       workingDirectory,
@@ -357,11 +359,11 @@ export const cliApi = {
     return await invoke("stop_cli_execution", { executionId });
   },
 
-  getExecution: async (executionId: string): Promise<CliExecution | null> => {
+  getExecution: async (executionId: string): Promise<CodingAgentExecution | null> => {
     return await invoke("get_cli_execution", { executionId });
   },
 
-  listExecutions: async (): Promise<CliExecution[]> => {
+  listExecutions: async (): Promise<CodingAgentExecution[]> => {
     return await invoke("list_cli_executions");
   },
 
@@ -375,6 +377,39 @@ export const cliApi = {
 
   saveImagesToTemp: async (base64Images: string[]): Promise<string[]> => {
     return await invoke("save_images_to_temp", { base64Images });
+  },
+
+  // New attempt-based execution API
+  getAttemptExecutionState: async (attemptId: string): Promise<any> => {
+    return await invoke("get_attempt_execution_state", { attemptId });
+  },
+
+  getTaskExecutionSummary: async (taskId: string): Promise<any> => {
+    return await invoke("get_task_execution_summary", { taskId });
+  },
+
+  addMessage: async (
+    attemptId: string,
+    role: string,
+    content: string,
+    images: string[],
+    metadata?: any
+  ): Promise<void> => {
+    return await invoke("add_message", {
+      attemptId,
+      role,
+      content,
+      images,
+      metadata,
+    });
+  },
+
+  isAttemptActive: async (attemptId: string): Promise<boolean> => {
+    return await invoke("is_attempt_active", { attemptId });
+  },
+
+  getRunningTasks: async (): Promise<string[]> => {
+    return await invoke("get_running_tasks");
   },
 };
 

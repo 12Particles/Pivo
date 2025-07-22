@@ -1,7 +1,7 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, forwardRef, useImperativeHandle } from "react";
 import { toast } from "@/hooks/use-toast";
 import { useTranslation } from "react-i18next";
-import { Task, Project, TaskAttempt, TaskStatus, CliExecutionStatus } from "@/types";
+import { Task, Project, TaskAttempt, TaskStatus, CodingAgentExecutionStatus } from "@/types";
 import { taskAttemptApi } from "@/lib/api";
 
 // Components
@@ -11,7 +11,7 @@ import { MessageInput } from "./conversation/components/MessageInput";
 
 // Hooks
 import { useConversationState } from "./conversation/hooks/useConversationState";
-import { useExecutionManager } from "./conversation/hooks/useExecutionManager";
+import { useExecutionManagerV2 } from "./conversation/hooks/useExecutionManagerV2";
 import { useMessageHandlers } from "./conversation/hooks/useMessageHandlers";
 
 // Types
@@ -22,7 +22,12 @@ interface TaskConversationProps {
   project: Project;
 }
 
-export function TaskConversation({ task, project }: TaskConversationProps) {
+export interface TaskConversationHandle {
+  startNewExecution: () => void;
+}
+
+export const TaskConversation = forwardRef<TaskConversationHandle, TaskConversationProps>(
+  ({ task, project }, ref) => {
   const { t } = useTranslation();
   const [currentAttempt, setCurrentAttempt] = useState<TaskAttempt | null>(null);
   const [_attempts, setAttempts] = useState<TaskAttempt[]>([]);
@@ -39,6 +44,7 @@ export function TaskConversation({ task, project }: TaskConversationProps) {
     collapsedMessages
   } = state;
 
+
   // Use execution manager hook
   const {
     execution,
@@ -47,8 +53,10 @@ export function TaskConversation({ task, project }: TaskConversationProps) {
     stopExecution,
     sendToExecution,
     updateTaskStatus,
-    resetExecutionFlag
-  } = useExecutionManager({
+    resetExecutionFlag,
+    isRunning,
+    agentType: _agentType
+  } = useExecutionManagerV2({
     task,
     project,
     currentAttempt,
@@ -80,15 +88,17 @@ export function TaskConversation({ task, project }: TaskConversationProps) {
     loadAttempts();
   }, [task.id]);
 
-  // Auto-start session for new tasks
-  useEffect(() => {
-    if (task.status === "Working" && !execution && !isLoading && !currentAttempt && messages.length === 0) {
-      const taskPrompt = task.description 
-        ? `Task title: ${task.title}\nTask description: ${task.description}`
-        : `Task title: ${task.title}`;
-      startExecution(taskPrompt);
+  // Expose startExecution to parent component through imperative handle
+  useImperativeHandle(ref, () => ({
+    startNewExecution: () => {
+      if (!execution && !isLoading) {
+        const taskPrompt = task.description 
+          ? `Task title: ${task.title}\nTask description: ${task.description}`
+          : `Task title: ${task.title}`;
+        startExecution(taskPrompt);
+      }
     }
-  }, [task.status, task.id, task.title, task.description, execution, isLoading, currentAttempt, messages.length]);
+  }), [execution, isLoading, task.title, task.description, startExecution]);
 
   const loadAttempts = async () => {
     try {
@@ -98,7 +108,10 @@ export function TaskConversation({ task, project }: TaskConversationProps) {
       if (taskAttempts.length > 0) {
         const latestAttempt = taskAttempts[taskAttempts.length - 1];
         setCurrentAttempt(latestAttempt);
+        
+        // Load messages from the attempt
         await actions.loadMessages(latestAttempt);
+        
       } else {
         setCurrentAttempt(null);
         actions.clearMessages();
@@ -122,7 +135,7 @@ export function TaskConversation({ task, project }: TaskConversationProps) {
     if (!message && images.length === 0) return;
 
     // Check if Claude is still running
-    if (execution && execution.status === CliExecutionStatus.Running) {
+    if (execution && execution.status === CodingAgentExecutionStatus.Running) {
       toast({
         title: t('common.info'),
         description: t('ai.waitForCompletion'),
@@ -181,23 +194,13 @@ export function TaskConversation({ task, project }: TaskConversationProps) {
         await updateTaskStatus(TaskStatus.Working);
       }
       
-      const newExecution = await startExecution();
+      // Start execution with the message as initial prompt
+      const newExecution = await startExecution(message);
       
-      if (newExecution) {
-        try {
-          await sendToExecution(newExecution.id, message, images);
-        } catch (error) {
-          console.error("Failed to send message after creating session:", error);
-          toast({
-            title: t('common.error'),
-            description: `${t('ai.sendMessageError')}: ${error}`,
-            variant: "destructive",
-          });
-          actions.setIsSending(false);
-        }
-      } else {
+      if (!newExecution) {
         actions.setIsSending(false);
       }
+      // Note: startExecution will handle sending the message internally
     } else {
       toast({
         title: t('common.info'),
@@ -211,7 +214,7 @@ export function TaskConversation({ task, project }: TaskConversationProps) {
     <div className="h-full flex flex-col">
       <ConversationHeader
         execution={execution}
-        taskStatus={task.status}
+        isRunning={isRunning}
         isSending={isSending}
         onStopExecution={stopExecution}
       />
@@ -238,4 +241,4 @@ export function TaskConversation({ task, project }: TaskConversationProps) {
       />
     </div>
   );
-}
+});

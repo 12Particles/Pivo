@@ -14,32 +14,35 @@ interface TodoItem {
 
 export function ToolResultMessage({ message }: MessageComponentProps) {
   const { t } = useTranslation();
+  const toolName = message.metadata?.toolName || "Unknown";
+  const toolUseId = message.metadata?.toolUseId;
+  const isError = message.metadata?.error || false;
   
   // Check if this is a TodoWrite tool result
-  const isTodoWriteResult = message.metadata?.toolName === "TodoWrite" || 
-    (message.content.includes("[Using tool: TodoWrite]") || 
-     (message.content.includes("todos") && message.content.includes('"status"') && message.content.includes('"priority"')));
+  const isTodoWriteResult = toolName === "TodoWrite";
   
   if (isTodoWriteResult) {
     try {
       let todosArray: TodoItem[] | null = null;
       
-      // Try to extract todos from tool input format
-      const inputMatch = message.content.match(/Input:\s*({[\s\S]*})/m);
-      if (inputMatch) {
-        const inputData = JSON.parse(inputMatch[1]);
-        if (inputData.todos && Array.isArray(inputData.todos)) {
-          todosArray = inputData.todos;
-        }
-      }
-      
-      // Try direct JSON parse if no input match
-      if (!todosArray) {
+      // First try to parse the content as JSON directly
+      try {
         const jsonData = JSON.parse(message.content);
         if (jsonData.todos && Array.isArray(jsonData.todos)) {
           todosArray = jsonData.todos;
         } else if (Array.isArray(jsonData)) {
           todosArray = jsonData;
+        }
+      } catch {
+        // If direct parse fails, try to extract from formatted output
+        const todoRegex = /•\s*\[([^\]]+)\]\s*([^(]+)\s*\(([^)]+)\)/g;
+        const matches = Array.from(message.content.matchAll(todoRegex));
+        if (matches.length > 0) {
+          todosArray = matches.map(match => ({
+            status: match[1],
+            content: match[2].trim(),
+            priority: match[3]
+          }));
         }
       }
       
@@ -52,6 +55,9 @@ export function ToolResultMessage({ message }: MessageComponentProps) {
                 title={t('ai.toolResult')}
                 timestamp={message.timestamp}
               />
+              {toolUseId && (
+                <span className="ml-7 text-xs text-muted-foreground">Response to: {toolUseId.slice(0, 8)}</span>
+              )}
               
               <div className="ml-7 text-sm">
                 <TodoListRenderer todos={todosArray} />
@@ -66,16 +72,23 @@ export function ToolResultMessage({ message }: MessageComponentProps) {
   }
   
   return (
-    <div className="bg-muted/20 border-b">
-      <div className="py-3 px-4">
+    <div className="bg-muted/20 border-b w-full">
+      <div className="py-3 px-4 w-full">
         <MessageHeader
-          icon={<FileText className="h-4 w-4 text-gray-600" />}
+          icon={<FileText className={`h-4 w-4 ${isError ? 'text-red-600' : 'text-gray-600'}`} />}
           title={t('ai.toolResult')}
           timestamp={message.timestamp}
         />
+        {toolUseId && (
+          <span className="ml-7 text-xs text-muted-foreground">Response to: {toolUseId.slice(0, 8)}</span>
+        )}
         
-        <div className="ml-7 text-sm">
-          <div className="bg-gray-50 dark:bg-gray-900 p-3 rounded-md border border-gray-200 dark:border-gray-700">
+        <div className="ml-7 text-sm w-full overflow-x-auto">
+          <div className={`p-3 rounded-md border ${
+            isError 
+              ? 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800' 
+              : 'bg-gray-50 dark:bg-gray-900 border-gray-200 dark:border-gray-700'
+          }`}>
             <ContentRenderer content={message.content} />
           </div>
         </div>

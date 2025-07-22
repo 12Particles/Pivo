@@ -4,6 +4,7 @@ export interface MessageComponentProps {
   message: Message;
   isCollapsed?: boolean;
   onToggleCollapse?: () => void;
+  isPending?: boolean;
 }
 
 export interface MessageHeaderProps {

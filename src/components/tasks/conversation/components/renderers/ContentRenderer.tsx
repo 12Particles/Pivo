@@ -34,7 +34,7 @@ export function ContentRenderer({ content }: ContentRendererProps) {
   
   // Default rendering
   return (
-    <div className="whitespace-pre-wrap break-words">
+    <div className="whitespace-pre-wrap break-words overflow-x-auto">
       {content}
     </div>
   );

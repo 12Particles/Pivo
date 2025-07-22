@@ -3,19 +3,20 @@ import { listen } from "@tauri-apps/api/event";
 import { cliApi, taskApi, taskAttemptApi } from "@/lib/api";
 import { toast } from "@/hooks/use-toast";
 import { useTranslation } from "react-i18next";
-import { Task, CliExecution, CliOutputType, CliExecutionStatus, TaskStatus, TaskAttempt, AttemptStatus } from "@/types";
+import { Task, CodingAgentExecution, TaskStatus, TaskAttempt, AttemptStatus } from "@/types";
 import { Message } from "../types";
+import { UnifiedMessage, UnifiedMessageType } from "@/stores/useExecutionStore";
 
 interface UseMessageHandlersProps {
   task: Task;
-  execution: CliExecution | null;
+  execution: CodingAgentExecution | null;
   currentAttempt: TaskAttempt | null;
   setCurrentAttempt: (attempt: TaskAttempt | null) => void;
   addMessage: (message: Message) => void;
   saveConversation: () => Promise<void>;
-  setExecution: (execution: CliExecution | null) => void;
+  setExecution: (execution: CodingAgentExecution | null) => void;
   setIsSending: (sending: boolean) => void;
-  startExecution: (prompt?: string) => Promise<CliExecution | null>;
+  startExecution: (prompt?: string) => Promise<CodingAgentExecution | null>;
 }
 
 export function useMessageHandlers({
@@ -85,50 +86,121 @@ export function useMessageHandlers({
     };
   }, [task.id, execution, addMessage, setIsSending, startExecution]);
 
-  // Listen for CLI events
+  // Listen for unified coding agent messages
   useEffect(() => {
-    const unlistenOutput = listen<any>("cli-output", (event) => {
-      console.log("Received cli-output event:", event.payload);
+    const unlistenMessage = listen<any>("coding-agent-message", (event) => {
+      console.log("Received coding-agent-message event:", event.payload);
       if (event.payload.execution_id === execution?.id || 
           (execution && event.payload.task_id === task.id)) {
-        console.log("Adding message to conversation:", event.payload.content);
+        const unifiedMsg = event.payload.message as UnifiedMessage;
         
         let messageType: Message["type"] = "assistant";
+        let content = "";
         let metadata: Message["metadata"] = undefined;
         
-        const content = event.payload.content;
-        
-        // Detect tool usage patterns
-        if (content.includes("[Using tool:") && content.includes("]")) {
-          messageType = "tool_use";
-          const toolMatch = content.match(/\[Using tool: ([^\]]+)\]/);
-          if (toolMatch) {
-            metadata = { toolName: toolMatch[1] };
-          }
-        } else if (content.includes("[Tool Result]") || content.includes("Tool output:")) {
-          messageType = "tool_result";
-        } else if (event.payload.output_type === CliOutputType.Stderr) {
-          messageType = "error";
-          metadata = { error: true };
-        } else if (event.payload.output_type === CliOutputType.System) {
-          messageType = "system";
+        // Convert unified message to conversation message
+        switch (unifiedMsg.type) {
+          case UnifiedMessageType.Assistant:
+            messageType = "assistant";
+            content = unifiedMsg.content || "";
+            metadata = {
+              id: unifiedMsg.id,
+              thinking: unifiedMsg.thinking
+            };
+            break;
+            
+          case UnifiedMessageType.ToolUse:
+            messageType = "tool_use";
+            content = `Using tool: ${unifiedMsg.tool_name}`;
+            metadata = { 
+              toolName: unifiedMsg.tool_name,
+              structured: unifiedMsg.tool_input,
+              toolUseId: unifiedMsg.id
+            };
+            break;
+            
+          case UnifiedMessageType.ToolResult:
+            messageType = "tool_result";
+            content = unifiedMsg.result || "";
+            metadata = { 
+              toolName: unifiedMsg.tool_name,
+              error: unifiedMsg.is_error,
+              toolUseId: unifiedMsg.tool_use_id
+            };
+            break;
+            
+          case UnifiedMessageType.System:
+            messageType = "system";
+            content = unifiedMsg.content || "";
+            if (unifiedMsg.level === "error") {
+              messageType = "error";
+              metadata = { error: true, ...unifiedMsg.metadata };
+            } else {
+              metadata = unifiedMsg.metadata;
+            }
+            break;
+            
+          case UnifiedMessageType.ExecutionComplete:
+            // Handle completion - don't add as a message
+            setIsSending(false);
+            
+            // Save conversation and update task status
+            saveConversation().then(async () => {
+              if (currentAttempt && !currentAttempt.id.startsWith('mock-')) {
+                try {
+                  await taskAttemptApi.updateStatus(currentAttempt.id, AttemptStatus.Success);
+                } catch (error: any) {
+                  if (!error?.toString().includes("not found")) {
+                    console.error("Failed to update attempt status:", error);
+                  }
+                }
+              }
+              
+              console.log("Updating task status to Reviewing for task:", task.id);
+              const updatedTask = await taskApi.updateStatus(task.id, TaskStatus.Reviewing);
+              console.log("Task status updated successfully:", updatedTask);
+              toast({
+                title: t('task.taskCompleted'),
+                description: t('task.reviewResults'),
+              });
+            }).catch((error) => {
+              console.error("Failed to update task status:", error);
+              toast({
+                title: t('common.error'),
+                description: `${t('task.updateTaskError')}: ${error}`,
+                variant: "destructive",
+              });
+            });
+            // Don't add as a message - the status update is handled by the store
+            return;
+            
+          case UnifiedMessageType.Thinking:
+            messageType = "thinking";
+            content = unifiedMsg.content || "";
+            break;
+            
+          case UnifiedMessageType.Raw:
+            // Handle raw messages - could show them in a special format
+            messageType = "system";
+            content = `[${unifiedMsg.source}] Raw message`;
+            metadata = unifiedMsg.data;
+            break;
+            
+          case UnifiedMessageType.User:
+            // Should not receive user messages from backend
+            return;
         }
         
         addMessage({
           id: `${Date.now()}-${Math.random()}`,
           type: messageType,
-          content: event.payload.content,
-          timestamp: new Date(event.payload.timestamp),
+          content: content,
+          timestamp: new Date(unifiedMsg.timestamp),
           metadata,
         });
       }
     });
 
-    const unlistenStatus = listen<CliExecution>("cli-execution-status", (event) => {
-      if (event.payload.id === execution?.id || event.payload.task_id === task.id) {
-        setExecution(event.payload);
-      }
-    });
     
     const unlistenClaudeSessionId = listen<any>("claude-session-id-received", async (event) => {
       if (event.payload.task_id === task.id && currentAttempt) {
@@ -148,54 +220,11 @@ export function useMessageHandlers({
       }
     });
     
-    const unlistenComplete = listen<any>("cli-process-completed", async (event) => {
-      if (event.payload.task_id === task.id) {
-        console.log("Claude Code process completed, updating task status to Reviewing");
-        setIsSending(false);
-        
-        if (execution) {
-          setExecution({
-            ...execution,
-            status: CliExecutionStatus.Stopped
-          });
-        }
-        
-        try {
-          await saveConversation();
-          
-          if (currentAttempt && !currentAttempt.id.startsWith('mock-')) {
-            try {
-              await taskAttemptApi.updateStatus(currentAttempt.id, AttemptStatus.Success);
-            } catch (error: any) {
-              if (!error?.toString().includes("not found")) {
-                console.error("Failed to update attempt status:", error);
-              }
-            }
-          }
-          
-          console.log("Updating task status to Reviewing for task:", task.id);
-          const updatedTask = await taskApi.updateStatus(task.id, TaskStatus.Reviewing);
-          console.log("Task status updated successfully:", updatedTask);
-          toast({
-            title: t('task.taskCompleted'),
-            description: t('task.reviewResults'),
-          });
-        } catch (error) {
-          console.error("Failed to update task status:", error);
-          toast({
-            title: t('common.error'),
-            description: `${t('task.updateTaskError')}: ${error}`,
-            variant: "destructive",
-          });
-        }
-      }
-    });
+    // Process completion is now handled in the unified message listener above
 
     return () => {
-      unlistenOutput.then((fn) => fn());
-      unlistenStatus.then((fn) => fn());
+      unlistenMessage.then((fn) => fn());
       unlistenClaudeSessionId.then((fn) => fn());
-      unlistenComplete.then((fn) => fn());
     };
   }, [execution?.id, task.id, currentAttempt, setCurrentAttempt, addMessage, saveConversation, setExecution, setIsSending, t]);
 }

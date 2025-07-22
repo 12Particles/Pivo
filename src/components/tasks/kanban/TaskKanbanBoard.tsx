@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import {
   DragDropContext,
   Droppable,
@@ -10,10 +10,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Task, TaskStatus, CliExecution, CliExecutionStatus } from "@/types";
+import { Task, TaskStatus } from "@/types";
 import { Plus, Search, ChevronDown, ChevronRight, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { listen } from "@tauri-apps/api/event";
+import { useExecutionStore } from "@/stores/useExecutionStore";
 
 interface TaskKanbanBoardProps {
   tasks: Task[];
@@ -43,7 +43,9 @@ export function TaskKanbanBoard({
 }: TaskKanbanBoardProps) {
   const [searchTerm, setSearchTerm] = useState("");
   const [collapsedColumns, setCollapsedColumns] = useState<Set<TaskStatus>>(new Set());
-  const [runningTasks, setRunningTasks] = useState<Set<string>>(new Set());
+  
+  // Get task summaries from the execution store
+  const taskSummaries = useExecutionStore(state => state.taskSummaries);
 
   const filteredTasks = tasks.filter(
     (task) =>
@@ -61,37 +63,6 @@ export function TaskKanbanBoard({
     return acc;
   }, {} as Record<TaskStatus, Task[]>);
 
-  useEffect(() => {
-    // Listen for CLI execution status updates to track running tasks
-    const unlistenExecution = listen<CliExecution>("cli-execution-status", (event) => {
-      const execution = event.payload;
-      if (execution.task_id && execution.status === CliExecutionStatus.Running) {
-        setRunningTasks(prev => new Set(prev).add(execution.task_id));
-      } else if (execution.task_id && execution.status !== CliExecutionStatus.Running) {
-        setRunningTasks(prev => {
-          const newSet = new Set(prev);
-          newSet.delete(execution.task_id);
-          return newSet;
-        });
-      }
-    });
-
-    // Listen for process completion
-    const unlistenComplete = listen<any>("cli-process-completed", (event) => {
-      if (event.payload.task_id) {
-        setRunningTasks(prev => {
-          const newSet = new Set(prev);
-          newSet.delete(event.payload.task_id);
-          return newSet;
-        });
-      }
-    });
-
-    return () => {
-      unlistenExecution.then((fn) => fn());
-      unlistenComplete.then((fn) => fn());
-    };
-  }, []);
 
   const handleDragEnd = (result: DropResult) => {
     if (!result.destination) return;
@@ -196,9 +167,9 @@ export function TaskKanbanBoard({
                                     onEdit={onEditTask}
                                     onDelete={onDeleteTask}
                                   />
-                                  {column.status === TaskStatus.Working && runningTasks.has(task.id) && (
-                                    <div className="absolute top-2 right-2">
-                                      <Loader2 className="h-4 w-4 animate-spin text-blue-500" />
+                                  {column.status === TaskStatus.Working && taskSummaries.get(task.id)?.is_running && (
+                                    <div className="absolute -top-1 -right-1 z-50 bg-blue-500 rounded-full p-1.5 shadow-lg border-2 border-white dark:border-gray-800">
+                                      <Loader2 className="h-4 w-4 animate-spin text-white" />
                                     </div>
                                   )}
                                 </div>

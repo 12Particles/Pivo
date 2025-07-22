@@ -4,14 +4,14 @@ import { Sparkles, Loader2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Message } from "../types";
 import { MessageRenderer } from "./MessageRenderer";
-import { CliExecution } from "@/types";
+import { CodingAgentExecution } from "@/types";
 
 interface MessageListProps {
   messages: Message[];
   collapsedMessages: Set<string>;
   onToggleCollapse: (messageId: string) => void;
   isSending: boolean;
-  execution: CliExecution | null;
+  execution: CodingAgentExecution | null;
   taskStatus: string;
 }
 
@@ -25,6 +25,14 @@ export function MessageList({
 }: MessageListProps) {
   const { t } = useTranslation();
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  
+  // Create a set of tool_use_ids that have received results
+  const toolsWithResults = new Set<string>();
+  messages.forEach(msg => {
+    if (msg.type === "tool_result" && msg.metadata?.toolUseId) {
+      toolsWithResults.add(msg.metadata.toolUseId);
+    }
+  });
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -32,7 +40,7 @@ export function MessageList({
 
   return (
     <ScrollArea className="flex-1 bg-muted/5">
-      <div className="min-h-full">
+      <div className="min-h-full w-full">
         {messages.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-64 text-muted-foreground">
             <Sparkles className="h-12 w-12 mb-4" />
@@ -44,14 +52,27 @@ export function MessageList({
             </p>
           </div>
         ) : (
-          messages.map((message) => (
-            <MessageRenderer
-              key={message.id}
-              message={message}
-              isCollapsed={collapsedMessages.has(message.id)}
-              onToggleCollapse={() => onToggleCollapse(message.id)}
-            />
-          ))
+          messages.map((message) => {
+            // Check if this tool_use is still pending
+            // Read tools don't need to show pending state since their results are hidden
+            // If execution is not running, nothing should be pending
+            const isExecutionRunning = execution?.status === 'Running' || execution?.status === 'Starting';
+            const isPending = !!(message.type === "tool_use" && 
+              message.metadata?.toolUseId && 
+              message.metadata?.toolName !== "Read" &&
+              !toolsWithResults.has(message.metadata.toolUseId) &&
+              isExecutionRunning);
+            
+            return (
+              <MessageRenderer
+                key={message.id}
+                message={message}
+                isCollapsed={collapsedMessages.has(message.id)}
+                onToggleCollapse={() => onToggleCollapse(message.id)}
+                isPending={isPending}
+              />
+            );
+          })
         )}
         {isSending && messages.length > 0 && (
           <div className="bg-muted/30">

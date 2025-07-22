@@ -2,7 +2,8 @@ import { useState, useEffect, useRef } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { TaskKanbanBoard } from "./components/tasks/kanban/TaskKanbanBoard";
 import { TaskDetailsPanel } from "./components/tasks/details/TaskDetailsPanel";
-import { TaskConversation } from "./components/tasks/TaskConversation";
+import { TaskConversation, TaskConversationHandle } from "./components/tasks/TaskConversation";
+import { initExecutionStore } from "./stores/useExecutionStore";
 import { CreateTaskDialog } from "./components/tasks/dialogs/CreateTaskDialog";
 import { EditTaskDialog } from "./components/tasks/dialogs/EditTaskDialog";
 import { ProjectList } from "./components/projects/ProjectList";
@@ -45,6 +46,7 @@ function App() {
   const [showEditTaskDialog, setShowEditTaskDialog] = useState(false);
   const [taskToEdit, setTaskToEdit] = useState<Task | null>(null);
   const [tasks, setTasks] = useState<Task[]>([]);
+  const taskConversationRef = useRef<TaskConversationHandle>(null);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [loading, setLoading] = useState(false);
   
@@ -63,6 +65,9 @@ function App() {
     logger.init().then(() => {
       logger.info('Pivo application started');
     });
+    
+    // Initialize execution store
+    initExecutionStore();
     
     // Refresh git providers for all projects on app start
     refreshGitProviders();
@@ -248,6 +253,12 @@ function App() {
         const updatedTask = await taskApi.updateStatus(newTask.id, TaskStatus.Working);
         setTasks(prevTasks => [...prevTasks, updatedTask]);
         setSelectedTask(updatedTask);
+        
+        // Start execution after task is selected
+        setTimeout(() => {
+          taskConversationRef.current?.startNewExecution();
+        }, 100);
+        
         toast({
           title: t('task.createTaskSuccess'),
           description: t('task.taskStarted'),
@@ -299,6 +310,11 @@ function App() {
       if (selectedTask?.id === task.id) {
         setSelectedTask({ ...task, status: TaskStatus.Working });
       }
+      
+      // 直接启动执行，使用 setTimeout 确保组件已经更新
+      setTimeout(() => {
+        taskConversationRef.current?.startNewExecution();
+      }, 100);
       
       toast({
         title: t('task.taskStarted'),
@@ -624,13 +640,14 @@ function App() {
           </div>
 
           {/* 右侧面板 - 任务会话 */}
-          <div className="border-l flex flex-col h-full">
+          <div className="border-l flex flex-col h-full overflow-hidden">
               <div className="flex items-center justify-between p-4 border-b flex-shrink-0">
                 <h3 className="font-medium">{t('task.taskConversation')}</h3>
               </div>
             <div className="flex-1 overflow-hidden">
               {selectedTask && currentProject ? (
                 <TaskConversation
+                  ref={taskConversationRef}
                   key={selectedTask.id}
                   task={selectedTask}
                   project={currentProject}

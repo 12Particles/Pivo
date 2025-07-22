@@ -6,7 +6,7 @@ mod logging;
 mod menu;
 
 use std::sync::Arc;
-use services::{TaskService, ProjectService, ProcessService, TerminalService, McpServerManager, CliExecutorService, MergeRequestService, ConfigService, FileWatcherService};
+use services::{TaskService, ProjectService, ProcessService, TerminalService, McpServerManager, CodingAgentExecutorService, MergeRequestService, ConfigService, FileWatcherService};
 use tauri::Manager;
 use tokio::sync::Mutex;
 use commands::terminal::TerminalState;
@@ -49,7 +49,7 @@ pub fn run() {
                 let merge_request_service = Arc::new(MergeRequestService::new(pool.clone()));
                 let terminal_service = Arc::new(TerminalService::new(handle.clone()));
                 let mcp_manager = Arc::new(McpServerManager::new(handle.clone()));
-                let cli_service = Arc::new(CliExecutorService::new(handle.clone()));
+                let cli_service = Arc::new(CodingAgentExecutorService::new(handle.clone()));
                 let mut config_service_inner = ConfigService::new(pool.clone());
                 config_service_inner.load_from_db().await
                     .unwrap_or_else(|e| log::warn!("Failed to load config from db: {}", e));
@@ -158,6 +158,11 @@ pub fn run() {
             commands::cli::configure_claude_api_key,
             commands::cli::configure_gemini_api_key,
             commands::cli::save_images_to_temp,
+            commands::cli::get_attempt_execution_state,
+            commands::cli::get_task_execution_summary,
+            commands::cli::add_message,
+            commands::cli::is_attempt_active,
+            commands::cli::get_running_tasks,
             commands::git_info::extract_git_info_from_path,
             commands::logging::get_log_content,
             commands::logging::get_log_path,

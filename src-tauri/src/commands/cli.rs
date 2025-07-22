@@ -1,27 +1,32 @@
-use crate::services::cli_executor::{CliExecutorService, CliExecution};
+use crate::services::coding_agent_executor::{
+    CodingAgentExecutorService, CodingAgentExecution, AttemptExecutionState, 
+    TaskExecutionSummary, MessageRole
+};
 use std::sync::Arc;
 use tauri::State;
 use std::fs;
 use base64::{Engine as _, engine::general_purpose};
 
 pub struct CliState {
-    pub service: Arc<CliExecutorService>,
+    pub service: Arc<CodingAgentExecutorService>,
 }
 
 #[tauri::command]
 pub async fn start_claude_execution(
     state: State<'_, CliState>,
     task_id: String,
+    attempt_id: String,
     working_directory: String,
     project_path: Option<String>,
     stored_claude_session_id: Option<String>,
-) -> Result<CliExecution, String> {
+) -> Result<CodingAgentExecution, String> {
     state.service.start_claude_execution(
         &task_id,
+        &attempt_id,
         &working_directory,
         project_path.as_deref(),
         stored_claude_session_id.as_deref(),
-    )
+    ).await
 }
 
 #[tauri::command]
@@ -30,12 +35,12 @@ pub async fn start_gemini_execution(
     task_id: String,
     working_directory: String,
     context_files: Vec<String>,
-) -> Result<CliExecution, String> {
+) -> Result<CodingAgentExecution, String> {
     state.service.start_gemini_execution(
         &task_id,
         &working_directory,
         context_files,
-    )
+    ).await
 }
 
 #[tauri::command]
@@ -44,7 +49,7 @@ pub async fn send_cli_input(
     execution_id: String,
     input: String,
 ) -> Result<(), String> {
-    state.service.send_input(&execution_id, &input)
+    state.service.send_input(&execution_id, &input).await
 }
 
 #[tauri::command]
@@ -52,21 +57,21 @@ pub async fn stop_cli_execution(
     state: State<'_, CliState>,
     execution_id: String,
 ) -> Result<(), String> {
-    state.service.stop_execution(&execution_id)
+    state.service.stop_execution(&execution_id).await
 }
 
 #[tauri::command]
 pub async fn get_cli_execution(
     state: State<'_, CliState>,
     execution_id: String,
-) -> Result<Option<CliExecution>, String> {
+) -> Result<Option<CodingAgentExecution>, String> {
     Ok(state.service.get_execution(&execution_id))
 }
 
 #[tauri::command]
 pub async fn list_cli_executions(
     state: State<'_, CliState>,
-) -> Result<Vec<CliExecution>, String> {
+) -> Result<Vec<CodingAgentExecution>, String> {
     Ok(state.service.list_executions())
 }
 
@@ -123,4 +128,49 @@ pub async fn save_images_to_temp(
     }
     
     Ok(paths)
+}
+
+// New commands for enhanced state management
+
+#[tauri::command]
+pub async fn get_attempt_execution_state(
+    state: State<'_, CliState>,
+    attempt_id: String,
+) -> Result<Option<AttemptExecutionState>, String> {
+    Ok(state.service.get_attempt_execution_state(&attempt_id))
+}
+
+#[tauri::command]
+pub async fn get_task_execution_summary(
+    state: State<'_, CliState>,
+    task_id: String,
+) -> Result<TaskExecutionSummary, String> {
+    Ok(state.service.get_task_execution_summary(&task_id))
+}
+
+#[tauri::command]
+pub async fn add_message(
+    state: State<'_, CliState>,
+    attempt_id: String,
+    role: MessageRole,
+    content: String,
+    images: Vec<String>,
+    metadata: Option<serde_json::Value>,
+) -> Result<(), String> {
+    state.service.add_message(&attempt_id, role, content, images, metadata)
+}
+
+#[tauri::command]
+pub async fn is_attempt_active(
+    state: State<'_, CliState>,
+    attempt_id: String,
+) -> Result<bool, String> {
+    Ok(state.service.is_attempt_active(&attempt_id))
+}
+
+#[tauri::command]
+pub async fn get_running_tasks(
+    state: State<'_, CliState>,
+) -> Result<Vec<String>, String> {
+    Ok(state.service.get_running_tasks())
 }

@@ -3,7 +3,7 @@ import { cliApi, taskApi, taskAttemptApi } from "@/lib/api";
 import { toast } from "@/hooks/use-toast";
 import { useTranslation } from "react-i18next";
 import { emit } from "@tauri-apps/api/event";
-import { Task, Project, CliExecution, TaskAttempt, AttemptStatus, TaskStatus } from "@/types";
+import { Task, Project, CodingAgentExecution, TaskAttempt, AttemptStatus, TaskStatus } from "@/types";
 import { Message } from "../types";
 
 interface UseExecutionManagerProps {
@@ -32,10 +32,10 @@ export function useExecutionManager({
   setInput
 }: UseExecutionManagerProps) {
   const { t } = useTranslation();
-  const [execution, setExecution] = useState<CliExecution | null>(null);
+  const [execution, setExecution] = useState<CodingAgentExecution | null>(null);
   const isStartingExecutionRef = useRef(false);
 
-  const startExecution = useCallback(async (initialPrompt?: string): Promise<CliExecution | null> => {
+  const startExecution = useCallback(async (initialPrompt?: string): Promise<CodingAgentExecution | null> => {
     if (isStartingExecutionRef.current) {
       console.log("Already starting execution, skipping duplicate call");
       return null;
@@ -79,7 +79,7 @@ export function useExecutionManager({
       }
       
       const aiType = "claude"; // TODO: Get from settings
-      let newExecution: CliExecution;
+      let newExecution: CodingAgentExecution;
       
       const workingDirectory = attempt?.worktree_path || project.path;
       
@@ -87,6 +87,7 @@ export function useExecutionManager({
         console.log("Starting Claude Code execution with path:", workingDirectory);
         newExecution = await cliApi.startClaudeExecution(
           task.id,
+          attempt.id,
           workingDirectory,
           project.path,
           attempt?.claude_session_id

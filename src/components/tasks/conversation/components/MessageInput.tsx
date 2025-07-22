@@ -5,14 +5,14 @@ import { useTranslation } from "react-i18next";
 import { open } from "@tauri-apps/plugin-dialog";
 import { readFile } from "@tauri-apps/plugin-fs";
 import { toast } from "@/hooks/use-toast";
-import { CliExecutionStatus } from "@/types";
+import { CodingAgentExecutionStatus } from "@/types";
 
 interface MessageInputProps {
   input: string;
   images: string[];
   isSending: boolean;
   pendingMessages: string[];
-  executionStatus?: CliExecutionStatus;
+  executionStatus?: CodingAgentExecutionStatus;
   onInputChange: (value: string) => void;
   onImagesChange: (images: string[]) => void;
   onSend: () => void;
@@ -106,7 +106,7 @@ export function MessageInput({
     onImagesChange(newImages);
   };
 
-  const isDisabled = isSending || executionStatus === CliExecutionStatus.Running;
+  const isDisabled = isSending || executionStatus === CodingAgentExecutionStatus.Running;
 
   return (
     <div className="border-t bg-background p-4 space-y-3">
