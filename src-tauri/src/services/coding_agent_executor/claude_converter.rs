@@ -1,11 +1,11 @@
-use super::message::{UnifiedMessage, SystemMessageLevel, MessageConverter};
+use super::message::{AgentOutput, MessageConverter};
 use serde_json::Value;
 use log::debug;
 
 pub struct ClaudeMessageConverter;
 
 impl MessageConverter for ClaudeMessageConverter {
-    fn convert_to_unified(&self, raw_message: &str) -> Option<UnifiedMessage> {
+    fn convert_to_unified(&self, raw_message: &str) -> Option<AgentOutput> {
         // Parse the Claude JSON message
         let json: Value = serde_json::from_str(raw_message).ok()?;
         
@@ -13,7 +13,7 @@ impl MessageConverter for ClaudeMessageConverter {
             Some("thinking") => {
                 // Handle thinking messages
                 let content = json["content"].as_str()?;
-                return Some(UnifiedMessage::thinking(content.to_string()));
+                return Some(AgentOutput::thinking(content.to_string()));
             }
             
             Some("assistant") => {
@@ -27,7 +27,7 @@ impl MessageConverter for ClaudeMessageConverter {
                     match content_item["type"].as_str() {
                         Some("text") => {
                             let text = content_item["text"].as_str()?;
-                            return Some(UnifiedMessage::assistant_with_details(
+                            return Some(AgentOutput::assistant_with_details(
                                 message_id,
                                 text.to_string(),
                                 thinking,
@@ -37,7 +37,7 @@ impl MessageConverter for ClaudeMessageConverter {
                             let tool_id = content_item["id"].as_str().map(|s| s.to_string());
                             let tool_name = content_item["name"].as_str()?;
                             let tool_input = content_item["input"].clone();
-                            return Some(UnifiedMessage::tool_use_with_id(
+                            return Some(AgentOutput::tool_use_with_id(
                                 tool_id,
                                 tool_name.to_string(),
                                 tool_input,
@@ -61,7 +61,7 @@ impl MessageConverter for ClaudeMessageConverter {
                         // Extract tool name from previous context if possible
                         let tool_name = "Tool".to_string(); // Default, could be enhanced
                         
-                        return Some(UnifiedMessage::tool_result_with_id(
+                        return Some(AgentOutput::tool_result_with_id(
                             tool_use_id,
                             tool_name,
                             content.to_string(),
@@ -78,7 +78,7 @@ impl MessageConverter for ClaudeMessageConverter {
                 let duration_ms = json["duration_ms"].as_u64().unwrap_or(0);
                 let cost_usd = json["total_cost_usd"].as_f64();
                 
-                return Some(UnifiedMessage::execution_complete(
+                return Some(AgentOutput::execution_complete(
                     success,
                     summary,
                     duration_ms,
@@ -88,27 +88,23 @@ impl MessageConverter for ClaudeMessageConverter {
             
             Some("system") => {
                 if let Some("init") = json["subtype"].as_str() {
-                    let session_id = json["session_id"].as_str()?;
-                    return Some(UnifiedMessage::system_with_metadata(
-                        format!("Session initialized: {}", session_id),
-                        SystemMessageLevel::Info,
+                    let _session_id = json["session_id"].as_str()?;
+                    // Store session information in raw format
+                    return Some(AgentOutput::raw(
+                        "claude".to_string(),
                         json.clone(),
                     ));
                 } else {
-                    // Other system messages
+                    // Other system messages - convert to assistant message
                     let content = json["content"].as_str().unwrap_or("System message");
-                    return Some(UnifiedMessage::system_with_metadata(
-                        content.to_string(),
-                        SystemMessageLevel::Info,
-                        json.clone(),
-                    ));
+                    return Some(AgentOutput::assistant(content.to_string()));
                 }
             }
             
             _ => {
                 debug!("Unknown Claude message type: {:?}, preserving as raw", json["type"]);
                 // Preserve unknown messages as raw
-                return Some(UnifiedMessage::raw("claude".to_string(), json));
+                return Some(AgentOutput::raw("claude".to_string(), json));
             }
         }
         
@@ -133,7 +129,7 @@ mod tests {
         
         let unified = converter.convert_to_unified(raw).unwrap();
         match unified {
-            UnifiedMessage::Assistant { content, id, .. } => {
+            AgentOutput::Assistant { content, id, .. } => {
                 assert_eq!(content, "Hello, how can I help?");
                 assert_eq!(id, Some("msg_123".to_string()));
             }
@@ -158,7 +154,7 @@ mod tests {
         
         let unified = converter.convert_to_unified(raw).unwrap();
         match unified {
-            UnifiedMessage::ToolUse { tool_name, id, .. } => {
+            AgentOutput::ToolUse { tool_name, id, .. } => {
                 assert_eq!(tool_name, "TodoWrite");
                 assert_eq!(id, Some("tool_123".to_string()));
             }
@@ -176,7 +172,7 @@ mod tests {
         
         let unified = converter.convert_to_unified(raw).unwrap();
         match unified {
-            UnifiedMessage::Thinking { content, .. } => {
+            AgentOutput::Thinking { content, .. } => {
                 assert_eq!(content, "I need to analyze this request...");
             }
             _ => panic!("Expected Thinking message"),

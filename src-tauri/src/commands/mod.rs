@@ -1,9 +1,9 @@
 pub mod tasks;
 pub mod task_attempts;
+pub mod task_commands;
 pub mod projects;
 pub mod process;
 pub mod git;
-pub mod ai;
 pub mod terminal;
 pub mod mcp;
 pub mod cli;

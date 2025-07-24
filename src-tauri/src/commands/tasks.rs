@@ -87,3 +87,22 @@ pub async fn update_task_status(
     
     Ok(task)
 }
+
+#[tauri::command]
+pub async fn execute_task(
+    state: State<'_, AppState>,
+    cli_state: State<'_, crate::commands::cli::CliState>,
+    app_handle: AppHandle,
+    id: String,
+) -> Result<(), String> {
+    // Simply delegate to task_commands
+    crate::commands::task_commands::execute_task_command(
+        app_handle,
+        state,
+        cli_state,
+        crate::commands::task_commands::TaskCommand::StartExecution {
+            task_id: id,
+            payload: None,
+        },
+    ).await
+}

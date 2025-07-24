@@ -2,13 +2,13 @@ use async_trait::async_trait;
 use std::process::{Command, Stdio};
 use std::io::{BufRead, BufReader, Write};
 use std::thread;
+use std::sync::mpsc::Sender;
 use tauri::{AppHandle, Emitter};
 use log::{info, debug};
 use chrono::Utc;
 use uuid::Uuid;
-use super::agent::{CodingAgent, SessionInfo};
+use super::agent::{CodingAgent, ExecutionContext, ChannelMessage};
 use super::types::*;
-use super::message::{UnifiedMessage};
 use super::stateful_claude_converter::StatefulClaudeMessageConverter;
 
 pub struct ClaudeCodeAgent {
@@ -45,7 +45,7 @@ impl ClaudeCodeAgent {
         cmd_parts
     }
     
-    fn spawn_process(&self, cmd: &str, input: &str, execution_id: &str, task_id: &str) -> Result<(), String> {
+    fn spawn_process(&self, cmd: &str, input: &str, execution_id: &str, task_id: &str, attempt_id: &str, message_sender: Sender<ChannelMessage>) -> Result<(), String> {
         debug!("Spawning Claude Code with command: {}", cmd);
         
         let mut command = Command::new("sh");
@@ -70,6 +70,7 @@ impl ClaudeCodeAgent {
         if let Some(stdout) = child.stdout.take() {
             let execution_id = execution_id.to_string();
             let task_id = task_id.to_string();
+            let attempt_id = attempt_id.to_string();
             let app_handle = self.app_handle.clone();
             
             thread::spawn(move || {
@@ -81,13 +82,16 @@ impl ClaudeCodeAgent {
                         debug!("Claude stdout: {}", content);
                         
                         // Try to convert to unified message format
-                        if let Some(unified_msg) = converter.convert_to_unified(&content) {
-                            // Emit unified message
-                            let _ = app_handle.emit("coding-agent-message", serde_json::json!({
-                                "execution_id": execution_id.clone(),
-                                "task_id": task_id.clone(),
-                                "message": unified_msg,
-                            }));
+                        if let Some(agent_output) = converter.convert_to_unified(&content) {
+                            // Convert AgentOutput to ConversationMessage
+                            if let Some(conversation_msg) = crate::services::coding_agent_executor::service::convert_to_conversation_message(&agent_output) {
+                                // Send message through channel to service
+                                let _ = message_sender.send(ChannelMessage {
+                                    attempt_id: attempt_id.clone(),
+                                    task_id: task_id.clone(),
+                                    message: conversation_msg,
+                                });
+                            }
                         }
                         
                         // Also check for session ID in system messages
@@ -115,13 +119,37 @@ impl ClaudeCodeAgent {
                     }
                 }
                 
-                // Notify that the process has completed
-                let _ = app_handle.emit("coding-agent-process-completed", serde_json::json!({
-                    "execution_id": execution_id,
-                    "task_id": task_id
-                }));
+                // Send execution complete message when process ends
+                let complete_msg = ConversationMessage {
+                    id: format!("{}-complete-{}", Utc::now().to_rfc3339(), {
+                        use rand::Rng;
+                        let mut rng = rand::thread_rng();
+                        let random_suffix: String = (0..8)
+                            .map(|_| {
+                                let charset = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+                                let idx = rng.gen_range(0..charset.len());
+                                charset[idx] as char
+                            })
+                            .collect();
+                        random_suffix
+                    }),
+                    role: MessageRole::System,
+                    message_type: "execution_complete".to_string(),
+                    content: "Execution completed".to_string(),
+                    timestamp: Utc::now(),
+                    metadata: Some(serde_json::json!({
+                        "success": true,
+                        "summary": "Execution completed",
+                    })),
+                };
                 
-                debug!("Stdout reader thread ended for session: {}", execution_id);
+                let _ = message_sender.send(ChannelMessage {
+                    attempt_id: attempt_id.clone(),
+                    task_id: task_id.clone(),
+                    message: complete_msg,
+                });
+                
+                debug!("Stdout reader thread ended for execution: {}", execution_id);
             });
         }
         
@@ -129,6 +157,7 @@ impl ClaudeCodeAgent {
         if let Some(stderr) = child.stderr.take() {
             let execution_id = execution_id.to_string();
             let task_id = task_id.to_string();
+            let _attempt_id = attempt_id.to_string();
             let app_handle = self.app_handle.clone();
             
             thread::spawn(move || {
@@ -145,7 +174,7 @@ impl ClaudeCodeAgent {
                         let _ = app_handle.emit("coding-agent-output", &output);
                     }
                 }
-                debug!("Stderr reader thread ended for session: {}", execution_id);
+                debug!("Stderr reader thread ended for execution: {}", execution_id);
             });
         }
         
@@ -155,61 +184,47 @@ impl ClaudeCodeAgent {
 
 #[async_trait]
 impl CodingAgent for ClaudeCodeAgent {
-    fn agent_type(&self) -> CodingAgentType {
-        CodingAgentType::ClaudeCode
-    }
     
-    async fn start_session(
+    async fn execute_prompt(
         &self,
-        task_id: &str,
-        attempt_id: &str,
-        working_directory: &str,
-        _project_path: Option<&str>,
-        _stored_session_id: Option<&str>,
+        prompt: &str,
+        execution_context: ExecutionContext,
+        message_sender: Sender<ChannelMessage>,
     ) -> Result<CodingAgentExecution, String> {
-        info!("Starting Claude Code execution for attempt: {} (task: {})", attempt_id, task_id);
+        info!("Executing Claude Code prompt for attempt: {} (task: {})", 
+            execution_context.attempt_id, execution_context.task_id);
         
         let execution_id = Uuid::new_v4().to_string();
         let execution = CodingAgentExecution {
             id: execution_id.clone(),
-            task_id: task_id.to_string(),
+            task_id: execution_context.task_id.clone(),
             executor_type: CodingAgentType::ClaudeCode,
-            working_directory: working_directory.to_string(),
+            working_directory: execution_context.working_directory.clone(),
             status: CodingAgentExecutionStatus::Running,
             created_at: Utc::now(),
         };
         
+        // User message will be created by the service layer
+        
+        // Build command and spawn process
+        let cmd_parts = self.build_command(&execution_context.working_directory, execution_context.resume_session_id.as_deref());
+        let cmd = cmd_parts.join(" ");
+        
+        self.spawn_process(&cmd, prompt, &execution_id, &execution_context.task_id, &execution_context.attempt_id, message_sender)?;
+        
         Ok(execution)
     }
     
-    async fn send_input(
-        &self,
-        execution_id: &str,
-        session_info: &SessionInfo,
-        input: &str,
-    ) -> Result<(), String> {
-        info!("Sending input to Claude session {}: {}", execution_id, input);
-        
-        let cmd_parts = self.build_command(&session_info.working_directory, session_info.session_id.as_deref());
-        let cmd = cmd_parts.join(" ");
-        
-        self.spawn_process(&cmd, input, execution_id, &session_info.task_id)
-    }
-    
-    async fn stop_session(
+    async fn stop_execution(
         &self,
         _execution_id: &str,
-        session_info: &SessionInfo,
+        execution_context: &ExecutionContext,
     ) -> Result<(), String> {
-        // Kill all npx processes for this session
+        // Kill all npx processes for this execution
         let _ = std::process::Command::new("pkill")
-            .args(&["-f", &format!("npx.*claude-code.*{}", session_info.session_id.as_deref().unwrap_or(""))])
+            .args(&["-f", &format!("npx.*claude-code.*{}", execution_context.resume_session_id.as_deref().unwrap_or(""))])
             .output();
         
         Ok(())
-    }
-    
-    fn supports_resume(&self) -> bool {
-        true
     }
 }

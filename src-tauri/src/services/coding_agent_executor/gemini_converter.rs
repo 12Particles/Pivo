@@ -1,11 +1,9 @@
-use super::message::{UnifiedMessage, SystemMessageLevel, MessageConverter};
-use serde_json::Value;
-use log::debug;
+use super::message::{AgentOutput, MessageConverter};
 
 pub struct GeminiMessageConverter;
 
 impl MessageConverter for GeminiMessageConverter {
-    fn convert_to_unified(&self, raw_message: &str) -> Option<UnifiedMessage> {
+    fn convert_to_unified(&self, raw_message: &str) -> Option<AgentOutput> {
         // For now, Gemini outputs plain text, so we'll treat everything as assistant messages
         // In the future, if Gemini CLI adds structured output, we can parse it here
         
@@ -16,22 +14,24 @@ impl MessageConverter for GeminiMessageConverter {
         
         // Check for common patterns in Gemini output
         if raw_message.starts_with("Error:") || raw_message.starts_with("ERROR:") {
-            return Some(UnifiedMessage::system(
+            return Some(AgentOutput::assistant_with_details(
+                None,
                 raw_message.to_string(),
-                SystemMessageLevel::Error,
+                None,
             ));
         }
         
         if raw_message.starts_with("Warning:") || raw_message.starts_with("WARN:") {
-            return Some(UnifiedMessage::system(
+            return Some(AgentOutput::assistant_with_details(
+                None,
                 raw_message.to_string(),
-                SystemMessageLevel::Warning,
+                None,
             ));
         }
         
         // Check for completion patterns
         if raw_message.contains("Task completed") || raw_message.contains("Execution finished") {
-            return Some(UnifiedMessage::execution_complete(
+            return Some(AgentOutput::execution_complete(
                 true,
                 raw_message.to_string(),
                 0, // Duration not available from plain text
@@ -40,7 +40,7 @@ impl MessageConverter for GeminiMessageConverter {
         }
         
         // Default: treat as assistant message
-        Some(UnifiedMessage::assistant(raw_message.to_string()))
+        Some(AgentOutput::assistant(raw_message.to_string()))
     }
 }
 
@@ -55,7 +55,7 @@ mod tests {
         
         let unified = converter.convert_to_unified(raw).unwrap();
         match unified {
-            UnifiedMessage::Assistant { content, .. } => {
+            AgentOutput::Assistant { content, .. } => {
                 assert_eq!(content, "Hello, I'm analyzing your code.");
             }
             _ => panic!("Expected Assistant message"),
@@ -69,14 +69,10 @@ mod tests {
         
         let unified = converter.convert_to_unified(raw).unwrap();
         match unified {
-            UnifiedMessage::System { content, level, .. } => {
+            AgentOutput::Assistant { content, .. } => {
                 assert_eq!(content, "Error: Failed to access file");
-                match level {
-                    SystemMessageLevel::Error => {},
-                    _ => panic!("Expected Error level"),
-                }
             }
-            _ => panic!("Expected System message"),
+            _ => panic!("Expected Assistant message"),
         }
     }
     

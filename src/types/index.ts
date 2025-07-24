@@ -173,55 +173,6 @@ export interface TerminalSession {
   shell: string;
 }
 
-export interface ExecutorConfig {
-  name: string;
-  model: string;
-  api_key?: string;
-  base_url?: string;
-  max_tokens?: number;
-  temperature?: number;
-}
-
-export interface ExecutorSession {
-  id: string;
-  executor_type: string;
-  task_id: string;
-  messages: Message[];
-  context: Record<string, string>;
-  created_at: string;
-}
-
-export interface Message {
-  role: MessageRole;
-  content: string;
-  timestamp: string;
-  metadata?: Record<string, any>;
-}
-
-export enum MessageRole {
-  System = "system",
-  User = "user",
-  Assistant = "assistant",
-  Tool = "tool",
-}
-
-export interface ExecutorResponse {
-  content: string;
-  tool_calls: ToolCall[];
-  usage?: Usage;
-}
-
-export interface ToolCall {
-  id: string;
-  name: string;
-  arguments: Record<string, any>;
-}
-
-export interface Usage {
-  prompt_tokens: number;
-  completion_tokens: number;
-  total_tokens: number;
-}
 
 export interface McpServer {
   id: string;
@@ -305,14 +256,14 @@ export interface CodingAgentExecution {
 }
 
 export enum CodingAgentType {
-  ClaudeCode = "ClaudeCode",
-  GeminiCli = "GeminiCli",
+  ClaudeCode = "claude_code",
+  GeminiCli = "gemini_cli",
 }
 
 export enum CodingAgentExecutionStatus {
   Starting = "Starting",
   Running = "Running",
-  Stopped = "Stopped",
+  Completed = "Completed",
   Error = "Error",
 }
 

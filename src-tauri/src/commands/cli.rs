@@ -1,6 +1,6 @@
 use crate::services::coding_agent_executor::{
     CodingAgentExecutorService, CodingAgentExecution, AttemptExecutionState, 
-    TaskExecutionSummary, MessageRole
+    TaskExecutionSummary, CodingAgentType
 };
 use std::sync::Arc;
 use tauri::State;
@@ -12,44 +12,57 @@ pub struct CliState {
 }
 
 #[tauri::command]
-pub async fn start_claude_execution(
+pub async fn execute_prompt(
     state: State<'_, CliState>,
+    prompt: String,
     task_id: String,
     attempt_id: String,
     working_directory: String,
-    project_path: Option<String>,
-    stored_claude_session_id: Option<String>,
+    agent_type: CodingAgentType,
+    resume_session_id: Option<String>,
 ) -> Result<CodingAgentExecution, String> {
-    state.service.start_claude_execution(
+    state.service.execute_prompt(
+        &prompt,
         &task_id,
         &attempt_id,
         &working_directory,
-        project_path.as_deref(),
-        stored_claude_session_id.as_deref(),
+        agent_type,
+        resume_session_id,
     ).await
 }
 
 #[tauri::command]
-pub async fn start_gemini_execution(
+pub async fn execute_claude_prompt(
     state: State<'_, CliState>,
+    prompt: String,
     task_id: String,
+    attempt_id: String,
     working_directory: String,
-    context_files: Vec<String>,
+    resume_session_id: Option<String>,
 ) -> Result<CodingAgentExecution, String> {
-    state.service.start_gemini_execution(
+    state.service.execute_claude_prompt(
+        &prompt,
         &task_id,
+        &attempt_id,
         &working_directory,
-        context_files,
+        resume_session_id,
     ).await
 }
 
 #[tauri::command]
-pub async fn send_cli_input(
+pub async fn execute_gemini_prompt(
     state: State<'_, CliState>,
-    execution_id: String,
-    input: String,
-) -> Result<(), String> {
-    state.service.send_input(&execution_id, &input).await
+    prompt: String,
+    task_id: String,
+    attempt_id: String,
+    working_directory: String,
+) -> Result<CodingAgentExecution, String> {
+    state.service.execute_gemini_prompt(
+        &prompt,
+        &task_id,
+        &attempt_id,
+        &working_directory,
+    ).await
 }
 
 #[tauri::command]
@@ -148,17 +161,6 @@ pub async fn get_task_execution_summary(
     Ok(state.service.get_task_execution_summary(&task_id))
 }
 
-#[tauri::command]
-pub async fn add_message(
-    state: State<'_, CliState>,
-    attempt_id: String,
-    role: MessageRole,
-    content: String,
-    images: Vec<String>,
-    metadata: Option<serde_json::Value>,
-) -> Result<(), String> {
-    state.service.add_message(&attempt_id, role, content, images, metadata)
-}
 
 #[tauri::command]
 pub async fn is_attempt_active(

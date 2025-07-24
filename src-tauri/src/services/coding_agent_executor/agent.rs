@@ -1,48 +1,39 @@
 use async_trait::async_trait;
+use std::sync::mpsc::Sender;
 use super::types::*;
+
+/// Channel message that routes ConversationMessage to the correct task/attempt
+pub struct ChannelMessage {
+    pub attempt_id: String,
+    pub task_id: String,
+    pub message: ConversationMessage,
+}
 
 /// Trait defining the interface for all coding agents
 #[async_trait]
 pub trait CodingAgent: Send + Sync {
-    /// Get the agent type
-    fn agent_type(&self) -> CodingAgentType;
-    
-    /// Start a new execution session
-    async fn start_session(
+    /// Execute a prompt with the coding agent
+    /// This starts a new process that runs until completion
+    async fn execute_prompt(
         &self,
-        task_id: &str,
-        attempt_id: &str,
-        working_directory: &str,
-        project_path: Option<&str>,
-        stored_session_id: Option<&str>,
+        prompt: &str,
+        execution_context: ExecutionContext,
+        message_sender: Sender<ChannelMessage>,
     ) -> Result<CodingAgentExecution, String>;
     
-    /// Send input to an active session
-    async fn send_input(
+    /// Stop a running execution
+    async fn stop_execution(
         &self,
         execution_id: &str,
-        session_info: &SessionInfo,
-        input: &str,
+        execution_context: &ExecutionContext,
     ) -> Result<(), String>;
-    
-    /// Stop an active session
-    async fn stop_session(
-        &self,
-        execution_id: &str,
-        session_info: &SessionInfo,
-    ) -> Result<(), String>;
-    
-    /// Check if the agent supports resuming sessions
-    fn supports_resume(&self) -> bool {
-        false
-    }
 }
 
-/// Information about an active session
+/// Context for executing a coding agent
 #[derive(Debug, Clone)]
-pub struct SessionInfo {
+pub struct ExecutionContext {
     pub task_id: String,
     pub attempt_id: String,
     pub working_directory: String,
-    pub session_id: Option<String>,
+    pub resume_session_id: Option<String>, // For agents that support resuming
 }

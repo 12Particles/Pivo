@@ -1,4 +1,4 @@
-use super::message::{UnifiedMessage, SystemMessageLevel, MessageConverter};
+use super::message::{AgentOutput, MessageConverter};
 use super::claude_converter::ClaudeMessageConverter;
 use serde_json::Value;
 use std::collections::HashMap;
@@ -21,7 +21,7 @@ impl StatefulClaudeMessageConverter {
         }
     }
     
-    pub fn convert_to_unified(&self, raw_message: &str) -> Option<UnifiedMessage> {
+    pub fn convert_to_unified(&self, raw_message: &str) -> Option<AgentOutput> {
         // Parse the Claude JSON message
         let json: Value = serde_json::from_str(raw_message).ok()?;
         
@@ -71,7 +71,7 @@ impl StatefulClaudeMessageConverter {
                         
                         debug!("Tool result for tool: {} (id: {:?})", tool_name, tool_use_id);
                         
-                        return Some(UnifiedMessage::tool_result_with_id(
+                        return Some(AgentOutput::tool_result_with_id(
                             tool_use_id,
                             tool_name,
                             content.to_string(),

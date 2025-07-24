@@ -28,6 +28,7 @@
     "@tauri-apps/plugin-fs": "^2.4.0",
     "@tauri-apps/plugin-opener": "^2",
     "@tauri-apps/plugin-shell": "^2.3.0",
+    "@xstate/react": "^6.0.0",
     "@xterm/addon-fit": "^0.10.0",
     "@xterm/addon-web-links": "^0.11.0",
     "@xterm/xterm": "^5.5.0",
@@ -42,6 +43,7 @@
     "react-resizable-panels": "^3.0.3",
     "tailwind-merge": "^3.3.1",
     "tailwindcss-animate": "^1.0.7",
+    "xstate": "^5.20.1",
     "zustand": "^5.0.6"
   },
   "devDependencies": {

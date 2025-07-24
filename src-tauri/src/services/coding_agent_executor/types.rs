@@ -12,6 +12,7 @@ pub struct CodingAgentExecution {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash)]
+#[serde(rename_all = "snake_case")]
 pub enum CodingAgentType {
     ClaudeCode,
     GeminiCli,
@@ -21,7 +22,7 @@ pub enum CodingAgentType {
 pub enum CodingAgentExecutionStatus {
     Starting,
     Running,
-    Stopped,
+    Completed,
     Error(String),
 }
 
@@ -61,6 +62,57 @@ pub struct TaskExecutionSummary {
 }
 
 // Message-related structures
+// 统一的对话消息格式（用于前后端通信和数据库存储）
+#[derive(Clone, Serialize, Deserialize, Debug)]
+pub struct ConversationMessage {
+    pub id: String,
+    pub role: MessageRole,
+    #[serde(rename = "messageType")]
+    pub message_type: String,  // 子类型: text, tool_use, tool_result, thinking 等
+    pub content: String,
+    pub timestamp: DateTime<Utc>,
+    pub metadata: Option<serde_json::Value>,
+}
+
+impl ConversationMessage {
+    /// Generate a standardized ID for the message
+    pub fn generate_id(&self) -> String {
+        use rand::Rng;
+        let mut rng = rand::thread_rng();
+        let random_suffix: String = (0..8)
+            .map(|_| {
+                let charset = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+                let idx = rng.gen_range(0..charset.len());
+                charset[idx] as char
+            })
+            .collect();
+        
+        format!(
+            "{}-{}-{}-{}",
+            self.timestamp.timestamp_millis(),
+            self.role,
+            self.message_type,
+            random_suffix
+        )
+    }
+    
+    /// Create a new message with auto-generated ID
+    pub fn new(role: MessageRole, message_type: String, content: String, metadata: Option<serde_json::Value>) -> Self {
+        let timestamp = Utc::now();
+        let mut msg = Self {
+            id: String::new(), // Will be set below
+            role,
+            message_type,
+            content,
+            timestamp,
+            metadata,
+        };
+        msg.id = msg.generate_id();
+        msg
+    }
+}
+
+// 保留原有的 Message 结构用于内部使用
 #[derive(Clone, Serialize, Deserialize, Debug)]
 pub struct Message {
     pub id: String,
@@ -72,11 +124,21 @@ pub struct Message {
 }
 
 #[derive(Clone, Serialize, Deserialize, Debug)]
+#[serde(rename_all = "lowercase")]
 pub enum MessageRole {
     User,
     Assistant,
-    Tool,
     System,
+}
+
+impl std::fmt::Display for MessageRole {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            MessageRole::User => write!(f, "user"),
+            MessageRole::Assistant => write!(f, "assistant"),
+            MessageRole::System => write!(f, "system"),
+        }
+    }
 }
 
 impl std::fmt::Display for CodingAgentType {

@@ -11,15 +11,13 @@ import {
   ProcessType,
   GitStatus,
   TerminalSession,
-  ExecutorConfig,
-  ExecutorResponse,
-  ExecutorSession,
   McpServer,
   ToolExecutionRequest,
   CodingAgentExecution,
   GitInfo,
   TaskAttempt,
-  AttemptStatus
+  AttemptStatus,
+  CodingAgentType
 } from "@/types";
 
 // Task API
@@ -305,54 +303,61 @@ export const mcpApi = {
 
 // CLI API
 export const cliApi = {
-  // New simplified API
-  executeClaudeCommand: async (
+
+  // Execution management API
+  executePrompt: async (
+    prompt: string,
     taskId: string,
+    attemptId: string,
     workingDirectory: string,
-    message: string,
-    claudeSessionId?: string,
-    projectPath?: string
-  ): Promise<void> => {
-    return await invoke("execute_claude_command", {
+    agentType: CodingAgentType,
+    projectPath?: string,
+    resumeSessionId?: string
+  ): Promise<CodingAgentExecution> => {
+    return await invoke("execute_prompt", {
+      prompt,
       taskId,
+      attemptId,
       workingDirectory,
-      message,
-      claudeSessionId,
+      agentType,
       projectPath,
+      resumeSessionId,
     });
   },
 
-  // Execution management API
-  startClaudeExecution: async (
+  // Deprecated: Use executePrompt instead
+  executeClaudePrompt: async (
+    prompt: string,
     taskId: string,
     attemptId: string,
     workingDirectory: string,
     projectPath?: string,
-    storedClaudeSessionId?: string
+    resumeSessionId?: string
   ): Promise<CodingAgentExecution> => {
-    return await invoke("start_claude_execution", {
+    return await invoke("execute_claude_prompt", {
+      prompt,
       taskId,
       attemptId,
       workingDirectory,
       projectPath,
-      storedClaudeSessionId,
+      resumeSessionId,
     });
   },
 
-  startGeminiExecution: async (
+  executeGeminiPrompt: async (
+    prompt: string,
     taskId: string,
+    attemptId: string,
     workingDirectory: string,
-    contextFiles: string[]
+    projectPath?: string
   ): Promise<CodingAgentExecution> => {
-    return await invoke("start_gemini_execution", {
+    return await invoke("execute_gemini_prompt", {
+      prompt,
       taskId,
+      attemptId,
       workingDirectory,
-      contextFiles,
+      projectPath,
     });
-  },
-
-  sendInput: async (executionId: string, input: string): Promise<void> => {
-    return await invoke("send_cli_input", { executionId, input });
   },
 
   stopExecution: async (executionId: string): Promise<void> => {
@@ -413,42 +418,6 @@ export const cliApi = {
   },
 };
 
-// AI API
-export const aiApi = {
-  initSession: async (
-    executorType: string,
-    taskId: string,
-    initialPrompt: string,
-    config: ExecutorConfig
-  ): Promise<string> => {
-    return await invoke("init_ai_session", {
-      executorType,
-      taskId,
-      initialPrompt,
-      config,
-    });
-  },
-
-  sendMessage: async (
-    sessionId: string,
-    message: string,
-    executorConfig: ExecutorConfig
-  ): Promise<ExecutorResponse> => {
-    return await invoke("send_ai_message", { sessionId, message, executorConfig });
-  },
-
-  getSession: async (sessionId: string): Promise<ExecutorSession> => {
-    return await invoke("get_ai_session", { sessionId });
-  },
-
-  listSessions: async (): Promise<string[]> => {
-    return await invoke("list_ai_sessions");
-  },
-
-  closeSession: async (sessionId: string): Promise<void> => {
-    return await invoke("close_ai_session", { sessionId });
-  },
-};
 
 // Git Info API
 export const gitInfoApi = {

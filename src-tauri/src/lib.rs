@@ -1,12 +1,14 @@
 mod db;
 mod models;
 mod services;
+mod repository;
 mod commands;
 mod logging;
 mod menu;
 
 use std::sync::Arc;
 use services::{TaskService, ProjectService, ProcessService, TerminalService, McpServerManager, CodingAgentExecutorService, MergeRequestService, ConfigService, FileWatcherService};
+use repository::DatabaseRepository;
 use tauri::Manager;
 use tokio::sync::Mutex;
 use commands::terminal::TerminalState;
@@ -42,6 +44,9 @@ pub fn run() {
                 let pool = db::init_database(&handle).await
                     .expect("Failed to initialize database");
                 
+                // Create database repository
+                let db_repository = Arc::new(DatabaseRepository::new(pool.clone()));
+                
                 // Create services
                 let task_service = Arc::new(TaskService::new(pool.clone()));
                 let project_service = Arc::new(ProjectService::new(pool.clone()));
@@ -49,7 +54,7 @@ pub fn run() {
                 let merge_request_service = Arc::new(MergeRequestService::new(pool.clone()));
                 let terminal_service = Arc::new(TerminalService::new(handle.clone()));
                 let mcp_manager = Arc::new(McpServerManager::new(handle.clone()));
-                let cli_service = Arc::new(CodingAgentExecutorService::new(handle.clone()));
+                let cli_service = Arc::new(CodingAgentExecutorService::new(handle.clone(), db_repository.clone()));
                 let mut config_service_inner = ConfigService::new(pool.clone());
                 config_service_inner.load_from_db().await
                     .unwrap_or_else(|e| log::warn!("Failed to load config from db: {}", e));
@@ -95,6 +100,9 @@ pub fn run() {
             commands::tasks::update_task,
             commands::tasks::delete_task,
             commands::tasks::update_task_status,
+            commands::tasks::execute_task,
+            commands::task_commands::execute_task_command,
+            commands::task_commands::get_conversation_state,
             commands::task_attempts::create_task_attempt,
             commands::task_attempts::get_task_attempt,
             commands::task_attempts::list_task_attempts,
@@ -127,11 +135,6 @@ pub fn run() {
             commands::git::get_git_diff,
             commands::git::check_rebase_status,
             commands::git::get_branch_commit,
-            commands::ai::init_ai_session,
-            commands::ai::send_ai_message,
-            commands::ai::get_ai_session,
-            commands::ai::list_ai_sessions,
-            commands::ai::close_ai_session,
             commands::terminal::create_terminal_session,
             commands::terminal::write_to_terminal,
             commands::terminal::resize_terminal,
@@ -149,9 +152,9 @@ pub fn run() {
             commands::mcp::read_mcp_resource,
             commands::mcp::list_mcp_prompts,
             commands::mcp::get_mcp_prompt,
-            commands::cli::start_claude_execution,
-            commands::cli::start_gemini_execution,
-            commands::cli::send_cli_input,
+            commands::cli::execute_prompt,
+            commands::cli::execute_claude_prompt,
+            commands::cli::execute_gemini_prompt,
             commands::cli::stop_cli_execution,
             commands::cli::get_cli_execution,
             commands::cli::list_cli_executions,
@@ -160,7 +163,6 @@ pub fn run() {
             commands::cli::save_images_to_temp,
             commands::cli::get_attempt_execution_state,
             commands::cli::get_task_execution_summary,
-            commands::cli::add_message,
             commands::cli::is_attempt_active,
             commands::cli::get_running_tasks,
             commands::git_info::extract_git_info_from_path,
