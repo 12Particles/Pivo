@@ -7,7 +7,7 @@ import { ProjectMainView } from '@/features/layout/components/ProjectMainView';
 import { LayoutToggleButtons } from '@/features/layout/components/LayoutToggleButtons';
 import { TaskKanbanBoard } from '@/features/tasks/kanban/TaskKanbanBoard';
 import { TaskDetailsPanel } from '@/features/tasks/details/TaskDetailsPanel';
-import { SimpleTaskConversation } from './conversation/SimpleTaskConversation';
+import { TaskConversation } from './conversation/TaskConversation';
 import { CreateTaskDialog } from '@/features/tasks/dialogs/CreateTaskDialog';
 import { EditTaskDialog } from '@/features/tasks/dialogs/EditTaskDialog';
 import { Button } from '@/components/ui/button';
@@ -232,7 +232,7 @@ export function TasksView() {
         }
         rightPanel={
           selectedTask && currentProject ? (
-            <SimpleTaskConversation
+            <TaskConversation
               task={selectedTask}
               project={currentProject}
             />

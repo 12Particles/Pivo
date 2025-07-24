@@ -1,5 +1,6 @@
 // Export the main component
-export { SimpleTaskConversation as TaskConversation } from "./SimpleTaskConversation";
+export { TaskConversation } from "./TaskConversation";
+export type { TaskConversationProps } from "./TaskConversation";
 
 // Export individual components if needed elsewhere
 export { ConversationHeader } from "./components/ConversationHeader";
@@ -11,7 +12,5 @@ export { useTaskCommand } from "./hooks/useTaskCommand";
 export { useTaskConversationState } from "./hooks/useTaskConversationState";
 
 // Export types
-export type { Message, ConversationState } from "./types";
-
-// No longer export legacy interfaces
-// export type { TaskConversationHandle } from "./TaskConversation";
+export type { Message } from "./types";
+export type { ConversationState } from "./hooks/useTaskConversationState";

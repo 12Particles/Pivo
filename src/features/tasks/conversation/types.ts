@@ -117,21 +117,3 @@ export type Message =
   | UserMessage
   | AssistantMessage
   | SystemMessage;
-
-export interface ConversationState {
-  messages: Message[];
-  input: string;
-  images: string[];
-  isLoading: boolean;
-  isSending: boolean;
-  pendingMessages: string[];
-  collapsedMessages: Set<string>;
-}
-
-export interface ConversationProps {
-  task: import("@/types").Task;
-  project: import("@/types").Project;
-  currentAttempt: import("@/types").TaskAttempt | null;
-  execution: import("@/types").CodingAgentExecution | null;
-  onAttemptsChange?: (attempts: import("@/types").TaskAttempt[]) => void;
-}

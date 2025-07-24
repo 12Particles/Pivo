@@ -33,6 +33,7 @@ pub enum TaskCommand {
 pub struct StartExecutionPayload {
     #[serde(rename = "initialMessage")]
     initial_message: Option<String>,
+    images: Option<Vec<String>>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -143,6 +144,14 @@ async fn start_execution(
     let task_service = &state.task_service;
     let task_uuid = Uuid::parse_str(task_id).map_err(|e| e.to_string())?;
     
+    // Update task status to Working
+    let updated_task = task_service.update_task_status(task_uuid, crate::models::TaskStatus::Working)
+        .await
+        .map_err(|e| e.to_string())?;
+    
+    // Emit task status update event
+    let _ = app.emit("task-status-updated", &updated_task);
+    
     // Get or create attempt
     let attempts = task_service.list_task_attempts(task_uuid)
         .await
@@ -229,9 +238,11 @@ async fn send_message(
     }
     
     // Start a new execution with the message
-    log::info!("Starting new execution for task {} with message", task_id);
+    log::info!("Starting new execution for task {} with message and {} images", 
+        task_id, payload.images.as_ref().map(|imgs| imgs.len()).unwrap_or(0));
     start_execution(app, state, cli_state, task_id, Some(StartExecutionPayload {
         initial_message: Some(payload.message),
+        images: payload.images,
     })).await?;
     
     // Emit state update
@@ -246,6 +257,9 @@ async fn stop_execution(
     cli_state: &State<'_, CliState>,
     task_id: &str,
 ) -> Result<(), String> {
+    let task_service = &state.task_service;
+    let task_uuid = Uuid::parse_str(task_id).map_err(|e| e.to_string())?;
+    
     // Get current execution
     let executions = cli_state.service.list_executions();
     if let Some(execution) = executions.iter().find(|e| e.task_id == task_id) {
@@ -254,6 +268,14 @@ async fn stop_execution(
             execution.id.clone(),
         ).await?;
     }
+    
+    // Update task status back to Backlog when stopping
+    let updated_task = task_service.update_task_status(task_uuid, crate::models::TaskStatus::Backlog)
+        .await
+        .map_err(|e| e.to_string())?;
+    
+    // Emit task status update event
+    let _ = app.emit("task-status-updated", &updated_task);
     
     // Emit state update
     emit_state_update(app, state, cli_state, task_id).await;

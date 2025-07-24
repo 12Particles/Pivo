@@ -10,7 +10,6 @@ import {
   ExecutionProcess,
   ProcessType,
   GitStatus,
-  TerminalSession,
   McpServer,
   ToolExecutionRequest,
   CodingAgentExecution,
@@ -201,39 +200,6 @@ export const gitApi = {
 
   getFileFromRef: async (repoPath: string, fileRef: string): Promise<string> => {
     return await invoke("get_file_from_ref", { repoPath: repoPath, fileRef: fileRef });
-  },
-};
-
-// Terminal API
-export const terminalApi = {
-  createSession: async (
-    taskAttemptId: string,
-    rows: number,
-    cols: number,
-    workingDirectory: string
-  ): Promise<TerminalSession> => {
-    return await invoke("create_terminal_session", {
-      taskAttemptId,
-      rows,
-      cols,
-      workingDirectory,
-    });
-  },
-
-  write: async (sessionId: string, data: string): Promise<void> => {
-    return await invoke("write_to_terminal", { sessionId, data });
-  },
-
-  resize: async (sessionId: string, rows: number, cols: number): Promise<void> => {
-    return await invoke("resize_terminal", { sessionId, rows, cols });
-  },
-
-  close: async (sessionId: string): Promise<void> => {
-    return await invoke("close_terminal_session", { sessionId });
-  },
-
-  listSessions: async (): Promise<string[]> => {
-    return await invoke("list_terminal_sessions");
   },
 };
 

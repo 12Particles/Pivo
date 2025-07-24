@@ -152,10 +152,6 @@
     "images": "图片",
     "attachedImages": "已附加 {{count}} 张图片"
   },
-  "terminal": {
-    "title": "终端",
-    "notAssociatedProject": "未关联项目"
-  },
   "integration": {
     "title": "集成"
   },

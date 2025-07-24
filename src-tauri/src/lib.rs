@@ -7,11 +7,10 @@ mod logging;
 mod menu;
 
 use std::sync::Arc;
-use services::{TaskService, ProjectService, ProcessService, TerminalService, McpServerManager, CodingAgentExecutorService, MergeRequestService, ConfigService, FileWatcherService};
+use services::{TaskService, ProjectService, ProcessService, McpServerManager, CodingAgentExecutorService, MergeRequestService, ConfigService, FileWatcherService};
 use repository::DatabaseRepository;
 use tauri::Manager;
 use tokio::sync::Mutex;
-use commands::terminal::TerminalState;
 use commands::mcp::McpState;
 use commands::cli::CliState;
 
@@ -52,7 +51,6 @@ pub fn run() {
                 let project_service = Arc::new(ProjectService::new(pool.clone()));
                 let process_service = Arc::new(ProcessService::new(pool.clone()));
                 let merge_request_service = Arc::new(MergeRequestService::new(pool.clone()));
-                let terminal_service = Arc::new(TerminalService::new(handle.clone()));
                 let mcp_manager = Arc::new(McpServerManager::new(handle.clone()));
                 let cli_service = Arc::new(CodingAgentExecutorService::new(handle.clone(), db_repository.clone()));
                 let mut config_service_inner = ConfigService::new(pool.clone());
@@ -72,10 +70,6 @@ pub fn run() {
                 // Store config service
                 app.manage(config_service);
                 
-                // Store terminal state
-                app.manage(TerminalState {
-                    service: terminal_service,
-                });
                 
                 // Store MCP state
                 app.manage(McpState {
@@ -135,11 +129,6 @@ pub fn run() {
             commands::git::get_git_diff,
             commands::git::check_rebase_status,
             commands::git::get_branch_commit,
-            commands::terminal::create_terminal_session,
-            commands::terminal::write_to_terminal,
-            commands::terminal::resize_terminal,
-            commands::terminal::close_terminal_session,
-            commands::terminal::list_terminal_sessions,
             commands::mcp::register_mcp_server,
             commands::mcp::start_mcp_server,
             commands::mcp::stop_mcp_server,

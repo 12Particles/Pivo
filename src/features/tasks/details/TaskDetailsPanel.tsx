@@ -4,7 +4,6 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Task, Project, TaskAttempt } from "@/types";
 import { Play, GitBranch } from "lucide-react";
-import { Terminal } from "@/features/terminal/components/Terminal";
 import { FileTreeDiff } from "@/features/vcs/components/common/FileTreeDiff";
 import { IntegrationPanel } from "@/features/integration/components/IntegrationPanel";
 import { ResizableLayout } from "@/features/layout/components/ResizableLayout";
@@ -31,8 +30,6 @@ export function TaskDetailsPanel({
   bottomPanelVisible = true,
 }: TaskDetailsPanelProps) {
   const { t } = useTranslation();
-  // Generate new taskAttemptId when task changes
-  const taskAttemptId = task ? `attempt-${task.id}-${Date.now()}` : '';
   const [currentAttempt, setCurrentAttempt] = useState<TaskAttempt | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
   const [changedFilePath, setChangedFilePath] = useState<string | null>(null);
@@ -169,9 +166,8 @@ export function TaskDetailsPanel({
       <Card className="h-full">
         <CardContent className="h-full p-0">
           <Tabs defaultValue="details" className="h-full flex flex-col">
-            <TabsList className="grid w-full grid-cols-3 flex-shrink-0">
+            <TabsList className="grid w-full grid-cols-2 flex-shrink-0">
               <TabsTrigger value="details">{t('task.taskDetails')}</TabsTrigger>
-              <TabsTrigger value="terminal">{t('terminal.title')}</TabsTrigger>
               <TabsTrigger value="integration">{t('integration.title')}</TabsTrigger>
             </TabsList>
 
@@ -294,13 +290,6 @@ export function TaskDetailsPanel({
               </TabsContent>
 
 
-              <TabsContent value="terminal" className="h-full p-0">
-                <Terminal 
-                  taskAttemptId={taskAttemptId}
-                  workingDirectory={currentAttempt?.worktree_path || project?.path || "."}
-                  className="h-full"
-                />
-              </TabsContent>
 
               <TabsContent value="integration" className="h-full p-0">
                 {project && task ? (

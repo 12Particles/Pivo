@@ -4,7 +4,6 @@ pub mod task_commands;
 pub mod projects;
 pub mod process;
 pub mod git;
-pub mod terminal;
 pub mod mcp;
 pub mod cli;
 pub mod git_info;

@@ -152,10 +152,6 @@
     "images": "Images",
     "attachedImages": "Attached {{count}} images"
   },
-  "terminal": {
-    "title": "Terminal",
-    "notAssociatedProject": "Not associated with project"
-  },
   "integration": {
     "title": "Integration"
   },

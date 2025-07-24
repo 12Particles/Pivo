@@ -164,14 +164,6 @@ export interface GitStatus {
   untracked: string[];
 }
 
-export interface TerminalSession {
-  id: string;
-  task_attempt_id: string;
-  rows: number;
-  cols: number;
-  working_directory: string;
-  shell: string;
-}
 
 
 export interface McpServer {
