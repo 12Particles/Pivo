@@ -64,7 +64,13 @@ export function EditTaskDialog({ open, onOpenChange, task, onSubmit }: EditTaskD
       tags: formData.tags,
     });
 
-    // Reset images
+    // Reset form when closing
+    setFormData({
+      title: "",
+      description: "",
+      priority: TaskPriority.Medium,
+      tags: [],
+    });
     setImages([]);
     onOpenChange(false);
   };
@@ -87,6 +93,11 @@ export function EditTaskDialog({ open, onOpenChange, task, onSubmit }: EditTaskD
       });
     }
   };
+
+  // Don't render the dialog content if there's no task
+  if (!task && open) {
+    return null;
+  }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
