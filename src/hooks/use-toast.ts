@@ -53,6 +53,6 @@ export function useToast() {
 
 // For simplicity, we'll use a basic implementation
 // In a real app, you'd want a global toast provider
-export const toast = (props: Omit<Toast, "id">) => {
-  console.log("Toast:", props);
+export const toast = (_props: Omit<Toast, "id">) => {
+  // TODO: Implement global toast provider
 };

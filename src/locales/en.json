@@ -152,10 +152,6 @@
     "images": "Images",
     "attachedImages": "Attached {{count}} images"
   },
-  "terminal": {
-    "title": "Terminal",
-    "notAssociatedProject": "Not associated with project"
-  },
   "integration": {
     "title": "Integration"
   },
@@ -207,6 +203,9 @@
     "selectImageError": "Failed to select images",
     "showAllLines": "Show all {{count}} lines",
     "collapse": "Collapse",
+    "showDetails": "Show details",
+    "hideDetails": "Hide details",
+    "showAll": "Show all",
     "attachment": "Attachment",
     "executing": "Executing",
     "waitForCompletion": "Please wait for current task to complete",

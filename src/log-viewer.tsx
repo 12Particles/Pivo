@@ -1,6 +1,6 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
-import { LogViewerPage } from "./components/logs/LogViewerPage";
+import { LogViewerPage } from "./features/logs/components/LogViewerPage";
 import "./lib/i18n";
 import "./index.css";
 

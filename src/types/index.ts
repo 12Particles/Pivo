@@ -164,64 +164,7 @@ export interface GitStatus {
   untracked: string[];
 }
 
-export interface TerminalSession {
-  id: string;
-  task_attempt_id: string;
-  rows: number;
-  cols: number;
-  working_directory: string;
-  shell: string;
-}
 
-export interface ExecutorConfig {
-  name: string;
-  model: string;
-  api_key?: string;
-  base_url?: string;
-  max_tokens?: number;
-  temperature?: number;
-}
-
-export interface ExecutorSession {
-  id: string;
-  executor_type: string;
-  task_id: string;
-  messages: Message[];
-  context: Record<string, string>;
-  created_at: string;
-}
-
-export interface Message {
-  role: MessageRole;
-  content: string;
-  timestamp: string;
-  metadata?: Record<string, any>;
-}
-
-export enum MessageRole {
-  System = "system",
-  User = "user",
-  Assistant = "assistant",
-  Tool = "tool",
-}
-
-export interface ExecutorResponse {
-  content: string;
-  tool_calls: ToolCall[];
-  usage?: Usage;
-}
-
-export interface ToolCall {
-  id: string;
-  name: string;
-  arguments: Record<string, any>;
-}
-
-export interface Usage {
-  prompt_tokens: number;
-  completion_tokens: number;
-  total_tokens: number;
-}
 
 export interface McpServer {
   id: string;
@@ -287,43 +230,43 @@ export type ToolContent =
   | { type: "image"; data: string; mime_type: string }
   | { type: "resource"; uri: string; text?: string };
 
-export interface CliExecutionContext {
+export interface CodingAgentExecutionContext {
   id: string;
   task_id: string;
-  executor_type: CliExecutorType;
+  executor_type: CodingAgentType;
   working_directory: string;
   claude_session_id?: string;  // For resuming Claude conversations
 }
 
-export interface CliExecution {
+export interface CodingAgentExecution {
   id: string;
   task_id: string;
-  executor_type: CliExecutorType;
+  executor_type: CodingAgentType;
   working_directory: string;
-  status: CliExecutionStatus;
+  status: CodingAgentExecutionStatus;
   created_at: string;
 }
 
-export enum CliExecutorType {
-  ClaudeCode = "ClaudeCode",
-  GeminiCli = "GeminiCli",
+export enum CodingAgentType {
+  ClaudeCode = "claude_code",
+  GeminiCli = "gemini_cli",
 }
 
-export enum CliExecutionStatus {
+export enum CodingAgentExecutionStatus {
   Starting = "Starting",
   Running = "Running",
-  Stopped = "Stopped",
+  Completed = "Completed",
   Error = "Error",
 }
 
-export interface CliOutput {
+export interface CodingAgentOutput {
   execution_id: string;
-  output_type: CliOutputType;
+  output_type: CodingAgentOutputType;
   content: string;
   timestamp: string;
 }
 
-export enum CliOutputType {
+export enum CodingAgentOutputType {
   Stdout = "Stdout",
   Stderr = "Stderr",
   System = "System",

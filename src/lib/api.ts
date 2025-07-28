@@ -10,16 +10,13 @@ import {
   ExecutionProcess,
   ProcessType,
   GitStatus,
-  TerminalSession,
-  ExecutorConfig,
-  ExecutorResponse,
-  ExecutorSession,
   McpServer,
   ToolExecutionRequest,
-  CliExecution,
+  CodingAgentExecution,
   GitInfo,
   TaskAttempt,
-  AttemptStatus
+  AttemptStatus,
+  CodingAgentType
 } from "@/types";
 
 // Task API
@@ -206,39 +203,6 @@ export const gitApi = {
   },
 };
 
-// Terminal API
-export const terminalApi = {
-  createSession: async (
-    taskAttemptId: string,
-    rows: number,
-    cols: number,
-    workingDirectory: string
-  ): Promise<TerminalSession> => {
-    return await invoke("create_terminal_session", {
-      taskAttemptId,
-      rows,
-      cols,
-      workingDirectory,
-    });
-  },
-
-  write: async (sessionId: string, data: string): Promise<void> => {
-    return await invoke("write_to_terminal", { sessionId, data });
-  },
-
-  resize: async (sessionId: string, rows: number, cols: number): Promise<void> => {
-    return await invoke("resize_terminal", { sessionId, rows, cols });
-  },
-
-  close: async (sessionId: string): Promise<void> => {
-    return await invoke("close_terminal_session", { sessionId });
-  },
-
-  listSessions: async (): Promise<string[]> => {
-    return await invoke("list_terminal_sessions");
-  },
-};
-
 // MCP API
 export const mcpApi = {
   registerServer: async (
@@ -305,63 +269,72 @@ export const mcpApi = {
 
 // CLI API
 export const cliApi = {
-  // New simplified API
-  executeClaudeCommand: async (
-    taskId: string,
-    workingDirectory: string,
-    message: string,
-    claudeSessionId?: string,
-    projectPath?: string
-  ): Promise<void> => {
-    return await invoke("execute_claude_command", {
-      taskId,
-      workingDirectory,
-      message,
-      claudeSessionId,
-      projectPath,
-    });
-  },
 
   // Execution management API
-  startClaudeExecution: async (
+  executePrompt: async (
+    prompt: string,
     taskId: string,
+    attemptId: string,
+    workingDirectory: string,
+    agentType: CodingAgentType,
+    projectPath?: string,
+    resumeSessionId?: string
+  ): Promise<CodingAgentExecution> => {
+    return await invoke("execute_prompt", {
+      prompt,
+      taskId,
+      attemptId,
+      workingDirectory,
+      agentType,
+      projectPath,
+      resumeSessionId,
+    });
+  },
+
+  // Deprecated: Use executePrompt instead
+  executeClaudePrompt: async (
+    prompt: string,
+    taskId: string,
+    attemptId: string,
     workingDirectory: string,
     projectPath?: string,
-    storedClaudeSessionId?: string
-  ): Promise<CliExecution> => {
-    return await invoke("start_claude_execution", {
+    resumeSessionId?: string
+  ): Promise<CodingAgentExecution> => {
+    return await invoke("execute_claude_prompt", {
+      prompt,
       taskId,
+      attemptId,
       workingDirectory,
       projectPath,
-      storedClaudeSessionId,
+      resumeSessionId,
     });
   },
 
-  startGeminiExecution: async (
+  executeGeminiPrompt: async (
+    prompt: string,
     taskId: string,
+    attemptId: string,
     workingDirectory: string,
-    contextFiles: string[]
-  ): Promise<CliExecution> => {
-    return await invoke("start_gemini_execution", {
+    projectPath?: string
+  ): Promise<CodingAgentExecution> => {
+    return await invoke("execute_gemini_prompt", {
+      prompt,
       taskId,
+      attemptId,
       workingDirectory,
-      contextFiles,
+      projectPath,
     });
-  },
-
-  sendInput: async (executionId: string, input: string): Promise<void> => {
-    return await invoke("send_cli_input", { executionId, input });
   },
 
   stopExecution: async (executionId: string): Promise<void> => {
     return await invoke("stop_cli_execution", { executionId });
   },
 
-  getExecution: async (executionId: string): Promise<CliExecution | null> => {
+  getExecution: async (executionId: string): Promise<CodingAgentExecution | null> => {
     return await invoke("get_cli_execution", { executionId });
   },
 
-  listExecutions: async (): Promise<CliExecution[]> => {
+  listExecutions: async (): Promise<CodingAgentExecution[]> => {
     return await invoke("list_cli_executions");
   },
 
@@ -376,44 +349,41 @@ export const cliApi = {
   saveImagesToTemp: async (base64Images: string[]): Promise<string[]> => {
     return await invoke("save_images_to_temp", { base64Images });
   },
-};
 
-// AI API
-export const aiApi = {
-  initSession: async (
-    executorType: string,
-    taskId: string,
-    initialPrompt: string,
-    config: ExecutorConfig
-  ): Promise<string> => {
-    return await invoke("init_ai_session", {
-      executorType,
-      taskId,
-      initialPrompt,
-      config,
+  // New attempt-based execution API
+  getAttemptExecutionState: async (attemptId: string): Promise<any> => {
+    return await invoke("get_attempt_execution_state", { attemptId });
+  },
+
+  getTaskExecutionSummary: async (taskId: string): Promise<any> => {
+    return await invoke("get_task_execution_summary", { taskId });
+  },
+
+  addMessage: async (
+    attemptId: string,
+    role: string,
+    content: string,
+    images: string[],
+    metadata?: any
+  ): Promise<void> => {
+    return await invoke("add_message", {
+      attemptId,
+      role,
+      content,
+      images,
+      metadata,
     });
   },
 
-  sendMessage: async (
-    sessionId: string,
-    message: string,
-    executorConfig: ExecutorConfig
-  ): Promise<ExecutorResponse> => {
-    return await invoke("send_ai_message", { sessionId, message, executorConfig });
+  isAttemptActive: async (attemptId: string): Promise<boolean> => {
+    return await invoke("is_attempt_active", { attemptId });
   },
 
-  getSession: async (sessionId: string): Promise<ExecutorSession> => {
-    return await invoke("get_ai_session", { sessionId });
-  },
-
-  listSessions: async (): Promise<string[]> => {
-    return await invoke("list_ai_sessions");
-  },
-
-  closeSession: async (sessionId: string): Promise<void> => {
-    return await invoke("close_ai_session", { sessionId });
+  getRunningTasks: async (): Promise<string[]> => {
+    return await invoke("get_running_tasks");
   },
 };
+
 
 // Git Info API
 export const gitInfoApi = {
