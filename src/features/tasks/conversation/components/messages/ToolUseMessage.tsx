@@ -7,6 +7,7 @@ import { BashToolMessage } from "./tools/BashToolMessage";
 import { GrepToolMessage } from "./tools/GrepToolMessage";
 import { GlobToolMessage } from "./tools/GlobToolMessage";
 import { TodoWriteToolMessage } from "./tools/TodoWriteToolMessage";
+import { LSToolMessage } from "./tools/LSToolMessage";
 import { DefaultToolMessage } from "./tools/DefaultToolMessage";
 import { AssistantToolUseMessage } from "../../types";
 
@@ -42,6 +43,9 @@ export function ToolUseMessage(props: MessageComponentProps) {
       
     case "TodoWrite":
       return <TodoWriteToolMessage {...props} />;
+      
+    case "LS":
+      return <LSToolMessage {...props} />;
       
     default:
       // For all other tools, use the default renderer
