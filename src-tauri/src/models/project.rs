@@ -14,6 +14,7 @@ pub struct Project {
     pub dev_script: Option<String>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
+    pub last_opened: Option<DateTime<Utc>>,
 }
 
 #[derive(Debug, FromRow)]
@@ -28,6 +29,7 @@ pub struct ProjectRow {
     pub dev_script: Option<String>,
     pub created_at: String,
     pub updated_at: String,
+    pub last_opened: Option<String>,
 }
 
 impl From<ProjectRow> for Project {
@@ -47,6 +49,11 @@ impl From<ProjectRow> for Project {
             updated_at: DateTime::parse_from_rfc3339(&row.updated_at)
                 .map(|dt| dt.with_timezone(&Utc))
                 .unwrap_or_else(|_| Utc::now()),
+            last_opened: row.last_opened.and_then(|lo| {
+                DateTime::parse_from_rfc3339(&lo)
+                    .map(|dt| dt.with_timezone(&Utc))
+                    .ok()
+            }),
         }
     }
 }

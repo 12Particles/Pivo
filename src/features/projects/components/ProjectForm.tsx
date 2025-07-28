@@ -7,21 +7,23 @@ import { CreateProjectRequest } from "@/types";
 import { FolderOpen } from "lucide-react";
 import { open } from "@tauri-apps/plugin-dialog";
 import { useTranslation } from "react-i18next";
+import { ProjectInfo } from "@/services/api";
 
 interface ProjectFormProps {
+  initialValues?: ProjectInfo;
   onSubmit: (data: CreateProjectRequest) => void;
   onCancel: () => void;
 }
 
-export function ProjectForm({ onSubmit, onCancel }: ProjectFormProps) {
+export function ProjectForm({ initialValues, onSubmit, onCancel }: ProjectFormProps) {
   const { t } = useTranslation();
   const [formData, setFormData] = useState<CreateProjectRequest>({
-    name: "",
-    description: "",
-    path: "",
-    git_repo: "",
-    setup_script: "",
-    dev_script: "",
+    name: initialValues?.name || "",
+    description: initialValues?.description || "",
+    path: initialValues?.path || "",
+    git_repo: initialValues?.git_repo || "",
+    setup_script: initialValues?.setup_script || "",
+    dev_script: initialValues?.dev_script || "",
   });
 
   const handleSelectPath = async () => {
@@ -74,10 +76,14 @@ export function ProjectForm({ onSubmit, onCancel }: ProjectFormProps) {
             onChange={(e) => setFormData({ ...formData, path: e.target.value })}
             placeholder="/path/to/project"
             required
+            readOnly={!!initialValues?.path}
+            className={initialValues?.path ? "bg-muted" : ""}
           />
-          <Button type="button" variant="outline" onClick={handleSelectPath}>
-            <FolderOpen className="h-4 w-4" />
-          </Button>
+          {!initialValues?.path && (
+            <Button type="button" variant="outline" onClick={handleSelectPath}>
+              <FolderOpen className="h-4 w-4" />
+            </Button>
+          )}
         </div>
       </div>
 

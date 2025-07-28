@@ -85,6 +85,8 @@ export interface AppEvents {
   'menu-view-logs': void;
   'menu-logs-cleared': void;
   'menu-settings': void;
+  'menu-open-project': void;
+  'menu-open-recent-project': string;
   
   // System events
   'error-occurred': {

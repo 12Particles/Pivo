@@ -14,7 +14,7 @@ import { projectApi, mcpApi } from '@/services/api';
 export function useAppInitialization() {
   const { t } = useTranslation();
   const { toast } = useToast();
-  const { navigateTo } = useApp();
+  const { navigateTo, setCurrentProject } = useApp();
   
   useEffect(() => {
     // Initialize logger
@@ -62,5 +62,38 @@ export function useAppInitialization() {
   
   useEvent('menu-settings', () => {
     navigateTo('settings');
+  });
+  
+  useEvent('menu-open-project', async () => {
+    // Open directory picker dialog
+    const selectedPath = await projectApi.selectProjectDirectory();
+    if (selectedPath) {
+      // Read project info from the selected directory
+      const projectInfo = await projectApi.readProjectInfo(selectedPath);
+      // Store project info temporarily
+      sessionStorage.setItem('pendingProjectInfo', JSON.stringify(projectInfo));
+      // Navigate to projects view - it will handle the project creation form
+      navigateTo('projects');
+    }
+  });
+  
+  useEvent('menu-open-recent-project', async (projectId: string) => {
+    try {
+      const project = await projectApi.get(projectId);
+      if (project) {
+        // Update last opened time
+        await projectApi.updateLastOpened(projectId);
+        // Set current project and navigate to tasks
+        setCurrentProject(project);
+        navigateTo('tasks');
+      }
+    } catch (error) {
+      logger.error('Failed to open recent project', error);
+      toast({
+        title: t('common.error'),
+        description: t('project.openFailed'),
+        variant: 'destructive',
+      });
+    }
   });
 }
