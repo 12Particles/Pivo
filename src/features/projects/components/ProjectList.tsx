@@ -6,6 +6,8 @@ import { Project } from "@/types";
 import { FolderOpen, GitBranch, Plus, Settings } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { ProjectSettingsDialog } from "./ProjectSettingsDialog";
+import { projectApi } from "@/services/api";
+import { useApp } from "@/contexts/AppContext";
 
 interface ProjectListProps {
   projects: Project[];
@@ -23,6 +25,7 @@ export function ProjectList({
   onProjectsChange
 }: ProjectListProps) {
   const { t } = useTranslation();
+  const { setCurrentProject } = useApp();
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
 
@@ -107,15 +110,37 @@ export function ProjectList({
       )}
       
       <ProjectSettingsDialog
-        project={selectedProject}
+        initialValues={selectedProject ? {
+          path: selectedProject.path,
+          name: selectedProject.name,
+          description: selectedProject.description || undefined,
+          git_repo: selectedProject.git_repo || undefined,
+          setup_script: selectedProject.setup_script || undefined,
+          dev_script: selectedProject.dev_script || undefined,
+          has_git: !!selectedProject.git_repo,
+          has_package_json: false,
+        } : undefined}
         open={settingsOpen}
         onOpenChange={setSettingsOpen}
-        onUpdate={() => {
-          onProjectsChange?.();
+        onSubmit={async (values) => {
+          if (selectedProject) {
+            await projectApi.update(selectedProject.id, {
+              name: values.name,
+              description: values.description,
+              path: values.path,
+              git_repo: values.git_repo,
+              setup_script: values.setup_script,
+              dev_script: values.dev_script,
+            });
+            onProjectsChange?.();
+          }
         }}
-        onDelete={() => {
+        onDelete={selectedProject ? async () => {
+          await projectApi.delete(selectedProject.id);
+          setCurrentProject(null);
           onProjectsChange?.();
-        }}
+        } : undefined}
+        isCreating={false}
       />
     </div>
   );

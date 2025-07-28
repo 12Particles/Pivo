@@ -83,7 +83,10 @@
     "devScript": "Development Server Script",
     "notGitRepo": "Selected directory is not a Git repository",
     "selectGitDirError": "Failed to select Git directory",
-    "createProjectError": "Failed to create project"
+    "createProjectError": "Failed to create project",
+    "projectSettings": "Project Settings",
+    "updateProjectSettings": "Update project settings",
+    "confirmDelete": "Are you sure you want to delete this project?"
   },
   "task": {
     "title": "Task",

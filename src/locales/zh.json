@@ -83,7 +83,10 @@
     "devScript": "开发服务器脚本",
     "notGitRepo": "所选目录不是 Git 仓库",
     "selectGitDirError": "选择 Git 目录失败",
-    "createProjectError": "创建项目失败"
+    "createProjectError": "创建项目失败",
+    "projectSettings": "项目设置",
+    "updateProjectSettings": "更新项目设置",
+    "confirmDelete": "确定要删除此项目吗？"
   },
   "task": {
     "title": "任务",

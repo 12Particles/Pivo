@@ -11,179 +11,230 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Project, UpdateProjectRequest } from "@/types";
+import { FolderOpen } from "lucide-react";
+import { open as openDialog } from "@tauri-apps/plugin-dialog";
 import { useTranslation } from "react-i18next";
-import { projectApi } from "@/services/api";
-import { useApp } from "@/contexts/AppContext";
+import { ProjectInfo } from "@/services/api";
+import { transformGitUrl } from "@/lib/gitUrlUtils";
 
 interface ProjectSettingsDialogProps {
-  project: Project | null;
+  initialValues?: ProjectInfo;
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onUpdate?: (project: Project) => void;
-  onDelete?: (projectId: string) => void;
+  onSubmit: (data: any) => Promise<void>;
+  onDelete?: () => Promise<void>;
+  isCreating?: boolean;
 }
 
 export function ProjectSettingsDialog({
-  project,
+  initialValues,
   open,
   onOpenChange,
-  onUpdate,
+  onSubmit,
   onDelete,
+  isCreating = true,
 }: ProjectSettingsDialogProps) {
   const { t } = useTranslation();
-  const { setCurrentProject } = useApp();
   const [loading, setLoading] = useState(false);
-  const [formData, setFormData] = useState<UpdateProjectRequest>({
-    name: project?.name || "",
-    description: project?.description || "",
-    path: project?.path || "",
-    git_repo: project?.git_repo || "",
-    setup_script: project?.setup_script || "",
-    dev_script: project?.dev_script || "",
+  const [formData, setFormData] = useState({
+    name: "",
+    description: "",
+    path: "",
+    git_repo: "",
+    setup_script: "",
+    dev_script: "",
   });
 
-  // Update form data when project changes
+  // Update form data when initialValues change
   useEffect(() => {
-    if (project) {
+    if (initialValues) {
       setFormData({
-        name: project.name,
-        description: project.description || "",
-        path: project.path,
-        git_repo: project.git_repo || "",
-        setup_script: project.setup_script || "",
-        dev_script: project.dev_script || "",
+        name: initialValues.name || "",
+        description: initialValues.description || "",
+        path: initialValues.path || "",
+        git_repo: initialValues.git_repo || "",
+        setup_script: initialValues.setup_script || "",
+        dev_script: initialValues.dev_script || "",
+      });
+    } else {
+      // Reset form when dialog opens for creation
+      setFormData({
+        name: "",
+        description: "",
+        path: "",
+        git_repo: "",
+        setup_script: "",
+        dev_script: "",
       });
     }
-  }, [project]);
+  }, [initialValues, open]);
 
-  const handleUpdate = async () => {
-    if (!project) return;
-    
-    setLoading(true);
-    try {
-      const updatedProject = await projectApi.update(project.id, formData);
-      onUpdate?.(updatedProject);
-      onOpenChange(false);
-    } catch (error) {
-      console.error("Failed to update project:", error);
-    } finally {
-      setLoading(false);
+  const handleSelectPath = async () => {
+    const selected = await openDialog({
+      directory: true,
+      multiple: false,
+      title: t('project.selectProjectDirectory'),
+    });
+
+    if (selected) {
+      setFormData({ ...formData, path: selected });
     }
   };
 
-  const handleDelete = async () => {
-    if (!project) return;
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
     
-    if (!confirm(t('project.confirmDelete'))) {
+    if (!formData.name || !formData.path) {
       return;
     }
-    
+
     setLoading(true);
     try {
-      await projectApi.delete(project.id);
-      onDelete?.(project.id);
-      setCurrentProject(null);
+      // Transform Git URL before submitting
+      const transformedFormData = {
+        ...formData,
+        git_repo: formData.git_repo ? transformGitUrl(formData.git_repo) : formData.git_repo
+      };
+      
+      await onSubmit(transformedFormData);
       onOpenChange(false);
     } catch (error) {
-      console.error("Failed to delete project:", error);
+      console.error(isCreating ? 'Failed to create project:' : 'Failed to update project:', error);
     } finally {
       setLoading(false);
     }
   };
-
-  if (!project) return null;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[525px]">
-        <DialogHeader>
-          <DialogTitle>{t('project.projectSettings')}</DialogTitle>
-          <DialogDescription>
-            {t('project.updateProjectSettings')}
-          </DialogDescription>
-        </DialogHeader>
-        
-        <div className="grid gap-4 py-4">
-          <div className="grid gap-2">
-            <Label htmlFor="name">{t('project.projectName')}</Label>
-            <Input
-              id="name"
-              value={formData.name}
-              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-            />
+        <form onSubmit={handleSubmit}>
+          <DialogHeader>
+            <DialogTitle>{isCreating ? t('project.createProject') : t('project.projectSettings')}</DialogTitle>
+            <DialogDescription>
+              {isCreating ? t('project.createFirstProject') : t('project.updateProjectSettings')}
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <Label htmlFor="name">{t('project.projectName')} *</Label>
+              <Input
+                id="name"
+                value={formData.name}
+                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                placeholder={t('project.myProject')}
+                required
+              />
+            </div>
+            
+            <div className="grid gap-2">
+              <Label htmlFor="description">{t('project.projectDescription')}</Label>
+              <Textarea
+                id="description"
+                value={formData.description}
+                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                placeholder={t('project.describeYourProject')}
+                rows={3}
+              />
+            </div>
+            
+            <div className="grid gap-2">
+              <Label htmlFor="path">{t('project.projectPath')} *</Label>
+              <div className="flex gap-2">
+                <Input
+                  id="path"
+                  value={formData.path}
+                  onChange={(e) => setFormData({ ...formData, path: e.target.value })}
+                  placeholder="/path/to/project"
+                  required
+                  readOnly={!isCreating}
+                  className={!isCreating ? "bg-muted" : ""}
+                />
+                {isCreating && (
+                  <Button type="button" variant="outline" onClick={handleSelectPath}>
+                    <FolderOpen className="h-4 w-4" />
+                  </Button>
+                )}
+              </div>
+            </div>
+            
+            <div className="grid gap-2">
+              <Label htmlFor="git_repo">{t('project.gitRepositoryUrl')}</Label>
+              <Input
+                id="git_repo"
+                value={formData.git_repo}
+                onChange={(e) => setFormData({ ...formData, git_repo: e.target.value })}
+                onBlur={(e) => {
+                  const transformed = transformGitUrl(e.target.value);
+                  if (transformed !== e.target.value) {
+                    setFormData({ ...formData, git_repo: transformed });
+                  }
+                }}
+                placeholder="e.g., git@github.com:user/repo.git or https://github.com/user/repo"
+              />
+            </div>
+            
+            <div className="grid gap-2">
+              <Label htmlFor="setup_script">{t('project.setupScript')}</Label>
+              <Textarea
+                id="setup_script"
+                value={formData.setup_script}
+                onChange={(e) => setFormData({ ...formData, setup_script: e.target.value })}
+                placeholder="npm install"
+                rows={2}
+              />
+            </div>
+            
+            <div className="grid gap-2">
+              <Label htmlFor="dev_script">{t('project.devScript')}</Label>
+              <Textarea
+                id="dev_script"
+                value={formData.dev_script}
+                onChange={(e) => setFormData({ ...formData, dev_script: e.target.value })}
+                placeholder="npm run dev"
+                rows={2}
+              />
+            </div>
           </div>
           
-          <div className="grid gap-2">
-            <Label htmlFor="description">{t('project.projectDescription')}</Label>
-            <Textarea
-              id="description"
-              value={formData.description}
-              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-              rows={3}
-            />
-          </div>
-          
-          <div className="grid gap-2">
-            <Label htmlFor="path">{t('project.projectPath')}</Label>
-            <Input
-              id="path"
-              value={formData.path}
-              readOnly
-              className="bg-muted"
-            />
-          </div>
-          
-          <div className="grid gap-2">
-            <Label htmlFor="git_repo">{t('project.gitRepositoryUrl')}</Label>
-            <Input
-              id="git_repo"
-              value={formData.git_repo}
-              onChange={(e) => setFormData({ ...formData, git_repo: e.target.value })}
-            />
-          </div>
-          
-          <div className="grid gap-2">
-            <Label htmlFor="setup_script">{t('project.setupScript')}</Label>
-            <Textarea
-              id="setup_script"
-              value={formData.setup_script}
-              onChange={(e) => setFormData({ ...formData, setup_script: e.target.value })}
-              rows={2}
-            />
-          </div>
-          
-          <div className="grid gap-2">
-            <Label htmlFor="dev_script">{t('project.devScript')}</Label>
-            <Textarea
-              id="dev_script"
-              value={formData.dev_script}
-              onChange={(e) => setFormData({ ...formData, dev_script: e.target.value })}
-              rows={2}
-            />
-          </div>
-        </div>
-        
-        <DialogFooter>
-          <Button
-            variant="destructive"
-            onClick={handleDelete}
-            disabled={loading}
-          >
-            {t('common.delete')}
-          </Button>
-          <div className="flex-1" />
-          <Button
-            variant="outline"
-            onClick={() => onOpenChange(false)}
-            disabled={loading}
-          >
-            {t('common.cancel')}
-          </Button>
-          <Button onClick={handleUpdate} disabled={loading}>
-            {t('common.save')}
-          </Button>
-        </DialogFooter>
+          <DialogFooter>
+            {!isCreating && onDelete && (
+              <Button
+                type="button"
+                variant="destructive"
+                onClick={async () => {
+                  if (confirm(t('project.confirmDelete'))) {
+                    setLoading(true);
+                    try {
+                      await onDelete();
+                      onOpenChange(false);
+                    } catch (error) {
+                      console.error('Failed to delete project:', error);
+                    } finally {
+                      setLoading(false);
+                    }
+                  }
+                }}
+                disabled={loading}
+                className="mr-auto"
+              >
+                {t('common.delete')}
+              </Button>
+            )}
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => onOpenChange(false)}
+              disabled={loading}
+            >
+              {t('common.cancel')}
+            </Button>
+            <Button type="submit" disabled={loading || !formData.name || !formData.path}>
+              {isCreating ? t('project.createProject') : t('common.save')}
+            </Button>
+          </DialogFooter>
+        </form>
       </DialogContent>
     </Dialog>
   );

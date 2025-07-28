@@ -193,6 +193,9 @@ pub async fn read_project_info(path: String) -> Result<ProjectInfo, String> {
     // Get git remote URL if available
     let mut git_repo = None;
     if has_git {
+        log::info!("Checking git remotes for path: {}", project_path.display());
+        
+        // First try to get origin remote
         if let Ok(output) = std::process::Command::new("git")
             .arg("remote")
             .arg("get-url")
@@ -201,7 +204,62 @@ pub async fn read_project_info(path: String) -> Result<ProjectInfo, String> {
             .output()
         {
             if output.status.success() {
-                git_repo = Some(String::from_utf8_lossy(&output.stdout).trim().to_string());
+                let url = String::from_utf8_lossy(&output.stdout).trim().to_string();
+                log::info!("Found origin remote URL: {}", url);
+                if !url.is_empty() {
+                    git_repo = Some(url);
+                }
+            } else {
+                let error = String::from_utf8_lossy(&output.stderr);
+                log::warn!("Failed to get origin remote: {}", error);
+            }
+        } else {
+            log::error!("Failed to execute git remote get-url origin command");
+        }
+        
+        // If origin doesn't exist, try to get the first available remote
+        if git_repo.is_none() {
+            log::info!("Origin not found, checking for other remotes");
+            if let Ok(output) = std::process::Command::new("git")
+                .arg("remote")
+                .current_dir(&project_path)
+                .output()
+            {
+                if output.status.success() {
+                    let remotes = String::from_utf8_lossy(&output.stdout);
+                    log::info!("Available remotes: {}", remotes.trim());
+                    if let Some(first_remote) = remotes.lines().next() {
+                        if !first_remote.is_empty() {
+                            log::info!("Trying to get URL for remote: {}", first_remote);
+                            // Get URL for the first remote
+                            if let Ok(url_output) = std::process::Command::new("git")
+                                .arg("remote")
+                                .arg("get-url")
+                                .arg(first_remote)
+                                .current_dir(&project_path)
+                                .output()
+                            {
+                                if url_output.status.success() {
+                                    let url = String::from_utf8_lossy(&url_output.stdout).trim().to_string();
+                                    log::info!("Found remote URL: {}", url);
+                                    if !url.is_empty() {
+                                        git_repo = Some(url);
+                                    }
+                                } else {
+                                    let error = String::from_utf8_lossy(&url_output.stderr);
+                                    log::warn!("Failed to get URL for remote {}: {}", first_remote, error);
+                                }
+                            }
+                        }
+                    } else {
+                        log::info!("No remotes found");
+                    }
+                } else {
+                    let error = String::from_utf8_lossy(&output.stderr);
+                    log::warn!("Failed to list remotes: {}", error);
+                }
+            } else {
+                log::error!("Failed to execute git remote command");
             }
         }
     }
@@ -293,6 +351,8 @@ pub async fn read_project_info(path: String) -> Result<ProjectInfo, String> {
             dev_script = Some("go run .".to_string());
         }
     }
+    
+    log::info!("Returning ProjectInfo: name={}, has_git={}, git_repo={:?}", name, has_git, git_repo);
     
     Ok(ProjectInfo {
         path,

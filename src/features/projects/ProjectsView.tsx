@@ -3,20 +3,16 @@
  */
 
 import { useState, useEffect } from 'react';
-import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
-import { ArrowLeft } from 'lucide-react';
 import { ProjectList } from '@/features/projects/components/ProjectList';
-import { ProjectForm } from '@/features/projects/components/ProjectForm';
+import { ProjectSettingsDialog } from '@/features/projects/components/ProjectSettingsDialog';
 import { useApp } from '@/contexts/AppContext';
 import { projectApi, ProjectInfo } from '@/services/api';
-import { useTranslation } from 'react-i18next';
 import { Project } from '@/types';
+import { transformGitUrl } from '@/lib/gitUrlUtils';
 
 export function ProjectsView() {
-  const { t } = useTranslation();
   const { setCurrentProject, navigateTo } = useApp();
-  const [showProjectForm, setShowProjectForm] = useState(false);
+  const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedProjectInfo, setSelectedProjectInfo] = useState<ProjectInfo | null>(null);
@@ -29,8 +25,17 @@ export function ProjectsView() {
     if (pendingProjectInfo) {
       const projectInfo = JSON.parse(pendingProjectInfo) as ProjectInfo;
       sessionStorage.removeItem('pendingProjectInfo');
+      console.log('Pending project info from session:', projectInfo);
+      
+      // Transform git_repo URL if it exists from backend
+      if (projectInfo.git_repo) {
+        const transformedUrl = transformGitUrl(projectInfo.git_repo);
+        console.log('Transforming pending project backend Git URL:', projectInfo.git_repo, '->', transformedUrl);
+        projectInfo.git_repo = transformedUrl;
+      }
+      
       setSelectedProjectInfo(projectInfo);
-      setShowProjectForm(true);
+      setShowCreateDialog(true);
     }
   }, []);
   
@@ -52,65 +57,23 @@ export function ProjectsView() {
       if (selectedPath) {
         // Read project info from the selected directory
         const projectInfo = await projectApi.readProjectInfo(selectedPath);
+        console.log('Project info from backend:', projectInfo);
+        
+        // Transform git_repo URL if it exists from backend
+        if (projectInfo.git_repo) {
+          const transformedUrl = transformGitUrl(projectInfo.git_repo);
+          console.log('Transforming backend Git URL:', projectInfo.git_repo, '->', transformedUrl);
+          projectInfo.git_repo = transformedUrl;
+        }
+        
         setSelectedProjectInfo(projectInfo);
-        setShowProjectForm(true);
+        setShowCreateDialog(true);
       }
     } catch (error) {
       console.error('Failed to select project directory:', error);
     }
   };
   
-  
-  if (showProjectForm) {
-    return (
-      <div className="h-screen bg-background overflow-y-auto">
-        <div className="p-8">
-          <Card className="max-w-2xl mx-auto p-6">
-            <div className="mb-6">
-              <Button
-                variant="ghost"
-                onClick={() => {
-                  setShowProjectForm(false);
-                  setSelectedProjectInfo(null);
-                }}
-                className="mb-4"
-              >
-                <ArrowLeft className="h-4 w-4 mr-2" />
-                {t('common.back')}
-              </Button>
-              <h2 className="text-2xl font-bold">{t('project.createProject')}</h2>
-            </div>
-            <ProjectForm
-            initialValues={selectedProjectInfo || undefined}
-            onSubmit={async (values) => {
-              try {
-                const project = await projectApi.create({
-                  name: values.name,
-                  path: values.path,
-                  description: values.description,
-                  git_repo: values.git_repo,
-                  setup_script: values.setup_script,
-                  dev_script: values.dev_script
-                });
-                await loadProjects();
-                setShowProjectForm(false);
-                setSelectedProjectInfo(null);
-                setCurrentProject(project);
-                navigateTo('tasks');
-              } catch (error) {
-                console.error('Failed to create project:', error);
-              }
-            }}
-            onCancel={() => {
-              setShowProjectForm(false);
-              setSelectedProjectInfo(null);
-            }}
-          />
-          </Card>
-        </div>
-      </div>
-    );
-  }
   
   return (
     <div className="h-screen bg-background p-8">
@@ -132,6 +95,32 @@ export function ProjectsView() {
         }}
         onCreateProject={handleSelectProjectDirectory}
         onProjectsChange={loadProjects}
+      />
+      
+      <ProjectSettingsDialog
+        initialValues={selectedProjectInfo || undefined}
+        open={showCreateDialog}
+        onOpenChange={(open) => {
+          setShowCreateDialog(open);
+          if (!open) {
+            setSelectedProjectInfo(null);
+          }
+        }}
+        onSubmit={async (values) => {
+          const project = await projectApi.create({
+            name: values.name,
+            path: values.path,
+            description: values.description,
+            git_repo: values.git_repo,
+            setup_script: values.setup_script,
+            dev_script: values.dev_script
+          });
+          await loadProjects();
+          setSelectedProjectInfo(null);
+          setCurrentProject(project);
+          navigateTo('tasks');
+        }}
+        isCreating={true}
       />
     </div>
   );

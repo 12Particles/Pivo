@@ -62,7 +62,7 @@ export class GitApi {
    * Extract git info from a directory
    */
   async extractGitInfo(path: string): Promise<GitInfo> {
-    return invoke<GitInfo>('extract_git_info', { path });
+    return invoke<GitInfo>('extract_git_info_from_path', { path });
   }
   
   // Additional methods for backward compatibility
