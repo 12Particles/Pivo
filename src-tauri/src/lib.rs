@@ -36,9 +36,6 @@ pub fn run() {
             logging::init_logging().expect("Failed to initialize logging");
             log::info!("Starting Pivo application");
             
-            // Setup menu events
-            menu::setup_menu_events(app)?;
-            
             // Initialize database
             tauri::async_runtime::block_on(async {
                 let pool = db::init_database(&handle).await
@@ -91,6 +88,9 @@ pub fn run() {
                 app.manage(file_watcher_service);
             });
             
+            // Setup menu events after app state is initialized
+            menu::setup_menu_events(app)?;
+            
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -116,6 +116,10 @@ pub fn run() {
             commands::projects::update_project,
             commands::projects::delete_project,
             commands::projects::refresh_all_git_providers,
+            commands::projects::update_project_last_opened,
+            commands::projects::get_recent_projects,
+            commands::projects::select_project_directory,
+            commands::projects::read_project_info,
             commands::process::spawn_process,
             commands::process::kill_process,
             commands::process::get_process,

@@ -1,24 +1,36 @@
+import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Project } from "@/types";
 import { FolderOpen, GitBranch, Plus, Settings } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { ProjectSettingsDialog } from "./ProjectSettingsDialog";
 
 interface ProjectListProps {
   projects: Project[];
   loading: boolean;
   onSelectProject: (project: Project) => void;
   onCreateProject: () => void;
+  onProjectsChange?: () => void;
 }
 
 export function ProjectList({ 
   projects,
   loading,
   onSelectProject, 
-  onCreateProject
+  onCreateProject,
+  onProjectsChange
 }: ProjectListProps) {
   const { t } = useTranslation();
+  const [selectedProject, setSelectedProject] = useState<Project | null>(null);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+
+  const handleSettingsClick = (e: React.MouseEvent, project: Project) => {
+    e.stopPropagation();
+    setSelectedProject(project);
+    setSettingsOpen(true);
+  };
 
   if (loading) {
     return (
@@ -62,7 +74,14 @@ export function ProjectList({
               <CardHeader>
                 <div className="flex items-start justify-between">
                   <CardTitle className="text-lg">{project.name}</CardTitle>
-                  <Settings className="h-4 w-4 text-muted-foreground" />
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8"
+                    onClick={(e) => handleSettingsClick(e, project)}
+                  >
+                    <Settings className="h-4 w-4 text-muted-foreground" />
+                  </Button>
                 </div>
               </CardHeader>
               <CardContent>
@@ -86,6 +105,18 @@ export function ProjectList({
           ))}
         </div>
       )}
+      
+      <ProjectSettingsDialog
+        project={selectedProject}
+        open={settingsOpen}
+        onOpenChange={setSettingsOpen}
+        onUpdate={() => {
+          onProjectsChange?.();
+        }}
+        onDelete={() => {
+          onProjectsChange?.();
+        }}
+      />
     </div>
   );
 }

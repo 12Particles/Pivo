@@ -135,4 +135,26 @@ impl ProjectService {
 
         Ok(())
     }
+
+    pub async fn update_last_opened(&self, id: Uuid) -> Result<(), sqlx::Error> {
+        sqlx::query("UPDATE projects SET last_opened = datetime('now') WHERE id = ?")
+            .bind(id.to_string())
+            .execute(&self.pool)
+            .await?;
+
+        Ok(())
+    }
+
+    pub async fn get_recent_projects(&self, limit: i32) -> Result<Vec<Project>, sqlx::Error> {
+        use crate::models::ProjectRow;
+        
+        let rows = sqlx::query_as::<_, ProjectRow>(
+            "SELECT * FROM projects WHERE last_opened IS NOT NULL ORDER BY last_opened DESC LIMIT ?",
+        )
+        .bind(limit)
+        .fetch_all(&self.pool)
+        .await?;
+
+        Ok(rows.into_iter().map(Project::from).collect())
+    }
 }

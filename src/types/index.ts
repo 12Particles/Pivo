@@ -38,6 +38,7 @@ export interface Project {
   dev_script?: string;
   created_at: string;
   updated_at: string;
+  last_opened?: string;
 }
 
 export interface CreateProjectRequest {
