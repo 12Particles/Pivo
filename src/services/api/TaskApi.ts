@@ -57,8 +57,23 @@ export class TaskApi {
   /**
    * Execute a task (start execution)
    */
-  async execute(id: string): Promise<void> {
-    return invoke<void>('execute_task', { id });
+  async execute(id: string, initialMessage?: string): Promise<void> {
+    if (initialMessage) {
+      // Use the new task command approach with initial message
+      return invoke<void>('execute_task_command', {
+        command: {
+          type: 'START_EXECUTION',
+          taskId: id,
+          payload: {
+            initialMessage: initialMessage,
+            images: null
+          }
+        }
+      });
+    } else {
+      // Fallback to simple execute without message
+      return invoke<void>('execute_task', { id });
+    }
   }
 }
 

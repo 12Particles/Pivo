@@ -209,7 +209,16 @@ export function TasksView() {
               onAddTask={() => setShowCreateTaskDialog(true)}
               onEditTask={handleEditTask}
               onDeleteTask={(task) => handleDeleteTask(task.id)}
-              onExecuteTask={(task) => handleTaskClick(task)}
+              onExecuteTask={async (task) => {
+                setSelectedTask(task);
+                try {
+                  // 构建包含任务上下文的初始消息
+                  const initialMessage = `请执行以下任务：\n\n标题：${task.title}\n${task.description ? `\n描述：${task.description}` : ''}`;
+                  await taskApi.execute(task.id, initialMessage);
+                } catch (error) {
+                  console.error('Failed to execute task:', error);
+                }
+              }}
             />
           )
         }
