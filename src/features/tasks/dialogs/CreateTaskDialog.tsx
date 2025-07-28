@@ -21,7 +21,7 @@ interface CreateTaskDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   projectId: string;
-  onSubmit: (data: CreateTaskRequest, shouldStart?: boolean) => void;
+  onSubmit: (data: CreateTaskRequest, shouldStart?: boolean, images?: string[]) => void;
 }
 
 export function CreateTaskDialog({ open, onOpenChange, projectId, onSubmit }: CreateTaskDialogProps) {
@@ -53,7 +53,7 @@ export function CreateTaskDialog({ open, onOpenChange, projectId, onSubmit }: Cr
       description: finalDescription,
       priority: formData.priority || TaskPriority.Medium,
       tags: formData.tags,
-    }, shouldStart);
+    }, shouldStart, images.length > 0 ? images : undefined);
 
     // Reset form
     setFormData({

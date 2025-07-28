@@ -57,7 +57,7 @@ export class TaskApi {
   /**
    * Execute a task (start execution)
    */
-  async execute(id: string, initialMessage?: string): Promise<void> {
+  async execute(id: string, initialMessage?: string, images?: string[]): Promise<void> {
     if (initialMessage) {
       // Use the new task command approach with initial message
       return invoke<void>('execute_task_command', {
@@ -66,7 +66,7 @@ export class TaskApi {
           taskId: id,
           payload: {
             initialMessage: initialMessage,
-            images: null
+            images: images || null
           }
         }
       });

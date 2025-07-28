@@ -81,7 +81,7 @@ export function TasksView() {
   };
   
   // Task operations
-  const handleCreateTask = async (data: CreateTaskRequest) => {
+  const handleCreateTask = async (data: CreateTaskRequest, shouldStart?: boolean, images?: string[]) => {
     if (!currentProject) return;
     
     try {
@@ -89,6 +89,12 @@ export function TasksView() {
       await loadTasks();
       setSelectedTask(task);
       setShowCreateTaskDialog(false);
+      
+      // If shouldStart is true, execute the task immediately
+      if (shouldStart) {
+        const initialMessage = `请执行以下任务：\n\n标题：${task.title}\n${task.description ? `\n描述：${task.description}` : ''}`;
+        await taskApi.execute(task.id, initialMessage, images);
+      }
     } catch (error) {
       console.error('Failed to create task:', error);
     }

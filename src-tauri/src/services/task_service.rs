@@ -39,7 +39,21 @@ impl TaskService {
         .execute(&self.pool)
         .await?;
 
-        self.get_task(id).await.map(|opt| opt.unwrap())
+        let task = self.get_task(id).await.map(|opt| opt.unwrap())?;
+        
+        // Always create an initial attempt with worktree for the task
+        let attempt_req = CreateTaskAttemptRequest {
+            task_id: id,
+            executor: None,
+            base_branch: None,
+        };
+        
+        match self.create_task_attempt(attempt_req).await {
+            Ok(_) => log::info!("Created initial attempt for task {}", id),
+            Err(e) => log::error!("Failed to create initial attempt for task {}: {}", id, e),
+        }
+        
+        Ok(task)
     }
 
     pub async fn get_task(&self, id: Uuid) -> Result<Option<Task>, sqlx::Error> {
