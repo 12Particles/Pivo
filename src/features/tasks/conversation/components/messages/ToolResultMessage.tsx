@@ -8,6 +8,7 @@ import { GlobResultRenderer } from "../renderers/GlobResultRenderer";
 import { WriteResultRenderer } from "../renderers/WriteResultRenderer";
 import { EditResultRenderer } from "../renderers/EditResultRenderer";
 import { LSResultRenderer } from "../renderers/LSResultRenderer";
+import { BashResultRenderer } from "../renderers/BashResultRenderer";
 import { AssistantToolResultMessage } from "../../types";
 
 interface TodoItem {
@@ -31,6 +32,7 @@ export function ToolResultMessage({ message }: MessageComponentProps) {
   const isWriteResult = toolName === "Write";
   const isEditResult = toolName === "Edit" || toolName === "MultiEdit";
   const isLSResult = toolName === "LS";
+  const isBashResult = toolName === "Bash";
   
   if (isTodoWriteResult) {
     try {
@@ -102,6 +104,8 @@ export function ToolResultMessage({ message }: MessageComponentProps) {
               <EditResultRenderer content={message.content} />
             ) : isLSResult ? (
               <LSResultRenderer content={message.content} />
+            ) : isBashResult ? (
+              <BashResultRenderer content={message.content} />
             ) : (
               <ContentRenderer content={message.content} />
             )}

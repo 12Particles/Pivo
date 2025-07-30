@@ -38,7 +38,8 @@
     "notifications": "Notifications",
     "yes": "Yes",
     "no": "No",
-    "add": "Add"
+    "add": "Add",
+    "running": "Running"
   },
   "project": {
     "title": "Project",

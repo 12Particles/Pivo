@@ -38,7 +38,8 @@
     "notifications": "通知",
     "yes": "是",
     "no": "否",
-    "add": "添加"
+    "add": "添加",
+    "running": "运行中"
   },
   "project": {
     "title": "项目",

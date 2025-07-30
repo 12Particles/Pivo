@@ -111,7 +111,7 @@ export function FileTreeDiff({ projectPath, taskId, worktreePath, refreshKey = 0
     setFileTree([]);
     setChangedFilesOnly([]);
     setChangedFilesTree([]);
-    setExpandedFolders(new Set());
+    // Don't reset expandedFolders here, it will be set by buildFileTree
     setOpenFiles([]);
     setActiveTab("");
     setAllFilesLoaded(false);
@@ -275,6 +275,39 @@ export function FileTreeDiff({ projectPath, taskId, worktreePath, refreshKey = 0
       const sortedTree = sortTree(root);
       setFileTree(sortedTree);
       setAllFilesLoaded(true);
+      
+      // Auto-expand folders containing changed files in the all files view
+      const foldersToExpand = new Set<string>(expandedFolders);
+      
+      // Find and expand folders that contain changed files
+      const hasChangedFilesRecursive = (node: FileNode): boolean => {
+        if (node.type === 'file') {
+          return node.status !== undefined;
+        }
+        
+        if (node.type === 'folder' && node.children) {
+          return node.children.some(child => hasChangedFilesRecursive(child));
+        }
+        
+        return false;
+      };
+      
+      const findChangedFolders = (nodes: FileNode[]) => {
+        nodes.forEach(node => {
+          if (node.type === 'folder' && node.children) {
+            // Check if this folder or any of its descendants contain changed files
+            if (hasChangedFilesRecursive(node)) {
+              foldersToExpand.add(node.path);
+            }
+            
+            // Recursively check children
+            findChangedFolders(node.children);
+          }
+        });
+      };
+      
+      findChangedFolders(sortedTree);
+      setExpandedFolders(foldersToExpand);
     } catch (error) {
       console.error("Failed to load all files:", error);
     }
@@ -366,6 +399,28 @@ export function FileTreeDiff({ projectPath, taskId, worktreePath, refreshKey = 0
     
     const sortedTree = sortTree(root);
     setChangedFilesTree(sortedTree);
+    
+    // Auto-expand folders containing changed files
+    const foldersToExpand = new Set<string>();
+    
+    // Collect all folder paths that contain changed files
+    const collectFolderPaths = (node: FileNode, parentPath: string = '') => {
+      if (node.type === 'folder' && node.children && node.children.length > 0) {
+        // This folder contains changed files, so expand it
+        foldersToExpand.add(node.path);
+        
+        // Recursively check children
+        node.children.forEach(child => {
+          collectFolderPaths(child, node.path);
+        });
+      }
+    };
+    
+    // Collect all folders that should be expanded
+    sortedTree.forEach(node => collectFolderPaths(node));
+    
+    // Set expanded folders
+    setExpandedFolders(foldersToExpand);
   };
 
   const loadDiff = async (filePath: string) => {

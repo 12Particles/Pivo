@@ -1,9 +1,8 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { Task, Project, TaskAttempt } from "@/types";
-import { Play, GitBranch } from "lucide-react";
+import { GitBranch } from "lucide-react";
 import { FileTreeDiff } from "@/features/vcs/components/common/FileTreeDiff";
 import { IntegrationPanel } from "@/features/integration/components/IntegrationPanel";
 import { ResizableLayout } from "@/features/layout/components/ResizableLayout";
@@ -255,11 +254,8 @@ export function TaskDetailsPanel({
                   <h3 className="font-medium mb-2">{t('task.executeAttempts')}</h3>
                   {currentAttempt ? (
                     <div className="p-3 bg-muted rounded-lg text-sm space-y-2">
-                      <div className="flex items-center justify-between">
+                      <div>
                         <span className="text-muted-foreground">{t('task.currentAttempt')}</span>
-                        <Badge variant={currentAttempt.status === "running" ? "default" : "secondary"}>
-                          {currentAttempt.status}
-                        </Badge>
                       </div>
                       <div className="font-mono text-xs">
                         ID: {currentAttempt.id.slice(0, 8)}
@@ -271,21 +267,6 @@ export function TaskDetailsPanel({
                   ) : (
                     <p className="text-sm text-muted-foreground">{t('task.noAttempts')}</p>
                   )}
-                  
-                  <div className="mt-3">
-                    <Button 
-                      onClick={async () => {
-                        if (onRunTask) {
-                          await onRunTask(task);
-                        }
-                      }}
-                      size="sm"
-                      className="w-full"
-                    >
-                      <Play className="h-4 w-4 mr-1" />
-                      {t('task.createNewAttempt')}
-                    </Button>
-                  </div>
                 </div>
               </TabsContent>
 
