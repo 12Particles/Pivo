@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -154,64 +154,78 @@ export function LogViewerPage() {
     await currentWindow.close();
   };
 
-  const LogContent = ({ content, type }: { content: string; type: 'backend' | 'frontend' }) => (
-    <div className="space-y-2">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => handleExport(type)}
-          >
-            <Download className="h-4 w-4 mr-1" />
-            {t('logs.export')}
-          </Button>
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => handleClear(type)}
-          >
-            <Trash2 className="h-4 w-4 mr-1" />
-            {t('logs.clear')}
-          </Button>
-          {type === 'backend' && (
+  const LogContent = ({ content, type }: { content: string; type: 'backend' | 'frontend' }) => {
+    const scrollAreaRef = useRef<HTMLDivElement>(null);
+    
+    // Auto-scroll to bottom when content changes and auto-refresh is enabled
+    useEffect(() => {
+      if (autoRefresh && scrollAreaRef.current) {
+        const scrollContainer = scrollAreaRef.current.querySelector('[data-radix-scroll-area-viewport]');
+        if (scrollContainer) {
+          scrollContainer.scrollTop = scrollContainer.scrollHeight;
+        }
+      }
+    }, [content]);
+    
+    return (
+      <div className="space-y-2">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
             <Button
               size="sm"
               variant="outline"
-              onClick={handleOpenInEditor}
+              onClick={() => handleExport(type)}
             >
-              <ExternalLink className="h-4 w-4 mr-1" />
-              {t('logs.openInEditor')}
+              <Download className="h-4 w-4 mr-1" />
+              {t('logs.export')}
             </Button>
-          )}
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => handleClear(type)}
+            >
+              <Trash2 className="h-4 w-4 mr-1" />
+              {t('logs.clear')}
+            </Button>
+            {type === 'backend' && (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={handleOpenInEditor}
+              >
+                <ExternalLink className="h-4 w-4 mr-1" />
+                {t('logs.openInEditor')}
+              </Button>
+            )}
+          </div>
+          <div className="flex items-center gap-2">
+            <label className="flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                checked={autoRefresh}
+                onChange={(e) => setAutoRefresh(e.target.checked)}
+                className="rounded"
+              />
+              {t('logs.autoRefresh')}
+            </label>
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={loadLogs}
+              disabled={loading}
+            >
+              <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+            </Button>
+          </div>
         </div>
-        <div className="flex items-center gap-2">
-          <label className="flex items-center gap-2 text-sm">
-            <input
-              type="checkbox"
-              checked={autoRefresh}
-              onChange={(e) => setAutoRefresh(e.target.checked)}
-              className="rounded"
-            />
-            {t('logs.autoRefresh')}
-          </label>
-          <Button
-            size="sm"
-            variant="ghost"
-            onClick={loadLogs}
-            disabled={loading}
-          >
-            <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-          </Button>
-        </div>
+        <ScrollArea ref={scrollAreaRef} className="h-[calc(100vh-200px)] w-full rounded-md border bg-black p-4">
+          <pre className="text-xs text-green-400 font-mono whitespace-pre-wrap">
+            {content || t('logs.noLogs')}
+          </pre>
+        </ScrollArea>
       </div>
-      <ScrollArea className="h-[calc(100vh-200px)] w-full rounded-md border bg-black p-4">
-        <pre className="text-xs text-green-400 font-mono whitespace-pre-wrap">
-          {content || t('logs.noLogs')}
-        </pre>
-      </ScrollArea>
-    </div>
-  );
+    );
+  };
 
   return (
     <div className="h-screen bg-background p-4">
