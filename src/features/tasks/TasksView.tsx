@@ -105,6 +105,7 @@ export function TasksView() {
       await taskApi.update(id, data);
       await loadTasks();
       setShowEditTaskDialog(false);
+      setTaskToEdit(null);
     } catch (error) {
       console.error('Failed to update task:', error);
     }
@@ -187,14 +188,18 @@ export function TasksView() {
         projectId={currentProject.id}
       />
       
-      {taskToEdit && (
-        <EditTaskDialog
-          open={showEditTaskDialog}
-          onOpenChange={setShowEditTaskDialog}
-          task={taskToEdit}
-          onSubmit={(data) => handleUpdateTask(taskToEdit.id, data as UpdateTaskRequest)}
-        />
-      )}
+      <EditTaskDialog
+        open={showEditTaskDialog}
+        onOpenChange={(open) => {
+          setShowEditTaskDialog(open);
+          if (!open) {
+            // Reset taskToEdit when dialog closes
+            setTaskToEdit(null);
+          }
+        }}
+        task={taskToEdit}
+        onSubmit={(taskId, data) => handleUpdateTask(taskId, data)}
+      />
       
       <ProjectMainView
         leftPanel={
@@ -218,8 +223,9 @@ export function TasksView() {
               onExecuteTask={async (task) => {
                 setSelectedTask(task);
                 try {
-                  // 构建包含任务上下文的初始消息
+                  // 构建包含任务上下文的初始消息 - 与 create&start 使用相同的格式
                   const initialMessage = `请执行以下任务：\n\n标题：${task.title}\n${task.description ? `\n描述：${task.description}` : ''}`;
+                  // 注意：从任务卡片执行时无法获取原始图片，因为图片不存储在任务中
                   await taskApi.execute(task.id, initialMessage);
                 } catch (error) {
                   console.error('Failed to execute task:', error);

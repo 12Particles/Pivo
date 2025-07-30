@@ -13,6 +13,8 @@ interface ImageUploadProps {
   maxSizeBytes?: number;
   className?: string;
   disabled?: boolean;
+  onFileSelectStart?: () => void;
+  onFileSelectEnd?: () => void;
 }
 
 export function ImageUpload({
@@ -22,6 +24,8 @@ export function ImageUpload({
   maxSizeBytes = 10 * 1024 * 1024, // 10MB
   className,
   disabled = false,
+  onFileSelectStart,
+  onFileSelectEnd,
 }: ImageUploadProps) {
   const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -81,6 +85,9 @@ export function ImageUpload({
 
   const handleFileSelect = async () => {
     try {
+      // Notify parent that file selection is starting
+      onFileSelectStart?.();
+      
       const selected = await open({
         multiple: true,
         filters: [{
@@ -114,6 +121,9 @@ export function ImageUpload({
         description: "Please try again",
         variant: "destructive",
       });
+    } finally {
+      // Always notify parent that file selection is done
+      onFileSelectEnd?.();
     }
   };
 

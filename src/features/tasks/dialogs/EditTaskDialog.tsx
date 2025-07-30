@@ -35,17 +35,19 @@ export function EditTaskDialog({ open, onOpenChange, task, onSubmit }: EditTaskD
   const [tagInput, setTagInput] = useState("");
   const [images, setImages] = useState<string[]>([]);
 
-  // Pre-populate form when task changes
+  // Pre-populate form when task changes or dialog opens
   useEffect(() => {
-    if (task) {
+    if (task && open) {
       setFormData({
         title: task.title,
         description: task.description || "",
         priority: task.priority,
         tags: task.tags || [],
       });
+      // Reset images when opening with a new task
+      setImages([]);
     }
-  }, [task]);
+  }, [task, open]);
 
   const handleSubmit = () => {
     if (!task || !formData.title?.trim()) return;

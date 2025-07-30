@@ -283,20 +283,32 @@ impl GitPlatformService for GitHubService {
         let auth_token = self.config.access_token.as_ref()
             .ok_or("GitHub authentication not configured")?;
         
+        // GitHub now recommends using the token as the username with 'x-oauth-basic' as password
+        // or just the token as password with any username
         let auth_url = if remote_url.starts_with("https://") {
-            remote_url.replace("https://", &format!("https://{}@", auth_token))
+            // Try using token as username with empty password
+            remote_url.replace("https://", &format!("https://{}:x-oauth-basic@", auth_token))
         } else if remote_url.starts_with("git@github.com:") {
             // Convert SSH URL to HTTPS with auth token
             remote_url
                 .replace("git@github.com:", "https://github.com/")
-                .replace("https://", &format!("https://{}@", auth_token))
+                .replace("https://", &format!("https://{}:x-oauth-basic@", auth_token))
         } else {
             return Err("Unsupported remote URL format".to_string());
         };
         
+        log::info!("Push URL (without token): {}", auth_url.replace(auth_token, "***"));
+        log::info!("Pushing from repo: {}", repo_path);
+        
+        // First, disable credential helper for this push to ensure our URL is used
+        let config_output = Command::new("git")
+            .args(&["-c", "credential.helper="])
+            .current_dir(repo_path)
+            .output();
+        
         // Push to the authenticated URL
         let branch_spec = format!("{}:{}", branch, branch);
-        let mut push_args = vec!["push", &auth_url, &branch_spec];
+        let mut push_args = vec!["-c", "credential.helper=", "push", &auth_url, &branch_spec];
         if force {
             push_args.push("--force");
         }
