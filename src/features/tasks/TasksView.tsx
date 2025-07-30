@@ -63,10 +63,10 @@ export function TasksView() {
       )
     );
     // Update selected task if it's the one being updated
-    if (selectedTask?.id === updatedTask.id) {
-      setSelectedTask(updatedTask);
-    }
-  });
+    setSelectedTask(prevSelected => 
+      prevSelected?.id === updatedTask.id ? updatedTask : prevSelected
+    );
+  }, []);
   
   
   const loadTasks = async () => {

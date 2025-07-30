@@ -215,6 +215,10 @@ impl CodingAgentExecutorService {
             });
         } // Lock is dropped here
         
+        // Emit events for execution start
+        self.emit_attempt_execution_state(attempt_id);
+        self.emit_task_execution_summary(task_id);
+        
         // Create and send user message
         let user_message = ConversationMessage::new(
             MessageRole::User,
