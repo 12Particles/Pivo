@@ -190,6 +190,11 @@ pub async fn read_project_info(path: String) -> Result<ProjectInfo, String> {
     let git_path = project_path.join(".git");
     let has_git = git_path.exists() && git_path.is_dir();
     
+    // Validate git repository
+    if !has_git {
+        return Err("Selected directory is not a valid Git repository. Please select a directory with an initialized Git repository.".to_string());
+    }
+    
     // Get git remote URL if available
     let mut git_repo = None;
     if has_git {

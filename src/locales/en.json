@@ -74,6 +74,7 @@
     "descriptionPlaceholder": "Enter project description",
     "updated": "Project updated successfully",
     "updateFailed": "Failed to update project",
+    "openFailed": "Failed to open project",
     "deleteProject": "Delete Project",
     "deleteConfirmTitle": "Delete Project",
     "deleteConfirmMessage": "Are you sure you want to delete project \"{{name}}\"? This action cannot be undone.",

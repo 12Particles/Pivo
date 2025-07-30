@@ -25,7 +25,6 @@ interface TaskDetailsPanelProps {
 export function TaskDetailsPanel({
   task,
   project,
-  onRunTask,
   bottomPanelVisible = true,
 }: TaskDetailsPanelProps) {
   const { t } = useTranslation();

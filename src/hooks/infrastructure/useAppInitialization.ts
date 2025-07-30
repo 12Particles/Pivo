@@ -10,11 +10,13 @@ import { useToast } from '@/hooks/use-toast';
 import { useTranslation } from 'react-i18next';
 import { useApp } from '@/contexts/AppContext';
 import { projectApi, mcpApi } from '@/services/api';
+import { useErrorDialog } from '@/hooks/use-error-dialog';
 
 export function useAppInitialization() {
   const { t } = useTranslation();
   const { toast } = useToast();
   const { navigateTo, setCurrentProject } = useApp();
+  const { errorDialog, showError } = useErrorDialog();
   
   useEffect(() => {
     // Initialize logger
@@ -65,15 +67,26 @@ export function useAppInitialization() {
   });
   
   useEvent('menu-open-project', async () => {
-    // Open directory picker dialog
-    const selectedPath = await projectApi.selectProjectDirectory();
-    if (selectedPath) {
-      // Read project info from the selected directory
-      const projectInfo = await projectApi.readProjectInfo(selectedPath);
-      // Store project info temporarily
-      sessionStorage.setItem('pendingProjectInfo', JSON.stringify(projectInfo));
-      // Navigate to projects view - it will handle the project creation form
-      navigateTo('projects');
+    try {
+      // Open directory picker dialog
+      const selectedPath = await projectApi.selectProjectDirectory();
+      if (selectedPath) {
+        // Read project info from the selected directory
+        const projectInfo = await projectApi.readProjectInfo(selectedPath);
+        // Store project info temporarily
+        sessionStorage.setItem('pendingProjectInfo', JSON.stringify(projectInfo));
+        // Navigate to projects view - it will handle the project creation form
+        navigateTo('projects');
+      }
+    } catch (error: any) {
+      logger.error('Failed to open project', error);
+      console.error('Error object:', error);
+      // Tauri errors come as strings, not Error objects
+      const errorMessage = typeof error === 'string' ? error : (error.message || t('project.openFailed'));
+      showError(
+        errorMessage,
+        t('common.error')
+      );
     }
   });
   
@@ -96,4 +109,6 @@ export function useAppInitialization() {
       });
     }
   });
+  
+  return { errorDialog };
 }

@@ -5,11 +5,17 @@
 import { useAppInitialization } from '@/hooks/infrastructure/useAppInitialization';
 import { useGlobalKeyboardShortcuts } from '@/hooks/ui/useGlobalKeyboardShortcuts';
 import { AppRouter } from './AppRouter';
+import { ErrorDialog } from '@/components/ui/error-dialog';
 
 export function AppShell() {
   // Initialize app
-  useAppInitialization();
+  const { errorDialog } = useAppInitialization();
   useGlobalKeyboardShortcuts();
   
-  return <AppRouter />;
+  return (
+    <>
+      <AppRouter />
+      <ErrorDialog {...errorDialog} />
+    </>
+  );
 }

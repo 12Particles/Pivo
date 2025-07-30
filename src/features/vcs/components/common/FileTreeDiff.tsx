@@ -404,14 +404,14 @@ export function FileTreeDiff({ projectPath, taskId, worktreePath, refreshKey = 0
     const foldersToExpand = new Set<string>();
     
     // Collect all folder paths that contain changed files
-    const collectFolderPaths = (node: FileNode, parentPath: string = '') => {
+    const collectFolderPaths = (node: FileNode) => {
       if (node.type === 'folder' && node.children && node.children.length > 0) {
         // This folder contains changed files, so expand it
         foldersToExpand.add(node.path);
         
         // Recursively check children
         node.children.forEach(child => {
-          collectFolderPaths(child, node.path);
+          collectFolderPaths(child);
         });
       }
     };

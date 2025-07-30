@@ -74,6 +74,7 @@
     "descriptionPlaceholder": "输入项目描述",
     "updated": "项目更新成功",
     "updateFailed": "项目更新失败",
+    "openFailed": "打开项目失败",
     "deleteProject": "删除项目",
     "deleteConfirmTitle": "删除项目",
     "deleteConfirmMessage": "确定要删除项目 \"{{name}}\" 吗？此操作无法撤销。",
