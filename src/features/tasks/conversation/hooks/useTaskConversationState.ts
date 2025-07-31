@@ -56,16 +56,6 @@ export function useTaskConversationState(taskId: string) {
     };
 
     loadState();
-
-    // Subscribe to state updates - single channel
-    const unsubscribeStateUpdate = listen<{ taskId: string; state: ConversationState }>(
-      'state:conversation-sync',
-      (event) => {
-        if (event.payload.taskId === taskId && mounted) {
-          setState(event.payload.state);
-        }
-      }
-    );
     
     // Listen for execution started events
     const unsubscribeExecutionStarted = listen<{ taskId: string; attemptId: string; executionId: string }>(
@@ -214,7 +204,6 @@ export function useTaskConversationState(taskId: string) {
 
     return () => {
       mounted = false;
-      unsubscribeStateUpdate.then(unsub => unsub());
       unsubscribeMessages.then(unsub => unsub());
       unsubscribeExecutionStarted.then(unsub => unsub());
       unsubscribeExecutionCompleted.then(unsub => unsub());

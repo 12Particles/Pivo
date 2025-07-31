@@ -462,7 +462,7 @@ impl CodingAgentExecutorService {
     
     // Event emitters
     // Removed redundant event emitters - using simplified event system per RFC
-    // State is now synced through state:conversation-sync event
+    // State is now synced through granular events (execution:started, execution:completed, etc.)
     
     // Configuration
     pub fn configure_claude_api_key(&self, api_key: &str) -> Result<(), String> {

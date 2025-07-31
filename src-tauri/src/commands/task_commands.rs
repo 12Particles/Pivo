@@ -286,19 +286,12 @@ async fn handle_stop_execution(
     Ok(())
 }
 
-async fn emit_state_update(
-    app: &AppHandle, 
-    state: &State<'_, AppState>,
-    cli_state: &State<'_, CliState>,
-    task_id: &str
-) {
-    if let Ok(conversation_state) = get_conversation_state(state.clone(), cli_state.clone(), task_id.to_string()).await {
-        let _ = app.emit("state:conversation-sync", &serde_json::json!({
-            "taskId": task_id,
-            "state": conversation_state,
-        }));
-    }
-}
+// Removed emit_state_update function - no longer needed
+// State updates are now handled through granular events:
+// - execution:started
+// - execution:completed
+// - message:added
+// - task:status-changed
 
 async fn get_attempt_messages(
     state: &State<'_, AppState>,

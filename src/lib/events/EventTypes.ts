@@ -52,12 +52,6 @@ export interface AppEvents {
     message: UnifiedMessage;
   };
   
-  // State sync events (RFC redesign)
-  'state:conversation-sync': {
-    taskId: string;
-    state: any; // ConversationState
-  };
-  
   // Session events
   'session:received': {
     attemptId: string;
