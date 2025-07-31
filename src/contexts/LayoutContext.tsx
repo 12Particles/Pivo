@@ -21,9 +21,9 @@ const DEFAULT_LAYOUT = {
   leftPanelVisible: true,
   rightPanelVisible: true,
   bottomPanelVisible: true,
-  leftPanelSize: 30,
-  centerPanelSize: 40,
-  rightPanelSize: 30,
+  leftPanelSize: 18,
+  centerPanelSize: 50,
+  rightPanelSize: 32,
 };
 
 const LayoutContext = createContext<LayoutContextValue | null>(null);
