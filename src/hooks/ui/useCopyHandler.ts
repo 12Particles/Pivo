@@ -47,6 +47,16 @@ export function useCopyHandler() {
           }
         }
       }
+      
+      // Handle Ctrl/Cmd + A
+      if ((e.ctrlKey || e.metaKey) && e.key === 'a' && !e.shiftKey && !e.altKey) {
+        const activeElement = document.activeElement;
+        if (activeElement && (activeElement.tagName === 'INPUT' || activeElement.tagName === 'TEXTAREA')) {
+          e.preventDefault();
+          const target = activeElement as HTMLInputElement | HTMLTextAreaElement;
+          target.select();
+        }
+      }
     };
 
     // Use capture phase to intercept before other handlers

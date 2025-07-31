@@ -149,7 +149,7 @@ export function MessageInput({
           onKeyPress={onKeyPress}
           onPaste={handlePaste}
           placeholder={t('ai.sendMessage')}
-          className="flex-1 min-h-[36px] max-h-[120px] resize-none py-2"
+          className="flex-1 min-h-[36px] max-h-[120px] resize-none h-9"
           disabled={isDisabled}
         />
         

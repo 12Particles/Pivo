@@ -60,8 +60,8 @@ export const StableLayoutPanel: React.FC<StableLayoutPanelProps> = ({
   
   // Default sizes
   const DEFAULT_SIZES = {
-    horizontal: hasLeftPanel && hasRightPanel ? [25, 50, 25] : 
-                hasLeftPanel ? [30, 70] : 
+    horizontal: hasLeftPanel && hasRightPanel ? [20, 50, 30] : 
+                hasLeftPanel ? [20, 80] : 
                 hasRightPanel ? [70, 30] : 
                 [100],
     vertical: hasBottomPanel ? [70, 30] : [100],
@@ -112,14 +112,16 @@ export const StableLayoutPanel: React.FC<StableLayoutPanelProps> = ({
             defaultSize={DEFAULT_SIZES.horizontal[0]}
             collapsedSize={0}
             collapsible={true}
-            minSize={20}
-            maxSize={40}
+            minSize={15}
+            maxSize={35}
           >
             <div className="h-full overflow-auto">
               {leftPanel}
             </div>
           </Panel>
-          <PanelResizeHandle className="w-1 bg-border hover:bg-accent transition-colors" />
+          <PanelResizeHandle className="resize-handle resize-handle-horizontal">
+            <div className="resize-handle-inner" />
+          </PanelResizeHandle>
         </>
       )}
       
@@ -137,7 +139,9 @@ export const StableLayoutPanel: React.FC<StableLayoutPanelProps> = ({
       
       {hasRightPanel && (
         <>
-          <PanelResizeHandle className="w-1 bg-border hover:bg-accent transition-colors" />
+          <PanelResizeHandle className="resize-handle resize-handle-horizontal">
+            <div className="resize-handle-inner" />
+          </PanelResizeHandle>
           <Panel
             id={PANEL_IDS.right}
             ref={rightPanelRef}
@@ -179,7 +183,9 @@ export const StableLayoutPanel: React.FC<StableLayoutPanelProps> = ({
             {horizontalPanels}
           </Panel>
           
-          <PanelResizeHandle className="h-1 bg-border hover:bg-accent transition-colors" />
+          <PanelResizeHandle className="resize-handle resize-handle-vertical">
+            <div className="resize-handle-inner" />
+          </PanelResizeHandle>
           
           <Panel
             id={PANEL_IDS.bottom}

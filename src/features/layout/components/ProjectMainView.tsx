@@ -35,8 +35,8 @@ export const ProjectMainView: React.FC<ProjectMainViewProps> = ({
   leftPanelVisible = true,
   rightPanelVisible = true,
   bottomPanelVisible = false,
-  leftPanelSize = 30,
-  centerPanelSize = 40,
+  leftPanelSize = 20,
+  centerPanelSize = 50,
   rightPanelSize = 30,
   leftPanelRef,
   rightPanelRef,
@@ -79,15 +79,17 @@ export const ProjectMainView: React.FC<ProjectMainViewProps> = ({
             defaultSize={leftPanelSize}
             collapsedSize={0}
             collapsible={true}
-            minSize={20}
-            maxSize={50}
+            minSize={15}
+            maxSize={35}
             onResize={onLeftPanelResize}
           >
             <div className="h-full overflow-auto bg-background">
               {leftPanel}
             </div>
           </Panel>
-          <PanelResizeHandle className="w-1 bg-border hover:bg-accent transition-colors" />
+          <PanelResizeHandle className="resize-handle resize-handle-horizontal">
+            <div className="resize-handle-inner" />
+          </PanelResizeHandle>
         </>
       )}
       
@@ -103,7 +105,9 @@ export const ProjectMainView: React.FC<ProjectMainViewProps> = ({
       
       {rightPanel && (
         <>
-          <PanelResizeHandle className="w-1 bg-border hover:bg-accent transition-colors" />
+          <PanelResizeHandle className="resize-handle resize-handle-horizontal">
+            <div className="resize-handle-inner" />
+          </PanelResizeHandle>
           <Panel
             id="right"
             ref={rightPanelRef}
@@ -134,7 +138,9 @@ export const ProjectMainView: React.FC<ProjectMainViewProps> = ({
           </Panel>
           {bottomPanelVisible && (
             <>
-              <PanelResizeHandle className="h-1 bg-border hover:bg-accent transition-colors" />
+              <PanelResizeHandle className="resize-handle resize-handle-vertical">
+                <div className="resize-handle-inner" />
+              </PanelResizeHandle>
               <Panel
                 id="bottom"
                 ref={bottomPanelRef}
