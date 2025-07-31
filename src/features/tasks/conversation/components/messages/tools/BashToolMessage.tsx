@@ -27,7 +27,7 @@ export function BashToolMessage({ message, isPending }: MessageComponentProps) {
           <div className="text-sm text-muted-foreground">
             Running command:
           </div>
-          <pre className="bg-gray-900 text-gray-100 px-3 py-2 rounded text-xs overflow-x-auto">
+          <pre className="bg-muted text-muted-foreground px-3 py-2 rounded text-xs overflow-x-auto font-mono">
             <code>{toolInput.command}</code>
           </pre>
           {toolInput.description && (

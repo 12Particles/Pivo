@@ -12,6 +12,7 @@ import { AppProvider } from '@/contexts/AppContext';
 import { LayoutProvider } from '@/contexts/LayoutContext';
 import { SettingsProvider } from '@/contexts/SettingsContext';
 import { ErrorProvider } from '@/contexts/ErrorContext';
+import { ThemeProvider } from './ThemeProvider';
 
 // Create a stable QueryClient instance
 const queryClient = new QueryClient({
@@ -37,13 +38,15 @@ export function AppProviders({ children }: AppProvidersProps) {
       <QueryClientProvider client={queryClient}>
         <ErrorProvider>
           <SettingsProvider>
-            <LayoutProvider>
-              <AppProvider>
-                {children}
-                <Toaster />
-                <ErrorNotification />
-              </AppProvider>
-            </LayoutProvider>
+            <ThemeProvider>
+              <LayoutProvider>
+                <AppProvider>
+                  {children}
+                  <Toaster />
+                  <ErrorNotification />
+                </AppProvider>
+              </LayoutProvider>
+            </ThemeProvider>
           </SettingsProvider>
         </ErrorProvider>
       </QueryClientProvider>

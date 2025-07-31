@@ -11,7 +11,7 @@ export function SystemMessage({ message }: MessageComponentProps) {
     <div className="bg-orange-50 dark:bg-orange-950/20 border-b">
       <div className="py-3 px-4">
         <MessageHeader
-          icon={<Settings className="h-4 w-4 text-gray-600" />}
+          icon={<Settings className="h-4 w-4 text-muted-foreground" />}
           title={t('ai.system')}
           timestamp={message.timestamp}
         />
