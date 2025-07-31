@@ -166,6 +166,11 @@ Pivo使用SQLite进行数据持久化。数据库在首次运行时自动初始�
 4. **执行任务**：使用集成终端或AI执行任务相关命令
 5. **跟踪进度**：监控任务尝试和执行历史
 
+## 社区
+### 微信群
+
+![9d24168dff9d96540fb5c012b0a0b212](https://github.com/user-attachments/assets/7a0e0f87-2ac9-4aca-aa78-9a922a339faa)
+
 ## 🤝 贡献
 
 我们欢迎贡献！请查看我们的[贡献指南](CONTRIBUTING.md)了解详情。
