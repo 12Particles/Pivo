@@ -158,8 +158,8 @@ export function LogViewer({ open, onOpenChange }: LogViewerProps) {
           </Button>
         </div>
       </div>
-      <ScrollArea className="h-[500px] w-full rounded-md border bg-black p-4">
-        <pre className="text-xs text-green-400 font-mono whitespace-pre-wrap">
+      <ScrollArea className="h-[500px] w-full rounded-md border bg-zinc-900 dark:bg-zinc-950 p-4">
+        <pre className="text-xs text-green-600 dark:text-green-400 font-mono whitespace-pre-wrap">
           {content || t('logs.noLogs')}
         </pre>
       </ScrollArea>

@@ -13,7 +13,7 @@ export function CodeBlockRenderer({ content }: CodeBlockRendererProps) {
           const codeContent = codeLines.join('\n');
           return (
             <div key={i} className="overflow-x-auto">
-              <pre className="font-mono text-xs bg-gray-100 dark:bg-gray-800 p-3 rounded whitespace-pre inline-block min-w-0">
+              <pre className="font-mono text-xs bg-muted text-muted-foreground p-3 rounded whitespace-pre inline-block min-w-0">
                 {codeContent || lang}
               </pre>
             </div>

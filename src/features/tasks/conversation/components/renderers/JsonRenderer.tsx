@@ -7,7 +7,7 @@ export function JsonRenderer({ content }: JsonRendererProps) {
     const jsonData = JSON.parse(content);
     return (
       <div className="overflow-x-auto">
-        <pre className="font-mono text-xs bg-gray-100 dark:bg-gray-800 p-3 rounded whitespace-pre inline-block min-w-0">
+        <pre className="font-mono text-xs bg-muted text-muted-foreground p-3 rounded whitespace-pre inline-block min-w-0">
           {JSON.stringify(jsonData, null, 2)}
         </pre>
       </div>
