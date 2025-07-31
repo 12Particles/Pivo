@@ -10,12 +10,13 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
+import { MentionTextarea } from "@/components/ui/mention-textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { TaskPriority, CreateTaskRequest } from "@/types";
 import { useTranslation } from "react-i18next";
 import { ImageUpload } from "@/components/ui/image-upload";
 import { Play } from "lucide-react";
+import { useApp } from "@/contexts/AppContext";
 
 interface CreateTaskDialogProps {
   open: boolean;
@@ -26,6 +27,7 @@ interface CreateTaskDialogProps {
 
 export function CreateTaskDialog({ open, onOpenChange, projectId, onSubmit }: CreateTaskDialogProps) {
   const { t } = useTranslation();
+  const { currentProject } = useApp();
   const [formData, setFormData] = useState<Partial<CreateTaskRequest>>({
     project_id: projectId,
     title: "",
@@ -112,11 +114,12 @@ export function CreateTaskDialog({ open, onOpenChange, projectId, onSubmit }: Cr
 
             <div className="grid gap-2">
               <Label htmlFor="description">{t('task.taskDescription')}</Label>
-              <Textarea
+              <MentionTextarea
                 id="description"
                 value={formData.description || ""}
-                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                onChange={(value) => setFormData({ ...formData, description: value })}
                 placeholder={t('task.enterTaskDescription')}
+                searchPath={currentProject?.path}
                 rows={3}
               />
             </div>
