@@ -93,6 +93,11 @@ pub async fn get_conversation_state(
     
     // Check if task is executing and get current execution
     let executions = cli_state.service.list_executions();
+    log::debug!("Total executions found: {}", executions.len());
+    for exec in &executions {
+        log::debug!("Execution - ID: {}, Task ID: {}, Status: {:?}", exec.id, exec.task_id, exec.status);
+    }
+    
     let current_execution = executions.iter().find(|e| e.task_id == task_id).cloned();
     
     let is_executing = current_execution.as_ref().map(|e| 
@@ -101,6 +106,9 @@ pub async fn get_conversation_state(
             crate::services::coding_agent_executor::types::CodingAgentExecutionStatus::Starting
         )
     ).unwrap_or(false);
+    
+    log::info!("get_conversation_state for task {}: is_executing = {}, has_attempt = {}", 
+        task_id, is_executing, current_attempt.is_some());
     
     // Get messages from current attempt
     let messages = if let Some(attempt) = current_attempt {

@@ -93,22 +93,23 @@ impl CodingAgentExecutorService {
                 // Check for execution complete messages
                 if conversation_msg.message_type == "execution_complete" {
                     let mut executions = executions.lock().unwrap();
-                    // Find and update the execution status
-                    for (_exec_id, process) in executions.iter_mut() {
-                        if process.execution_context.attempt_id == attempt_id {
-                            process.execution.status = CodingAgentExecutionStatus::Completed;
-                            info!("Execution completed for attempt: {}", attempt_id);
-                            break;
-                        }
-                    }
-                    // Get execution ID for the event
+                    // Find and remove the completed execution
                     let mut exec_id = String::new();
-                    for (_id, process) in executions.iter() {
+                    let mut found_exec_id = None;
+                    for (id, process) in executions.iter() {
                         if process.execution_context.attempt_id == attempt_id {
                             exec_id = process.execution.id.clone();
+                            found_exec_id = Some(id.clone());
                             break;
                         }
                     }
+                    
+                    // Remove the completed execution from the map
+                    if let Some(id) = found_exec_id {
+                        executions.remove(&id);
+                        info!("Removed completed execution {} for attempt: {}", id, attempt_id);
+                    }
+                    
                     drop(executions); // Release lock before emitting
                     
                     // Emit execution:completed event

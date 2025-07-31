@@ -29,6 +29,15 @@ export const TaskConversation: React.FC<TaskConversationProps> = ({ task }) => {
   // Get state from backend
   const conversationState = useTaskConversationState(task.id);
   
+  // Debug logging
+  useEffect(() => {
+    console.log(`[TaskConversation] State for task ${task.id}:`, {
+      isExecuting: conversationState.isExecuting,
+      canSendMessage: conversationState.canSendMessage,
+      executionStatus: conversationState.isExecuting ? CodingAgentExecutionStatus.Running : undefined
+    });
+  }, [task.id, conversationState.isExecuting, conversationState.canSendMessage]);
+  
   // Commands
   const { sendMessage, stopExecution } = useTaskCommand();
   

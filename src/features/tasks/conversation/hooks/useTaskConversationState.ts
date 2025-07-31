@@ -45,7 +45,14 @@ export function useTaskConversationState(taskId: string) {
     const loadState = async () => {
       try {
         isLoadingInitialState = true;
+        console.log(`[useTaskConversationState] Loading state for task: ${taskId}`);
         const initialState = await invoke<ConversationState>('get_conversation_state', { taskId });
+        console.log(`[useTaskConversationState] Loaded state for task ${taskId}:`, {
+          isExecuting: initialState.isExecuting,
+          canSendMessage: initialState.canSendMessage,
+          messagesCount: initialState.messages.length,
+          currentAttemptId: initialState.currentAttemptId
+        });
         if (mounted) {
           setState(initialState);
         }
@@ -62,9 +69,11 @@ export function useTaskConversationState(taskId: string) {
     const unsubscribeExecutionStarted = listen<{ taskId: string; attemptId: string; executionId: string }>(
       'execution:started',
       (event) => {
+        console.log(`[useTaskConversationState] execution:started event received:`, event.payload);
         if (event.payload.taskId === taskId && mounted) {
+          console.log(`[useTaskConversationState] Setting isExecuting=true for task ${taskId}`);
           // Update execution state
-          setState(prev => ({ ...prev, isExecuting: true }));
+          setState(prev => ({ ...prev, isExecuting: true, canSendMessage: false }));
         }
       }
     );
@@ -73,7 +82,9 @@ export function useTaskConversationState(taskId: string) {
     const unsubscribeExecutionCompleted = listen<{ taskId: string; attemptId: string; executionId: string; status: string }>(
       'execution:completed',
       (event) => {
+        console.log(`[useTaskConversationState] execution:completed event received:`, event.payload);
         if (event.payload.taskId === taskId && mounted) {
+          console.log(`[useTaskConversationState] Setting isExecuting=false for task ${taskId} and reloading state`);
           // Update execution state and reload
           setState(prev => ({ ...prev, isExecuting: false }));
           loadState();
