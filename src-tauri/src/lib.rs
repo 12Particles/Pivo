@@ -164,6 +164,7 @@ pub fn run() {
             commands::github::push_to_github,
             commands::github::github_start_device_flow,
             commands::github::github_poll_device_auth,
+            commands::system::open_in_terminal,
             services::watch_worktree,
             services::unwatch_worktree,
             services::unwatch_all,

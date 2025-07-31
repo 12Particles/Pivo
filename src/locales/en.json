@@ -39,7 +39,8 @@
     "yes": "Yes",
     "no": "No",
     "add": "Add",
-    "running": "Running"
+    "running": "Running",
+    "openInTerminal": "Open in Terminal"
   },
   "project": {
     "title": "Project",

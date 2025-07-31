@@ -39,7 +39,8 @@
     "yes": "是",
     "no": "否",
     "add": "添加",
-    "running": "运行中"
+    "running": "运行中",
+    "openInTerminal": "在终端中打开"
   },
   "project": {
     "title": "项目",

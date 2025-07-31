@@ -1,8 +1,9 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Task, Project, TaskAttempt } from "@/types";
-import { GitBranch } from "lucide-react";
+import { GitBranch, Terminal } from "lucide-react";
 import { FileTreeDiff } from "@/features/vcs/components/common/FileTreeDiff";
 import { IntegrationPanel } from "@/features/integration/components/IntegrationPanel";
 import { ResizableLayout } from "@/features/layout/components/ResizableLayout";
@@ -31,6 +32,14 @@ export function TaskDetailsPanel({
   const [currentAttempt, setCurrentAttempt] = useState<TaskAttempt | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
   const [changedFilePath, setChangedFilePath] = useState<string | null>(null);
+  
+  const handleOpenInTerminal = async (path: string) => {
+    try {
+      await invoke('open_in_terminal', { path });
+    } catch (error) {
+      console.error('Failed to open terminal:', error);
+    }
+  };
   
   useEffect(() => {
     if (task) {
@@ -193,19 +202,32 @@ export function TaskDetailsPanel({
                 {/* Worktree Info */}
                 {project && (
                   <div>
-                    <h3 className="font-medium mb-2 flex items-center gap-2">
-                      <GitBranch className="h-4 w-4" />
-                      {t('task.worktreeInfo')}
+                    <h3 className="font-medium mb-2 flex items-center justify-between">
+                      <span className="flex items-center gap-2">
+                        <GitBranch className="h-4 w-4" />
+                        {t('task.worktreeInfo')}
+                      </span>
+                      {currentAttempt?.worktree_path && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleOpenInTerminal(currentAttempt.worktree_path)}
+                          className="h-8 px-3"
+                        >
+                          <Terminal className="h-4 w-4 mr-2" />
+                          {t('common.openInTerminal')}
+                        </Button>
+                      )}
                     </h3>
                     {currentAttempt ? (
-                      <dl className="grid grid-cols-2 gap-4 text-sm">
+                      <dl className="space-y-3 text-sm">
                         <div>
-                          <dt className="text-muted-foreground">{t('task.worktreePath')}</dt>
-                          <dd className="font-mono text-xs">{currentAttempt.worktree_path}</dd>
+                          <dt className="text-muted-foreground mb-1">{t('task.worktreePath')}</dt>
+                          <dd className="font-mono text-xs break-all">{currentAttempt.worktree_path}</dd>
                         </div>
                         <div>
-                          <dt className="text-muted-foreground">{t('task.branchName')}</dt>
-                          <dd className="font-mono text-xs">{currentAttempt.branch}</dd>
+                          <dt className="text-muted-foreground mb-1">{t('task.branchName')}</dt>
+                          <dd className="font-mono text-xs break-all">{currentAttempt.branch}</dd>
                         </div>
                       </dl>
                     ) : (
