@@ -24,6 +24,9 @@
     "fs:allow-appdata-read",
     "fs:allow-appdata-write",
     "fs:allow-appdata-read-recursive",
-    "fs:allow-appdata-write-recursive"
+    "fs:allow-appdata-write-recursive",
+    "clipboard-manager:default",
+    "clipboard-manager:allow-read-text",
+    "clipboard-manager:allow-write-text"
   ]
 }

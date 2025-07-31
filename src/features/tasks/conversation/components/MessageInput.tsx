@@ -132,12 +132,13 @@ export function MessageInput({
         </div>
       )}
       
-      <div className="flex gap-2">
+      <div className="flex gap-2 items-start">
         <Button
           variant="outline"
           size="icon"
           onClick={handleImageSelect}
           title={t('ai.addImage')}
+          className="flex-shrink-0"
         >
           <ImagePlus className="h-4 w-4" />
         </Button>
@@ -148,13 +149,14 @@ export function MessageInput({
           onKeyPress={onKeyPress}
           onPaste={handlePaste}
           placeholder={t('ai.sendMessage')}
-          className="flex-1 min-h-[60px] max-h-[120px] resize-none"
+          className="flex-1 min-h-[36px] max-h-[120px] resize-none py-2"
           disabled={isDisabled}
         />
         
         <Button 
           onClick={onSend} 
           disabled={(!input.trim() && images.length === 0) || isDisabled}
+          className="flex-shrink-0"
         >
           {pendingMessages.length > 0 ? (
             <>
