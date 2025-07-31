@@ -9,7 +9,7 @@ import { invoke } from '@tauri-apps/api/core';
 import { useToast } from '@/hooks/use-toast';
 import { useTranslation } from 'react-i18next';
 import { useApp } from '@/contexts/AppContext';
-import { projectApi, mcpApi } from '@/services/api';
+import { projectApi, mcpApi, windowApi } from '@/services/api';
 import { useErrorDialog } from '@/hooks/use-error-dialog';
 
 export function useAppInitialization() {
@@ -23,6 +23,32 @@ export function useAppInitialization() {
     logger.init().then(() => {
       logger.info('Pivo application started');
     });
+    
+    // Check if this window has a project ID from URL params
+    const urlParams = new URLSearchParams(window.location.search);
+    const projectIdFromUrl = urlParams.get('projectId');
+    
+    // Also check the window object (fallback)
+    const projectIdFromWindow = (window as any).__TAURI_PROJECT_ID__;
+    const projectId = projectIdFromUrl || projectIdFromWindow;
+    
+    if (projectId) {
+      // This is a project window, load the project
+      logger.info(`Loading project ${projectId} for window`);
+      projectApi.get(projectId.toString()).then((project) => {
+        if (project) {
+          logger.info(`Project ${project.name} loaded successfully`);
+          setCurrentProject(project);
+          navigateTo('tasks');
+        } else {
+          logger.error('Project not found');
+          navigateTo('projects');
+        }
+      }).catch((error) => {
+        logger.error('Failed to load project for window', error);
+        navigateTo('projects');
+      });
+    }
     
     // Initialize MCP servers
     mcpApi.listServers().then((servers: any[]) => {
@@ -96,9 +122,8 @@ export function useAppInitialization() {
       if (project) {
         // Update last opened time
         await projectApi.updateLastOpened(projectId);
-        // Set current project and navigate to tasks
-        setCurrentProject(project);
-        navigateTo('tasks');
+        // Open project in new window
+        await windowApi.openProjectWindow(projectId, project.name);
       }
     } catch (error) {
       logger.error('Failed to open recent project', error);

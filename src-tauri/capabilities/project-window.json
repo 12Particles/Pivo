@@ -1,8 +1,8 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
-  "identifier": "default",
-  "description": "Capability for the main window",
-  "windows": ["main"],
+  "identifier": "project-window",
+  "description": "Capability for project windows",
+  "windows": ["project-*"],
   "permissions": [
     "core:default",
     "opener:default",
@@ -27,7 +27,6 @@
     "fs:allow-appdata-write-recursive",
     "clipboard-manager:default",
     "clipboard-manager:allow-read-text",
-    "clipboard-manager:allow-write-text",
-    "core:webview:allow-create-webview-window"
+    "clipboard-manager:allow-write-text"
   ]
 }

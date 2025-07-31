@@ -5,13 +5,11 @@
 import { useState, useEffect } from 'react';
 import { ProjectList } from '@/features/projects/components/ProjectList';
 import { ProjectSettingsDialog } from '@/features/projects/components/ProjectSettingsDialog';
-import { useApp } from '@/contexts/AppContext';
-import { projectApi, ProjectInfo } from '@/services/api';
+import { projectApi, ProjectInfo, windowApi } from '@/services/api';
 import { Project } from '@/types';
 import { transformGitUrl } from '@/lib/gitUrlUtils';
 
 export function ProjectsView() {
-  const { setCurrentProject, navigateTo } = useApp();
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
@@ -84,13 +82,11 @@ export function ProjectsView() {
           try {
             // Update last opened time
             await projectApi.updateLastOpened(project.id);
-            setCurrentProject(project);
-            navigateTo('tasks');
+            
+            // Open project in new window
+            await windowApi.openProjectWindow(project.id, project.name);
           } catch (error) {
-            console.error('Failed to update last opened time:', error);
-            // Still navigate even if update fails
-            setCurrentProject(project);
-            navigateTo('tasks');
+            console.error('Failed to open project window:', error);
           }
         }}
         onCreateProject={handleSelectProjectDirectory}
@@ -117,8 +113,9 @@ export function ProjectsView() {
           });
           await loadProjects();
           setSelectedProjectInfo(null);
-          setCurrentProject(project);
-          navigateTo('tasks');
+          
+          // Open project in new window
+          await windowApi.openProjectWindow(project.id, project.name);
         }}
         isCreating={true}
       />
