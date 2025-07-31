@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use std::str::FromStr;
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "lowercase")]
@@ -114,13 +115,21 @@ pub struct MergeRequestInfo {
     pub title: String,
     pub description: Option<String>,
     pub state: MergeRequestState,
+    #[serde(rename = "sourceBranch")]
     pub source_branch: String,
+    #[serde(rename = "targetBranch")]
     pub target_branch: String,
+    #[serde(rename = "webUrl")]
     pub web_url: String,
+    #[serde(rename = "mergeStatus")]
     pub merge_status: Option<MergeStatus>,
+    #[serde(rename = "hasConflicts")]
     pub has_conflicts: bool,
+    #[serde(rename = "pipelineStatus")]
     pub pipeline_status: Option<PipelineStatus>,
+    #[serde(rename = "createdAt")]
     pub created_at: String,
+    #[serde(rename = "updatedAt")]
     pub updated_at: String,
 }
 
@@ -131,6 +140,20 @@ pub enum MergeRequestState {
     Closed,
     Merged,
     Locked,
+}
+
+impl FromStr for MergeRequestState {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "opened" | "open" => Ok(MergeRequestState::Opened),
+            "closed" => Ok(MergeRequestState::Closed),
+            "merged" => Ok(MergeRequestState::Merged),
+            "locked" => Ok(MergeRequestState::Locked),
+            _ => Err(format!("Unknown merge request state: {}", s)),
+        }
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]

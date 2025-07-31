@@ -36,7 +36,7 @@ export function GitHubSettings() {
   const handleSave = async () => {
     try {
       setSaving(true);
-      await updateConfig();
+      await updateConfig(config!);
       toast({
         title: t('toast.success'),
         description: 'GitHub configuration saved successfully',
@@ -66,7 +66,7 @@ export function GitHubSettings() {
     try {
       setSaving(true);
       setConfig(prev => ({ ...prev, accessToken: undefined }));
-      await updateConfig();
+      await updateConfig(config!);
       setConfig(prev => ({ ...prev, accessToken: undefined }));
       refreshConfig();
       toast({

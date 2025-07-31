@@ -162,6 +162,8 @@ pub fn run() {
             commands::github::create_github_pr,
             commands::github::get_github_pr_status,
             commands::github::push_to_github,
+            commands::github::get_pull_requests_by_attempt,
+            commands::github::get_pull_requests_by_task,
             commands::github::github_start_device_flow,
             commands::github::github_poll_device_auth,
             commands::system::open_in_terminal,

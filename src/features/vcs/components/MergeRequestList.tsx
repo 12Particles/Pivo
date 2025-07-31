@@ -3,7 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ExternalLink, GitMerge, AlertCircle, CheckCircle, XCircle, Clock, Plus } from 'lucide-react';
-import type { MergeRequest } from '@/lib/types/mergeRequest';
+import type { MergeRequestInfo } from '@/lib/types/mergeRequest';
 import { CreateMergeRequestDialog } from './gitlab/CreateMergeRequestDialog';
 import { PipelineViewer } from './gitlab/PipelineViewer';
 import { useTranslation } from 'react-i18next';
@@ -21,7 +21,7 @@ export function MergeRequestList({ taskId, taskAttemptId, project }: MergeReques
   const { t } = useTranslation();
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [currentAttempt, setCurrentAttempt] = useState<TaskAttempt | null>(null);
-  const [selectedMR, setSelectedMR] = useState<MergeRequest | null>(null);
+  const [selectedMR, setSelectedMR] = useState<MergeRequestInfo | null>(null);
   
   // Use VCS store hook
   const { pullRequests: mergeRequests, loading, refresh: refreshMergeRequests } = useVcsPullRequests({
@@ -159,7 +159,7 @@ export function MergeRequestList({ taskId, taskAttemptId, project }: MergeReques
                   </Badge>
                 </CardTitle>
                 <CardDescription className="flex items-center gap-2">
-                  <span>{mr.provider} #{mr.mrNumber}</span>
+                  <span>GitLab #{mr.number}</span>
                   <span>•</span>
                   <span>{mr.sourceBranch} → {mr.targetBranch}</span>
                   {mr.hasConflicts && (
@@ -204,15 +204,6 @@ export function MergeRequestList({ taskId, taskAttemptId, project }: MergeReques
                     >
                       {selectedMR?.id === mr.id ? 'Hide Details' : 'Show Details'}
                     </Button>
-                    {mr.pipelineUrl && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => window.open(mr.pipelineUrl, '_blank')}
-                      >
-                        <ExternalLink className="h-3 w-3" />
-                      </Button>
-                    )}
                   </div>
                   {selectedMR?.id === mr.id && (
                     <div className="mt-4">

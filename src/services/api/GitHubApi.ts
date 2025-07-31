@@ -121,6 +121,22 @@ export class GitHubApi {
     logger.info('Clearing GitHub authentication');
     return this.updateConfig({});
   }
+  
+  /**
+   * Get pull requests by task attempt ID
+   */
+  async getPullRequestsByAttempt(taskAttemptId: string): Promise<MergeRequestInfo[]> {
+    logger.debug('Getting pull requests by attempt', { taskAttemptId });
+    return this.api.getPullRequestsByAttempt(taskAttemptId);
+  }
+  
+  /**
+   * Get pull requests by task ID
+   */
+  async getPullRequestsByTask(taskId: string): Promise<MergeRequestInfo[]> {
+    logger.debug('Getting pull requests by task', { taskId });
+    return this.api.getPullRequestsByTask(taskId);
+  }
 }
 
 // Export singleton instance

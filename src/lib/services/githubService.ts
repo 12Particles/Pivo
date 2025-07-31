@@ -105,6 +105,24 @@ class GitHubService {
       throw error;
     }
   }
+
+  async getPullRequestsByAttempt(taskAttemptId: string): Promise<MergeRequestInfo[]> {
+    try {
+      return await invoke<MergeRequestInfo[]>('get_pull_requests_by_attempt', { taskAttemptId });
+    } catch (error) {
+      console.error('Failed to get pull requests by attempt:', error);
+      throw error;
+    }
+  }
+
+  async getPullRequestsByTask(taskId: string): Promise<MergeRequestInfo[]> {
+    try {
+      return await invoke<MergeRequestInfo[]>('get_pull_requests_by_task', { taskId });
+    } catch (error) {
+      console.error('Failed to get pull requests by task:', error);
+      throw error;
+    }
+  }
 }
 
 export const githubService = new GitHubService();

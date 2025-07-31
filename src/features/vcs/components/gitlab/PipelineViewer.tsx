@@ -3,10 +3,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Loader2, ExternalLink, RefreshCw, XCircle, CheckCircle, Clock, AlertCircle } from 'lucide-react';
-import type { MergeRequest } from '@/lib/types/mergeRequest';
+import type { MergeRequestInfo } from '@/lib/types/mergeRequest';
 
 interface PipelineViewerProps {
-  mergeRequest: MergeRequest;
+  mergeRequest: MergeRequestInfo;
 }
 
 interface Pipeline {
@@ -40,10 +40,10 @@ export function PipelineViewer({ mergeRequest }: PipelineViewerProps) {
   const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => {
-    if (mergeRequest.pipelineUrl) {
+    if (mergeRequest.pipelineStatus) {
       loadPipeline();
     }
-  }, [mergeRequest.pipelineUrl]);
+  }, [mergeRequest.pipelineStatus]);
 
   const loadPipeline = async () => {
     try {
@@ -53,7 +53,7 @@ export function PipelineViewer({ mergeRequest }: PipelineViewerProps) {
       const mockPipeline: Pipeline = {
         id: Date.now(),
         status: mergeRequest.pipelineStatus || 'unknown',
-        webUrl: mergeRequest.pipelineUrl || '#',
+        webUrl: '#',
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
         duration: 245,
@@ -156,7 +156,7 @@ export function PipelineViewer({ mergeRequest }: PipelineViewerProps) {
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
-  if (!mergeRequest.pipelineStatus && !mergeRequest.pipelineUrl) {
+  if (!mergeRequest.pipelineStatus) {
     return (
       <Card>
         <CardContent className="p-6 text-center text-muted-foreground">

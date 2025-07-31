@@ -295,3 +295,12 @@ export interface CommitInfo {
   author: string;
   timestamp: string;
 }
+
+// Re-export merge request types
+export type { 
+  MergeRequest, 
+  MergeRequestInfo, 
+  MergeRequestState, 
+  MergeStatus, 
+  PipelineStatus 
+} from '@/lib/types/mergeRequest';

@@ -150,6 +150,85 @@ impl GitHubService {
             PipelineStatus::Success
         })
     }
+    
+    pub async fn verify_token(&self) -> Result<serde_json::Value, String> {
+        let url = "https://api.github.com/user";
+        
+        let response = self.client
+            .get(url)
+            .send()
+            .await
+            .map_err(|e| format!("Failed to verify token: {}", e))?;
+        
+        if !response.status().is_success() {
+            let status = response.status();
+            let error_text = response.text().await.unwrap_or_default();
+            return Err(format!("GitHub API error ({}): {}", status, error_text));
+        }
+        
+        let user_info: serde_json::Value = response
+            .json()
+            .await
+            .map_err(|e| format!("Failed to parse response: {}", e))?;
+        
+        log::info!("GitHub user verified: {}", user_info.get("login").and_then(|v| v.as_str()).unwrap_or("unknown"));
+        
+        Ok(user_info)
+    }
+    
+    pub async fn check_org_access(&self, org_name: &str) -> Result<bool, String> {
+        // Check if the token has access to the organization
+        let url = format!("https://api.github.com/orgs/{}", org_name);
+        
+        let response = self.client
+            .get(&url)
+            .send()
+            .await
+            .map_err(|e| format!("Failed to check org access: {}", e))?;
+        
+        if response.status().is_success() {
+            log::info!("Token has access to organization: {}", org_name);
+            Ok(true)
+        } else if response.status() == 404 {
+            log::warn!("No access to organization: {} (404)", org_name);
+            Ok(false)
+        } else {
+            let status = response.status();
+            let error_text = response.text().await.unwrap_or_default();
+            log::error!("Failed to check org access: {} - {}", status, error_text);
+            Err(format!("GitHub API error ({}): {}", status, error_text))
+        }
+    }
+    
+    pub async fn list_user_orgs(&self) -> Result<Vec<String>, String> {
+        let url = "https://api.github.com/user/orgs";
+        
+        let response = self.client
+            .get(url)
+            .send()
+            .await
+            .map_err(|e| format!("Failed to list user orgs: {}", e))?;
+        
+        if !response.status().is_success() {
+            let status = response.status();
+            let error_text = response.text().await.unwrap_or_default();
+            return Err(format!("GitHub API error ({}): {}", status, error_text));
+        }
+        
+        let orgs: Vec<serde_json::Value> = response
+            .json()
+            .await
+            .map_err(|e| format!("Failed to parse response: {}", e))?;
+        
+        let org_names: Vec<String> = orgs.iter()
+            .filter_map(|org| org.get("login").and_then(|v| v.as_str()))
+            .map(|s| s.to_string())
+            .collect();
+        
+        log::info!("User has access to organizations: {:?}", org_names);
+        
+        Ok(org_names)
+    }
 }
 
 impl From<GitHubPullRequest> for MergeRequestInfo {
@@ -266,6 +345,8 @@ impl GitPlatformService for GitHubService {
         branch: &str,
         force: bool,
     ) -> Result<(), String> {
+        log::info!("Starting push_branch - repo: {}, branch: {}, force: {}", repo_path, branch, force);
+        
         // Get the remote URL
         let remote_output = Command::new("git")
             .args(&["remote", "get-url", "origin"])
@@ -274,14 +355,27 @@ impl GitPlatformService for GitHubService {
             .map_err(|e| format!("Failed to get remote URL: {}", e))?;
         
         if !remote_output.status.success() {
-            return Err("Failed to get remote URL".to_string());
+            let stderr = String::from_utf8_lossy(&remote_output.stderr);
+            log::error!("Failed to get remote URL. stderr: {}", stderr);
+            return Err(format!("Failed to get remote URL: {}", stderr));
         }
         
         let remote_url = String::from_utf8_lossy(&remote_output.stdout).trim().to_string();
+        log::info!("Original remote URL: {}", remote_url);
         
         // Parse the remote URL and inject the auth token
         let auth_token = self.config.access_token.as_ref()
             .ok_or("GitHub authentication not configured")?;
+        
+        log::info!("Token present: {}, Token length: {}", 
+            auth_token.is_empty() == false, 
+            auth_token.len()
+        );
+        
+        // Verify token format (should start with ghp_ or ghs_ for newer tokens)
+        if !auth_token.starts_with("ghp_") && !auth_token.starts_with("ghs_") && !auth_token.starts_with("github_pat_") {
+            log::warn!("Token doesn't match expected GitHub token format (ghp_*, ghs_*, or github_pat_*)");
+        }
         
         // GitHub now recommends using the token as the username with 'x-oauth-basic' as password
         // or just the token as password with any username
@@ -294,14 +388,15 @@ impl GitPlatformService for GitHubService {
                 .replace("git@github.com:", "https://github.com/")
                 .replace("https://", &format!("https://{}:x-oauth-basic@", auth_token))
         } else {
-            return Err("Unsupported remote URL format".to_string());
+            log::error!("Unsupported remote URL format: {}", remote_url);
+            return Err(format!("Unsupported remote URL format: {}", remote_url));
         };
         
         log::info!("Push URL (without token): {}", auth_url.replace(auth_token, "***"));
         log::info!("Pushing from repo: {}", repo_path);
         
         // First, disable credential helper for this push to ensure our URL is used
-        let config_output = Command::new("git")
+        let _config_output = Command::new("git")
             .args(&["-c", "credential.helper="])
             .current_dir(repo_path)
             .output();
@@ -313,6 +408,14 @@ impl GitPlatformService for GitHubService {
             push_args.push("--force");
         }
         
+        log::info!("Executing git push with args: {:?}", push_args.iter().map(|arg| {
+            if arg.contains(auth_token) {
+                arg.replace(auth_token, "***")
+            } else {
+                arg.to_string()
+            }
+        }).collect::<Vec<_>>());
+        
         let push_output = Command::new("git")
             .args(&push_args)
             .current_dir(repo_path)
@@ -321,8 +424,24 @@ impl GitPlatformService for GitHubService {
         
         if !push_output.status.success() {
             let stderr = String::from_utf8_lossy(&push_output.stderr);
+            let stdout = String::from_utf8_lossy(&push_output.stdout);
+            log::error!("Git push failed. Exit code: {:?}", push_output.status.code());
+            log::error!("Git push stderr: {}", stderr);
+            log::error!("Git push stdout: {}", stdout);
+            
+            // Check for specific error patterns
+            if stderr.contains("Permission to") && stderr.contains("denied to") {
+                let username = stderr.split("denied to ").nth(1)
+                    .and_then(|s| s.split(".").next())
+                    .unwrap_or("unknown");
+                log::error!("Permission denied for user: {}", username);
+                log::error!("Please ensure the GitHub token has 'repo' scope and the user has write access to the repository");
+            }
+            
             return Err(format!("Failed to push branch: {}", stderr));
         }
+        
+        log::info!("Git push successful");
         
         Ok(())
     }

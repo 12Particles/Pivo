@@ -43,7 +43,7 @@ export function GitLabSettings() {
 
     try {
       setSaving(true);
-      await updateConfig();
+      await updateConfig(config!);
       toast({
         title: t('toast.success'),
         description: 'GitLab configuration saved successfully',

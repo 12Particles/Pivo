@@ -1,10 +1,11 @@
-use crate::models::{GitHubConfig, MergeRequestInfo, GitRemoteInfo, CreateMergeRequestData};
+use crate::models::{GitHubConfig, MergeRequestInfo, GitRemoteInfo, CreateMergeRequestData, MergeRequestState};
 use crate::services::{ConfigService, GitHubService, GitPlatformService};
 use crate::AppState;
 use std::sync::Arc;
 use tauri::State;
 use tokio::sync::Mutex;
 use chrono::Utc;
+use std::str::FromStr;
 
 #[tauri::command]
 pub async fn get_github_config(
@@ -148,7 +149,110 @@ pub async fn push_to_github(
     drop(config_service); // Release lock
     
     let github_service = GitHubService::new(github_config);
+    
+    // Verify token before attempting to push
+    match github_service.verify_token().await {
+        Ok(user_info) => {
+            log::info!("GitHub token verified for user: {}", 
+                user_info.get("login").and_then(|v| v.as_str()).unwrap_or("unknown"));
+        },
+        Err(e) => {
+            log::error!("Failed to verify GitHub token: {}", e);
+            return Err(format!("GitHub token verification failed: {}", e));
+        }
+    }
+    
+    // List organizations the user has access to
+    match github_service.list_user_orgs().await {
+        Ok(orgs) => {
+            log::info!("User has access to organizations: {:?}", orgs);
+            
+            // Check specific access to 12Particles org
+            if !orgs.contains(&"12Particles".to_string()) {
+                log::warn!("User does not have access to 12Particles organization");
+                log::warn!("Please grant OAuth App access to the organization:");
+                log::warn!("1. Go to: https://github.com/settings/connections/applications/{}", "Ov23limL5nB8uf0tDrQX");
+                log::warn!("2. Find '12Particles' in the organization access section");
+                log::warn!("3. Click 'Grant' or 'Request' access");
+            }
+        },
+        Err(e) => {
+            log::error!("Failed to list user organizations: {}", e);
+        }
+    }
+    
+    // Check specific org access
+    match github_service.check_org_access("12Particles").await {
+        Ok(has_access) => {
+            if !has_access {
+                log::error!("No access to 12Particles organization");
+                return Err("OAuth App does not have access to 12Particles organization. Please grant access at: https://github.com/settings/connections/applications/Ov23limL5nB8uf0tDrQX".to_string());
+            }
+        },
+        Err(e) => {
+            log::error!("Failed to check org access: {}", e);
+        }
+    }
+    
     github_service.push_branch(&repo_path, &branch, force).await
+}
+
+#[tauri::command]
+pub async fn get_pull_requests_by_attempt(
+    app_state: State<'_, AppState>,
+    task_attempt_id: String,
+) -> Result<Vec<MergeRequestInfo>, String> {
+    app_state.merge_request_service
+        .get_merge_requests_by_attempt(&task_attempt_id)
+        .await
+        .map(|mrs| mrs.into_iter().map(|mr| {
+            MergeRequestInfo {
+                id: mr.mr_id,
+                iid: mr.mr_iid,
+                number: mr.mr_number,
+                title: mr.title,
+                description: mr.description,
+                state: MergeRequestState::from_str(&mr.state).unwrap_or(MergeRequestState::Opened),
+                source_branch: mr.source_branch,
+                target_branch: mr.target_branch,
+                web_url: mr.web_url,
+                merge_status: mr.merge_status.and_then(|s| s.parse().ok()),
+                has_conflicts: mr.has_conflicts,
+                pipeline_status: mr.pipeline_status.and_then(|s| s.parse().ok()),
+                created_at: mr.created_at.to_rfc3339(),
+                updated_at: mr.updated_at.to_rfc3339(),
+            }
+        }).collect())
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn get_pull_requests_by_task(
+    app_state: State<'_, AppState>,
+    task_id: String,
+) -> Result<Vec<MergeRequestInfo>, String> {
+    app_state.merge_request_service
+        .get_merge_requests_by_task(&task_id)
+        .await
+        .map(|mrs| mrs.into_iter().map(|mr| {
+            MergeRequestInfo {
+                id: mr.mr_id,
+                iid: mr.mr_iid,
+                number: mr.mr_number,
+                title: mr.title,
+                description: mr.description,
+                state: MergeRequestState::from_str(&mr.state).unwrap_or(MergeRequestState::Opened),
+                source_branch: mr.source_branch,
+                target_branch: mr.target_branch,
+                web_url: mr.web_url,
+                merge_status: mr.merge_status.and_then(|s| s.parse().ok()),
+                has_conflicts: mr.has_conflicts,
+                pipeline_status: mr.pipeline_status.and_then(|s| s.parse().ok()),
+                created_at: mr.created_at.to_rfc3339(),
+                updated_at: mr.updated_at.to_rfc3339(),
+            }
+        }).collect())
+        .map_err(|e| e.to_string())
 }
 
 use serde::{Serialize, Deserialize};
@@ -177,7 +281,8 @@ pub async fn github_start_device_flow() -> Result<DeviceCodeResponse, String> {
     log::info!("Sending POST request to: {}", url);
     
     // Build form body WITHOUT client_secret - Device Flow doesn't need it
-    let body = format!("client_id={}&scope=repo%20user", client_id);
+    // Add 'read:org' scope to request organization access
+    let body = format!("client_id={}&scope=repo%20user%20read:org%20write:org", client_id);
     log::info!("Request body: {}", body);
     
     let response = client
@@ -252,7 +357,17 @@ pub async fn github_poll_device_auth(
     
     // Check if we got an access token
     if let Some(access_token) = json_response.get("access_token").and_then(|v| v.as_str()) {
-        log::info!("Got access token, saving to config");
+        log::info!("Got access token, length: {}", access_token.len());
+        
+        // Also get the token type if available
+        let token_type = json_response.get("token_type").and_then(|v| v.as_str()).unwrap_or("bearer");
+        log::info!("Token type: {}", token_type);
+        
+        // Get scope if available
+        if let Some(scope) = json_response.get("scope").and_then(|v| v.as_str()) {
+            log::info!("Token scope: {}", scope);
+        }
+        
         // Save the access token to config
         let mut config_service = config_state.lock().await;
         let mut github_config = config_service.get_github_config()

@@ -95,17 +95,49 @@ export class GitLabApi {
   /**
    * Get merge requests by task attempt
    */
-  async getMergeRequestsByAttempt(taskAttemptId: string): Promise<MergeRequest[]> {
+  async getMergeRequestsByAttempt(taskAttemptId: string): Promise<MergeRequestInfo[]> {
     logger.debug('Getting merge requests by attempt', { taskAttemptId });
-    return this.api.getMergeRequestsByAttempt(taskAttemptId);
+    const mrs = await this.api.getMergeRequestsByAttempt(taskAttemptId);
+    return mrs.map(mr => ({
+      id: mr.mrId,
+      iid: mr.mrIid,
+      number: mr.mrNumber,
+      title: mr.title,
+      description: mr.description,
+      state: mr.state as any,
+      sourceBranch: mr.sourceBranch,
+      targetBranch: mr.targetBranch,
+      webUrl: mr.webUrl,
+      mergeStatus: mr.mergeStatus as any,
+      hasConflicts: mr.hasConflicts,
+      pipelineStatus: mr.pipelineStatus as any,
+      createdAt: mr.createdAt,
+      updatedAt: mr.updatedAt,
+    }));
   }
   
   /**
    * Get merge requests by task
    */
-  async getMergeRequestsByTask(taskId: string): Promise<MergeRequest[]> {
+  async getMergeRequestsByTask(taskId: string): Promise<MergeRequestInfo[]> {
     logger.debug('Getting merge requests by task', { taskId });
-    return this.api.getMergeRequestsByTask(taskId);
+    const mrs = await this.api.getMergeRequestsByTask(taskId);
+    return mrs.map(mr => ({
+      id: mr.mrId,
+      iid: mr.mrIid,
+      number: mr.mrNumber,
+      title: mr.title,
+      description: mr.description,
+      state: mr.state as any,
+      sourceBranch: mr.sourceBranch,
+      targetBranch: mr.targetBranch,
+      webUrl: mr.webUrl,
+      mergeStatus: mr.mergeStatus as any,
+      hasConflicts: mr.hasConflicts,
+      pipelineStatus: mr.pipelineStatus as any,
+      createdAt: mr.createdAt,
+      updatedAt: mr.updatedAt,
+    }));
   }
   
   /**
