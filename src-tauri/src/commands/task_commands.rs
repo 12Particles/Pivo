@@ -142,7 +142,10 @@ async fn handle_send_message(
     
     // 2. Get resume session ID if available
     let resume_session_id = match attempt.executor.as_deref() {
-        Some("claude") | Some("claude_code") | Some("ClaudeCode") => attempt.claude_session_id.clone(),
+        Some("claude") | Some("claude_code") | Some("ClaudeCode") => {
+            log::info!("Attempt {} has Claude session ID: {:?}", attempt.id, attempt.claude_session_id);
+            attempt.claude_session_id.clone()
+        },
         _ => None,
     };
     

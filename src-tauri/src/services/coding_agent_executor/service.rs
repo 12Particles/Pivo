@@ -64,6 +64,32 @@ impl CodingAgentExecutorService {
                 let task_id = agent_msg.task_id;
                 let conversation_msg = agent_msg.message;
                 
+                // Check for session update messages
+                if conversation_msg.message_type == "session_update" {
+                    if let Some(metadata) = &conversation_msg.metadata {
+                        if let Some(session_id) = metadata.get("session_id").and_then(|v| v.as_str()) {
+                            info!("Updating attempt {} with Claude session ID: {}", attempt_id, session_id);
+                            
+                            // Update the attempt with the session ID
+                            let attempt_uuid = Uuid::parse_str(&attempt_id).unwrap();
+                            let session_id_clone = session_id.to_string();
+                            let db_repo_clone = db_repository.clone();
+                            
+                            tauri::async_runtime::spawn(async move {
+                                use crate::services::task_service::TaskService;
+                                let task_service = TaskService::new(db_repo_clone.pool().clone());
+                                
+                                if let Err(e) = task_service.update_attempt_claude_session(attempt_uuid, session_id_clone).await {
+                                    log::error!("Failed to update Claude session ID: {}", e);
+                                } else {
+                                    info!("Successfully saved Claude session ID for attempt: {}", attempt_id);
+                                }
+                            });
+                        }
+                    }
+                    continue; // Don't save session_update messages
+                }
+                
                 // Check for execution complete messages
                 if conversation_msg.message_type == "execution_complete" {
                     let mut executions = executions.lock().unwrap();

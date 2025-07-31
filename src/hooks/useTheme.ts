@@ -20,8 +20,9 @@ export function useTheme() {
         // Try to use Tauri API if available
         try {
           // Check if we're in a Tauri environment
-          if (window.__TAURI__) {
-            const { appWindow } = await import('@tauri-apps/api/window');
+          if ((window as any).__TAURI__) {
+            const { getCurrentWindow } = await import('@tauri-apps/api/window');
+            const appWindow = getCurrentWindow();
             const systemTheme = await appWindow.theme();
             applyTheme(systemTheme === 'dark');
 

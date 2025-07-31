@@ -3,7 +3,7 @@ use std::process::{Command, Stdio};
 use std::io::{BufRead, BufReader, Write};
 use std::thread;
 use std::sync::mpsc::Sender;
-use tauri::{AppHandle, Emitter};
+use tauri::AppHandle;
 use log::{info, debug};
 use chrono::Utc;
 use uuid::Uuid;
@@ -30,7 +30,10 @@ impl ClaudeCodeAgent {
         ];
         
         if let Some(id) = session_id {
+            info!("Building Claude Code command with --resume {}", id);
             cmd_parts.push(format!("--resume {}", id));
+        } else {
+            info!("Building Claude Code command without resume (new session)");
         }
         
         let base_cmd = cmd_parts.join(" && ");
@@ -202,7 +205,7 @@ impl ClaudeCodeAgent {
             let execution_id = execution_id.to_string();
             let task_id = task_id.to_string();
             let attempt_id = attempt_id.to_string();
-            let app_handle = self.app_handle.clone();
+            let _app_handle = self.app_handle.clone();
             
             thread::spawn(move || {
                 let reader = BufReader::new(stdout);
@@ -230,18 +233,27 @@ impl ClaudeCodeAgent {
                             if json_value["type"] == "system" && json_value["subtype"] == "init" {
                                 if let Some(session_id) = json_value["session_id"].as_str() {
                                     info!("Received Claude session ID: {}", session_id);
-                                    // Session ID should be handled through attempt update
-                                    // We'll need to update the attempt with this session ID
+                                    // Directly update the attempt with session ID in backend
                                     let session_id_clone = session_id.to_string();
                                     let attempt_id_clone = attempt_id.clone();
-                                    let app_handle_clone = app_handle.clone();
+                                    let message_sender_clone = message_sender.clone();
                                     
-                                    tauri::async_runtime::spawn(async move {
-                                        // Emit event to update attempt with session ID
-                                        let _ = app_handle_clone.emit("session:received", serde_json::json!({
-                                            "attemptId": attempt_id_clone,
-                                            "sessionId": session_id_clone,
-                                        }));
+                                    // Send a special message to the service to update session ID
+                                    let session_msg = ConversationMessage {
+                                        id: format!("{}-session-{}", Utc::now().to_rfc3339(), session_id_clone),
+                                        role: MessageRole::System,
+                                        message_type: "session_update".to_string(),
+                                        content: session_id_clone.clone(),
+                                        timestamp: Utc::now(),
+                                        metadata: Some(serde_json::json!({
+                                            "session_id": session_id_clone,
+                                        })),
+                                    };
+                                    
+                                    let _ = message_sender_clone.send(ChannelMessage {
+                                        attempt_id: attempt_id_clone,
+                                        task_id: task_id.clone(),
+                                        message: session_msg,
                                     });
                                 }
                             }
