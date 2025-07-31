@@ -171,6 +171,7 @@ export const TaskConversation: React.FC<TaskConversationProps> = ({ task }) => {
         isSending={false}
         pendingMessages={[]}
         executionStatus={conversationState.isExecuting ? CodingAgentExecutionStatus.Running : undefined}
+        searchPath={conversationState.worktreePath}
         onInputChange={setInput}
         onImagesChange={setImages}
         onSend={() => handleSendMessage()}

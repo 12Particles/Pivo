@@ -1,5 +1,5 @@
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
+import { MentionTextarea } from "@/components/ui/mention-textarea";
 import { ImagePlus, X, Send, Loader2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { open } from "@tauri-apps/plugin-dialog";
@@ -13,6 +13,7 @@ interface MessageInputProps {
   isSending: boolean;
   pendingMessages: string[];
   executionStatus?: CodingAgentExecutionStatus;
+  searchPath?: string;
   onInputChange: (value: string) => void;
   onImagesChange: (images: string[]) => void;
   onSend: () => void;
@@ -25,6 +26,7 @@ export function MessageInput({
   isSending,
   pendingMessages,
   executionStatus,
+  searchPath,
   onInputChange,
   onImagesChange,
   onSend,
@@ -32,7 +34,7 @@ export function MessageInput({
 }: MessageInputProps) {
   const { t } = useTranslation();
 
-  const handlePaste = async (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
+  const handlePaste = async (e: React.ClipboardEvent) => {
     const items = Array.from(e.clipboardData.items);
     const imageItems = items.filter(item => item.type.startsWith("image/"));
     
@@ -175,14 +177,16 @@ export function MessageInput({
           <ImagePlus className="h-4 w-4" />
         </Button>
         
-        <Textarea
+        <MentionTextarea
           value={input}
-          onChange={(e) => onInputChange(e.target.value)}
-          onKeyPress={onKeyPress}
+          onChange={onInputChange}
+          onKeyDown={onKeyPress}
           onPaste={handlePaste}
           placeholder={t('ai.sendMessage')}
-          className="flex-1 min-h-[36px] max-h-[120px] resize-none h-9"
+          searchPath={searchPath}
+          className="flex-1 min-h-[36px] max-h-[120px]"
           disabled={isDisabled}
+          rows={1}
         />
         
         <Button 

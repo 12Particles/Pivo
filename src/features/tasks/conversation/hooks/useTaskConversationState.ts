@@ -20,6 +20,7 @@ export interface ConversationState {
   currentAttemptId?: string;
   canSendMessage: boolean;
   currentExecution?: any; // CodingAgentExecution
+  worktreePath?: string;
 }
 
 /**

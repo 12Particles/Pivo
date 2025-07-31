@@ -40,6 +40,8 @@ pub struct ConversationState {
     can_send_message: bool,
     #[serde(rename = "currentExecution")]
     current_execution: Option<crate::services::coding_agent_executor::types::CodingAgentExecution>,
+    #[serde(rename = "worktreePath")]
+    worktree_path: Option<String>,
 }
 
 // Use ConversationMessage from the service module
@@ -113,6 +115,7 @@ pub async fn get_conversation_state(
         current_attempt_id: current_attempt.map(|a| a.id.clone()),
         can_send_message: !is_executing && current_attempt.is_some(),
         current_execution,
+        worktree_path: current_attempt.map(|a| a.worktree_path.clone()),
     })
 }
 

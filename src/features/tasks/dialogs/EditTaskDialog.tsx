@@ -10,11 +10,12 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
+import { MentionTextarea } from "@/components/ui/mention-textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Task, TaskPriority, UpdateTaskRequest } from "@/types";
 import { useTranslation } from "react-i18next";
 import { ImageUpload } from "@/components/ui/image-upload";
+import { useApp } from "@/contexts/AppContext";
 
 interface EditTaskDialogProps {
   open: boolean;
@@ -25,6 +26,7 @@ interface EditTaskDialogProps {
 
 export function EditTaskDialog({ open, onOpenChange, task, onSubmit }: EditTaskDialogProps) {
   const { t } = useTranslation();
+  const { currentProject } = useApp();
   const [formData, setFormData] = useState<UpdateTaskRequest>({
     title: "",
     description: "",
@@ -126,11 +128,12 @@ export function EditTaskDialog({ open, onOpenChange, task, onSubmit }: EditTaskD
 
             <div className="grid gap-2">
               <Label htmlFor="description">{t('task.taskDescription')}</Label>
-              <Textarea
+              <MentionTextarea
                 id="description"
                 value={formData.description || ""}
-                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                onChange={(value) => setFormData({ ...formData, description: value })}
                 placeholder={t('task.enterTaskDescription')}
+                searchPath={currentProject?.path}
                 rows={3}
               />
             </div>

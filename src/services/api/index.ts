@@ -11,6 +11,7 @@ export * from './McpApi';
 export * from './LoggingApi';
 export * from './GitHubApi';
 export * from './GitLabApi';
+export * from './FileSystemApi';
 
 // Re-export commonly used services
 export { projectApi } from './ProjectApi';
