@@ -3,8 +3,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-import { Button } from "@/components/ui/button";
-import { toast } from "@/hooks/use-toast";
 import { useTranslation } from "react-i18next";
 import { useSettings } from "@/contexts/SettingsContext";
 
@@ -13,11 +11,9 @@ export function GeneralSettings() {
   const { 
     theme, 
     language, 
-    autoSave, 
     notifications,
     setTheme,
     setLanguage,
-    setAutoSave,
     setNotifications
   } = useSettings();
 
@@ -31,16 +27,17 @@ export function GeneralSettings() {
     i18n.changeLanguage(newLanguage);
   };
 
-  const handleSave = () => {
-    // Settings are automatically persisted by zustand persist middleware
-    toast({
-      title: t('common.success'),
-      description: t('settings.settingsSaved'),
-    });
-  };
-
   return (
     <div className="space-y-6">
+      <div>
+        <h2 className="text-2xl font-semibold tracking-tight">
+          {t("settings.categories.general")}
+        </h2>
+        <p className="text-muted-foreground">
+          {t("settings.general.description")}
+        </p>
+      </div>
+
       <Card>
         <CardHeader>
           <CardTitle>{t('settings.appearanceSettings')}</CardTitle>
@@ -78,24 +75,10 @@ export function GeneralSettings() {
 
       <Card>
         <CardHeader>
-          <CardTitle>{t('settings.editorSettings')}</CardTitle>
-          <CardDescription>{t('settings.editorDescription')}</CardDescription>
+          <CardTitle>{t('settings.notificationSettings')}</CardTitle>
+          <CardDescription>{t('settings.notificationDescription')}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="flex items-center justify-between">
-            <div className="space-y-0.5">
-              <Label htmlFor="auto-save">{t('settings.autoSave')}</Label>
-              <p className="text-sm text-muted-foreground">
-                {t('settings.autoSaveDescription')}
-              </p>
-            </div>
-            <Switch
-              id="auto-save"
-              checked={autoSave}
-              onCheckedChange={setAutoSave}
-            />
-          </div>
-
           <div className="flex items-center justify-between">
             <div className="space-y-0.5">
               <Label htmlFor="notifications">{t('common.notifications')}</Label>
@@ -111,10 +94,6 @@ export function GeneralSettings() {
           </div>
         </CardContent>
       </Card>
-
-      <div className="flex justify-end">
-        <Button onClick={handleSave}>{t('settings.saveSettings')}</Button>
-      </div>
     </div>
   );
 }

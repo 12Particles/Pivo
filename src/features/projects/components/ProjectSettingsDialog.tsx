@@ -16,6 +16,7 @@ import { open as openDialog } from "@tauri-apps/plugin-dialog";
 import { useTranslation } from "react-i18next";
 import { ProjectInfo } from "@/services/api";
 import { transformGitUrl } from "@/lib/gitUrlUtils";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 
 interface ProjectSettingsDialogProps {
   initialValues?: ProjectInfo;
@@ -36,6 +37,7 @@ export function ProjectSettingsDialog({
 }: ProjectSettingsDialogProps) {
   const { t } = useTranslation();
   const [loading, setLoading] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [formData, setFormData] = useState({
     name: "",
     description: "",
@@ -203,19 +205,7 @@ export function ProjectSettingsDialog({
               <Button
                 type="button"
                 variant="destructive"
-                onClick={async () => {
-                  if (confirm(t('project.confirmDelete'))) {
-                    setLoading(true);
-                    try {
-                      await onDelete();
-                      onOpenChange(false);
-                    } catch (error) {
-                      console.error('Failed to delete project:', error);
-                    } finally {
-                      setLoading(false);
-                    }
-                  }
-                }}
+                onClick={() => setShowDeleteConfirm(true)}
                 disabled={loading}
                 className="mr-auto"
               >
@@ -236,6 +226,28 @@ export function ProjectSettingsDialog({
           </DialogFooter>
         </form>
       </DialogContent>
+      
+      <ConfirmDialog
+        open={showDeleteConfirm}
+        onOpenChange={setShowDeleteConfirm}
+        title={t('project.deleteProject')}
+        description={t('project.deleteConfirmMessage', { name: formData.name })}
+        confirmText={t('common.delete')}
+        cancelText={t('common.cancel')}
+        variant="destructive"
+        onConfirm={async () => {
+          setLoading(true);
+          try {
+            await onDelete!();
+            onOpenChange(false);
+          } catch (error) {
+            console.error('Failed to delete project:', error);
+          } finally {
+            setLoading(false);
+            setShowDeleteConfirm(false);
+          }
+        }}
+      />
     </Dialog>
   );
 }

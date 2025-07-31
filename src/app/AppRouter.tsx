@@ -27,7 +27,7 @@ export function AppRouter() {
     return (
       <SettingsPage 
         onBack={() => navigateTo(currentProject ? 'tasks' : 'projects')} 
-        initialTab={settingsTab} 
+        initialCategory={settingsTab} 
       />
     );
   }

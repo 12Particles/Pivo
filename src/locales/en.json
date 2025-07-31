@@ -39,8 +39,17 @@
     "yes": "Yes",
     "no": "No",
     "add": "Add",
+    "show": "Show",
+    "hide": "Hide",
     "running": "Running",
-    "openInTerminal": "Open in Terminal"
+    "openInTerminal": "Open in Terminal",
+    "refresh": "Refresh",
+    "lastUpdated": "Last updated",
+    "justNow": "Just now",
+    "minutesAgo": "{{count}} minute ago",
+    "minutesAgo_plural": "{{count}} minutes ago",
+    "hoursAgo": "{{count}} hour ago",
+    "hoursAgo_plural": "{{count}} hours ago"
   },
   "project": {
     "title": "Project",
@@ -186,7 +195,45 @@
     "saveSettings": "Save Settings",
     "settingsSaved": "Settings saved",
     "mcpServers": "MCP Servers",
-    "mcpConfiguration": "MCP Configuration"
+    "mcpConfiguration": "MCP Configuration",
+    "categories": {
+      "general": "General",
+      "gitServices": "Git Services",
+      "mcp": "MCP Servers"
+    },
+    "general": {
+      "description": "Configure basic application settings"
+    },
+    "gitServices": {
+      "description": "Configure GitHub and GitLab integrations"
+    },
+    "notificationSettings": "Notification Settings",
+    "notificationDescription": "Manage application notification preferences",
+    "github": {
+      "title": "GitHub Settings",
+      "description": "Configure your GitHub integration for pull requests and code collaboration",
+      "oauth": "OAuth Authorization",
+      "oauthDescription": "Securely connect your GitHub account using OAuth",
+      "authorized": "Authorized",
+      "authorize": "Authorize",
+      "username": "GitHub Username",
+      "usernameHelp": "Your GitHub username for identifying repositories",
+      "defaultBranch": "Default Target Branch",
+      "defaultBranchHelp": "Default branch for creating pull requests (e.g., main, master)",
+      "noTokenWarning": "GitHub features are limited without authorization. Authorize to enable full functionality.",
+      "authorizedAs": "Authorized as"
+    },
+    "gitlab": {
+      "title": "GitLab Settings",
+      "description": "Configure your GitLab integration for merge requests and code collaboration",
+      "pat": "Personal Access Token",
+      "patHelp": "Generate a token with api scope from GitLab Settings > Access Tokens",
+      "url": "GitLab URL",
+      "urlHelp": "Your GitLab instance URL (e.g., https://gitlab.com or self-hosted URL)",
+      "defaultBranch": "Default Target Branch",
+      "defaultBranchHelp": "Default branch for creating merge requests (e.g., main, master)",
+      "tokenConfigured": "Personal access token is configured"
+    }
   },
   "ai": {
     "executionStarted": "{{type}} execution started",
@@ -250,6 +297,7 @@
     "clear": "Clear",
     "openInEditor": "Open in Editor",
     "autoRefresh": "Auto-refresh",
+    "refresh": "Refresh",
     "noLogs": "No logs available",
     "failedToLoad": "Failed to load logs",
     "openFailed": "Failed to open log viewer",

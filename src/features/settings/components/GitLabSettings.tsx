@@ -4,7 +4,7 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Loader2, Save, CheckCircle } from 'lucide-react';
+import { Loader2, CheckCircle } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { toast } from '@/hooks/use-toast';
 import { useGitLabAuth } from '@/hooks/domain/useVcs';
@@ -19,6 +19,7 @@ export function GitLabSettings() {
   });
   const [saving, setSaving] = useState(false);
   const [showToken, setShowToken] = useState(false);
+  const [hasChanges, setHasChanges] = useState(false);
 
   // Update local state when saved config changes
   useEffect(() => {
@@ -31,23 +32,11 @@ export function GitLabSettings() {
     }
   }, [savedConfig]);
 
-  const handleSave = async () => {
-    if (!config.pat) {
-      toast({
-        title: t('toast.warning'),
-        description: 'Personal Access Token is required',
-        variant: 'destructive',
-      });
-      return;
-    }
-
+  const handleAutoSave = async (newConfig: typeof config) => {
     try {
       setSaving(true);
-      await updateConfig(config!);
-      toast({
-        title: t('toast.success'),
-        description: 'GitLab configuration saved successfully',
-      });
+      await updateConfig(newConfig!);
+      setHasChanges(false);
     } catch (error) {
       console.error('Failed to save GitLab config:', error);
       toast({
@@ -57,6 +46,18 @@ export function GitLabSettings() {
       });
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleFieldChange = (field: keyof typeof config, value: string) => {
+    const newConfig = { ...config, [field]: value };
+    setConfig(newConfig);
+    setHasChanges(true);
+  };
+
+  const handleFieldBlur = () => {
+    if (hasChanges && config.pat) {
+      handleAutoSave(config);
     }
   };
 
@@ -86,7 +87,8 @@ export function GitLabSettings() {
               id="pat"
               type={showToken ? 'text' : 'password'}
               value={config.pat}
-              onChange={(e) => setConfig(prev => ({ ...prev, pat: e.target.value }))}
+              onChange={(e) => handleFieldChange('pat', e.target.value)}
+              onBlur={handleFieldBlur}
               placeholder="glpat-xxxxxxxxxxxxxxxxxxxx"
             />
             <Button
@@ -109,7 +111,8 @@ export function GitLabSettings() {
           <Input
             id="gitlabUrl"
             value={config.gitlabUrl}
-            onChange={(e) => setConfig(prev => ({ ...prev, gitlabUrl: e.target.value }))}
+            onChange={(e) => handleFieldChange('gitlabUrl', e.target.value)}
+            onBlur={handleFieldBlur}
             placeholder="https://gitlab.com"
           />
           <p className="text-sm text-muted-foreground">
@@ -124,7 +127,8 @@ export function GitLabSettings() {
           <Input
             id="defaultBranch"
             value={config.defaultBranch}
-            onChange={(e) => setConfig(prev => ({ ...prev, defaultBranch: e.target.value }))}
+            onChange={(e) => handleFieldChange('defaultBranch', e.target.value)}
+            onBlur={handleFieldBlur}
             placeholder="main"
           />
           <p className="text-sm text-muted-foreground">
@@ -141,21 +145,13 @@ export function GitLabSettings() {
           </Alert>
         )}
 
-        <div className="flex justify-end">
-          <Button onClick={handleSave} disabled={saving}>
-            {saving ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                {t('common.saving')}
-              </>
-            ) : (
-              <>
-                <Save className="mr-2 h-4 w-4" />
-                {t('common.save')}
-              </>
-            )}
-          </Button>
-        </div>
+        {/* Auto-save indicator */}
+        {saving && (
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <Loader2 className="h-3 w-3 animate-spin" />
+            {t('common.saving')}
+          </div>
+        )}
       </CardContent>
     </Card>
   );

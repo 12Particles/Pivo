@@ -374,6 +374,21 @@ pub async fn github_poll_device_auth(
             .cloned()
             .unwrap_or_default();
         github_config.access_token = Some(access_token.to_string());
+        
+        // Fetch user info to get the username
+        let github_service = GitHubService::new(github_config.clone());
+        match github_service.verify_token().await {
+            Ok(user_info) => {
+                if let Some(login) = user_info.get("login").and_then(|v| v.as_str()) {
+                    github_config.username = Some(login.to_string());
+                    log::info!("GitHub user authenticated: {}", login);
+                }
+            },
+            Err(e) => {
+                log::error!("Failed to fetch GitHub user info: {}", e);
+            }
+        }
+        
         config_service.update_github_config(github_config).await
             .map_err(|e| format!("Failed to save GitHub config: {}", e))?;
         

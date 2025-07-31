@@ -39,8 +39,15 @@
     "yes": "是",
     "no": "否",
     "add": "添加",
+    "show": "显示",
+    "hide": "隐藏",
     "running": "运行中",
-    "openInTerminal": "在终端中打开"
+    "openInTerminal": "在终端中打开",
+    "refresh": "刷新",
+    "lastUpdated": "最后更新",
+    "justNow": "刚刚",
+    "minutesAgo": "{{count}} 分钟前",
+    "hoursAgo": "{{count}} 小时前"
   },
   "project": {
     "title": "项目",
@@ -186,7 +193,45 @@
     "saveSettings": "保存设置",
     "settingsSaved": "设置已保存",
     "mcpServers": "MCP 服务器",
-    "mcpConfiguration": "MCP 配置"
+    "mcpConfiguration": "MCP 配置",
+    "categories": {
+      "general": "常规",
+      "gitServices": "Git 服务",
+      "mcp": "MCP 服务器"
+    },
+    "general": {
+      "description": "配置应用程序的基本设置"
+    },
+    "gitServices": {
+      "description": "配置 GitHub 和 GitLab 集成"
+    },
+    "notificationSettings": "通知设置",
+    "notificationDescription": "管理应用程序通知偏好",
+    "github": {
+      "title": "GitHub 设置",
+      "description": "配置 GitHub 集成以管理拉取请求和代码协作",
+      "oauth": "OAuth 授权",
+      "oauthDescription": "使用 OAuth 安全连接您的 GitHub 账户",
+      "authorized": "已授权",
+      "authorize": "授权",
+      "username": "GitHub 用户名",
+      "usernameHelp": "用于识别仓库的 GitHub 用户名",
+      "defaultBranch": "默认目标分支",
+      "defaultBranchHelp": "创建拉取请求时的默认分支（例如：main, master）",
+      "noTokenWarning": "未授权时 GitHub 功能受限。请授权以启用完整功能。",
+      "authorizedAs": "已授权账号"
+    },
+    "gitlab": {
+      "title": "GitLab 设置",
+      "description": "配置 GitLab 集成以管理合并请求和代码协作",
+      "pat": "个人访问令牌",
+      "patHelp": "从 GitLab 设置 > 访问令牌中生成具有 api 范围的令牌",
+      "url": "GitLab 地址",
+      "urlHelp": "您的 GitLab 实例地址（例如：https://gitlab.com 或自托管地址）",
+      "defaultBranch": "默认目标分支",
+      "defaultBranchHelp": "创建合并请求时的默认分支（例如：main, master）",
+      "tokenConfigured": "个人访问令牌已配置"
+    }
   },
   "ai": {
     "executionStarted": "{{type}} 执行已启动",

@@ -11,6 +11,7 @@ import { gitHubApi } from '@/services/api';
 import { useTranslation } from 'react-i18next';
 import { toast } from '@/hooks/use-toast';
 import type { TaskAttempt } from '@/types';
+import { taskApi } from '@/services/api';
 
 interface CreatePullRequestDialogProps {
   open: boolean;
@@ -39,6 +40,7 @@ export function CreatePullRequestDialog({
     if (open) {
       loadGitInfo();
       checkGitHubConfig();
+      loadTask();
     }
   }, [open]);
 
@@ -50,11 +52,22 @@ export function CreatePullRequestDialog({
         setRemoteUrl((status as any).remotes[0].url);
       }
 
-      // Set default title based on branch name
-      const branchName = taskAttempt.branch.replace(/^task\//, '');
-      setTitle(`Draft: ${branchName}`);
+      // Don't set title here, wait for task to load
     } catch (error) {
       console.error('Failed to load git info:', error);
+    }
+  };
+
+  const loadTask = async () => {
+    try {
+      const taskData = await taskApi.get(taskAttempt.task_id);
+      if (taskData) {
+        // Set default title and description from task
+        setTitle(taskData.title);
+        setDescription(taskData.description || '');
+      }
+    } catch (error) {
+      console.error('Failed to load task:', error);
     }
   };
 

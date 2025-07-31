@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { ExternalLink, GitPullRequest, AlertCircle, CheckCircle, XCircle, Clock, Plus, Settings, KeyRound } from 'lucide-react';
+import { ExternalLink, GitPullRequest, AlertCircle, CheckCircle, XCircle, Clock, Plus, Settings, KeyRound, RefreshCw } from 'lucide-react';
 import { CreatePullRequestDialog } from './CreatePullRequestDialog';
 import { GitHubAuthDialog } from './GitHubAuthDialog';
 import { useTranslation } from 'react-i18next';
@@ -11,6 +11,7 @@ import { taskAttemptApi } from "@/services/api";
 import { eventBus } from '@/lib/events/EventBus';
 import { useVcsPullRequests, useGitHubAuth } from '@/hooks/domain/useVcs';
 import { open } from '@tauri-apps/plugin-shell';
+import { gitHubApi } from '@/services/api/GitHubApi';
 
 interface PullRequestListProps {
   taskId?: string;
@@ -23,19 +24,70 @@ export function PullRequestList({ taskId, taskAttemptId, project }: PullRequestL
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [currentAttempt, setCurrentAttempt] = useState<TaskAttempt | null>(null);
   const [showAuthDialog, setShowAuthDialog] = useState(false);
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   
   // Use VCS store hooks
-  const { pullRequests, loading, refresh: refreshPullRequests } = useVcsPullRequests({
+  const { pullRequests, loading, refresh: refreshPullRequestsBase } = useVcsPullRequests({
     taskId,
     taskAttemptId,
     provider: 'github'
   });
+  
+  // Wrapper to track last updated time
+  const refreshPullRequests = async () => {
+    await refreshPullRequestsBase();
+    setLastUpdated(new Date());
+  };
+  
+  // Sync PR status from GitHub API
+  const syncPullRequestStatus = async () => {
+    if (!project?.git_repo || !currentAttempt || pullRequests.length === 0) return;
+    
+    console.log('Syncing pull request status from GitHub...');
+    
+    // Sync status for each PR
+    const syncPromises = pullRequests.map(async (pr) => {
+      try {
+        await gitHubApi.getPullRequestStatus(
+          currentAttempt.id,
+          project.git_repo!,
+          pr.number
+        );
+      } catch (error) {
+        console.error(`Failed to sync PR #${pr.number}:`, error);
+      }
+    });
+    
+    await Promise.all(syncPromises);
+    
+    // Refresh the list after syncing
+    await refreshPullRequests();
+  };
   
   const { loading: checkingAuth, hasAuth, refresh: refreshAuth } = useGitHubAuth();
 
   useEffect(() => {
     loadLatestAttempt();
   }, [taskId, taskAttemptId]);
+  
+  // Set initial last updated time when pull requests are loaded
+  useEffect(() => {
+    if (pullRequests.length > 0 && !lastUpdated) {
+      setLastUpdated(new Date());
+    }
+  }, [pullRequests, lastUpdated]);
+
+  // Auto-refresh and sync pull requests every 30 seconds
+  useEffect(() => {
+    if (!hasAuth || pullRequests.length === 0 || !project?.git_repo || !currentAttempt) return;
+
+    const interval = setInterval(() => {
+      console.log('Auto-syncing pull requests from GitHub...');
+      syncPullRequestStatus();
+    }, 30000); // 30 seconds
+
+    return () => clearInterval(interval);
+  }, [hasAuth, pullRequests.length, project?.git_repo, currentAttempt]);
 
   const loadLatestAttempt = async () => {
     if (!taskId) return;
@@ -53,13 +105,32 @@ export function PullRequestList({ taskId, taskAttemptId, project }: PullRequestL
   };
   
   const openGitHubSettings = () => {
-    // Emit event to open settings with GitHub tab
-    eventBus.emit('open-settings', { tab: 'github' });
+    // Emit event to open settings with Git Services category
+    eventBus.emit('open-settings', { tab: 'git-services' });
   };
   
   const handleAuthSuccess = () => {
     // Refresh auth status after successful authorization
     refreshAuth();
+  };
+  
+  const getRelativeTime = (date: Date | null) => {
+    if (!date) return '';
+    
+    const now = new Date();
+    const seconds = Math.floor((now.getTime() - date.getTime()) / 1000);
+    
+    if (seconds < 60) return t('common.justNow');
+    if (seconds < 3600) {
+      const minutes = Math.floor(seconds / 60);
+      return t('common.minutesAgo', { count: minutes });
+    }
+    if (seconds < 86400) {
+      const hours = Math.floor(seconds / 3600);
+      return t('common.hoursAgo', { count: hours });
+    }
+    
+    return date.toLocaleString();
   };
 
   const getStateIcon = (state: string) => {
@@ -190,18 +261,43 @@ export function PullRequestList({ taskId, taskAttemptId, project }: PullRequestL
 
   return (
     <div className="space-y-4">
-      {/* Header with create button */}
-      {currentAttempt && project && (
+      {/* Header with refresh and create buttons */}
+      {(currentAttempt || pullRequests.length > 0) && (
         <div className="flex justify-between items-center">
-          <h3 className="text-lg font-semibold">{t('pullRequests.title')}</h3>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setShowCreateDialog(true)}
-          >
-            <Plus className="h-4 w-4 mr-1" />
-            {t('pullRequests.createPR')}
-          </Button>
+          <div className="flex items-center gap-2">
+            <h3 className="text-lg font-semibold">{t('pullRequests.title')}</h3>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => {
+                // If we have all required data, sync from GitHub; otherwise just refresh from DB
+                if (project?.git_repo && currentAttempt && pullRequests.length > 0) {
+                  syncPullRequestStatus();
+                } else {
+                  refreshPullRequests();
+                }
+              }}
+              disabled={loading}
+              title={t('common.refresh')}
+            >
+              <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+            </Button>
+            {lastUpdated && (
+              <span className="text-sm text-muted-foreground">
+                {t('common.lastUpdated')}: {getRelativeTime(lastUpdated)}
+              </span>
+            )}
+          </div>
+          {currentAttempt && project && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowCreateDialog(true)}
+            >
+              <Plus className="h-4 w-4 mr-1" />
+              {t('pullRequests.createPR')}
+            </Button>
+          )}
         </div>
       )}
 

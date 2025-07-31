@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Loader2, Save, AlertCircle, CheckCircle, KeyRound, Trash2 } from 'lucide-react';
+import { Loader2, AlertCircle, CheckCircle, KeyRound, Trash2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { toast } from '@/hooks/use-toast';
 import { GitHubAuthDialog } from '@/features/vcs/components/github/GitHubAuthDialog';
@@ -19,8 +19,10 @@ export function GitHubSettings() {
     defaultBranch: 'main',
     accessToken: undefined as string | undefined,
   });
+  const [githubUser, setGithubUser] = useState<{ login: string; name?: string } | null>(null);
   const [saving, setSaving] = useState(false);
   const [showAuthDialog, setShowAuthDialog] = useState(false);
+  const [hasChanges, setHasChanges] = useState(false);
 
   // Update local state when saved config changes
   useEffect(() => {
@@ -33,14 +35,21 @@ export function GitHubSettings() {
     }
   }, [savedConfig]);
 
-  const handleSave = async () => {
+  // Extract GitHub user from config
+  useEffect(() => {
+    if (config.username && config.accessToken) {
+      // The username field contains the GitHub username when authorized
+      setGithubUser({ login: config.username, name: undefined });
+    } else {
+      setGithubUser(null);
+    }
+  }, [config.username, config.accessToken]);
+
+  const handleAutoSave = async (newConfig: typeof config) => {
     try {
       setSaving(true);
-      await updateConfig(config!);
-      toast({
-        title: t('toast.success'),
-        description: 'GitHub configuration saved successfully',
-      });
+      await updateConfig(newConfig!);
+      setHasChanges(false);
     } catch (error) {
       console.error('Failed to save GitHub config:', error);
       toast({
@@ -50,6 +59,18 @@ export function GitHubSettings() {
       });
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleFieldChange = (field: keyof typeof config, value: string) => {
+    const newConfig = { ...config, [field]: value };
+    setConfig(newConfig);
+    setHasChanges(true);
+  };
+
+  const handleFieldBlur = () => {
+    if (hasChanges) {
+      handleAutoSave(config);
     }
   };
 
@@ -65,9 +86,12 @@ export function GitHubSettings() {
 
     try {
       setSaving(true);
-      setConfig(prev => ({ ...prev, accessToken: undefined }));
-      await updateConfig(config!);
-      setConfig(prev => ({ ...prev, accessToken: undefined }));
+      const updatedConfig = { ...config, accessToken: undefined };
+      // First update the backend
+      await updateConfig(updatedConfig);
+      // Only update local state after backend confirms success
+      setConfig(updatedConfig);
+      setGithubUser(null);
       refreshConfig();
       toast({
         title: t('toast.success'),
@@ -104,12 +128,19 @@ export function GitHubSettings() {
         </CardHeader>
         <CardContent className="space-y-4">
           {/* OAuth Section */}
-          <div className="border rounded-lg p-4 space-y-4">
+          <div className="border rounded-lg p-4">
             <div className="flex items-start justify-between">
               <div className="space-y-1">
-                <Label className="text-base font-medium">
-                  {t('settings.github.oauth')}
-                </Label>
+                <div className="flex items-center gap-2">
+                  <Label className="text-base font-medium">
+                    {t('settings.github.oauth')}
+                  </Label>
+                  {config.accessToken && githubUser && (
+                    <span className="text-sm text-muted-foreground">
+                      (@{githubUser.login})
+                    </span>
+                  )}
+                </div>
                 <p className="text-sm text-muted-foreground">
                   {t('settings.github.oauthDescription')}
                 </p>
@@ -145,28 +176,14 @@ export function GitHubSettings() {
           {/* Configuration Fields */}
           <div className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="username">
-                {t('settings.github.username')}
-              </Label>
-              <Input
-                id="username"
-                value={config.username}
-                onChange={(e) => setConfig(prev => ({ ...prev, username: e.target.value }))}
-                placeholder="octocat"
-              />
-              <p className="text-sm text-muted-foreground">
-                {t('settings.github.usernameHelp')}
-              </p>
-            </div>
-
-            <div className="space-y-2">
               <Label htmlFor="defaultBranch">
                 {t('settings.github.defaultBranch')}
               </Label>
               <Input
                 id="defaultBranch"
                 value={config.defaultBranch}
-                onChange={(e) => setConfig(prev => ({ ...prev, defaultBranch: e.target.value }))}
+                onChange={(e) => handleFieldChange('defaultBranch', e.target.value)}
+                onBlur={handleFieldBlur}
                 placeholder="main"
               />
               <p className="text-sm text-muted-foreground">
@@ -185,22 +202,13 @@ export function GitHubSettings() {
             </Alert>
           )}
 
-          {/* Save Button */}
-          <div className="flex justify-end">
-            <Button onClick={handleSave} disabled={saving}>
-              {saving ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  {t('common.saving')}
-                </>
-              ) : (
-                <>
-                  <Save className="mr-2 h-4 w-4" />
-                  {t('common.save')}
-                </>
-              )}
-            </Button>
-          </div>
+          {/* Auto-save indicator */}
+          {saving && (
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <Loader2 className="h-3 w-3 animate-spin" />
+              {t('common.saving')}
+            </div>
+          )}
         </CardContent>
       </Card>
 

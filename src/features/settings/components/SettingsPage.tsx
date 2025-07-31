@@ -1,80 +1,108 @@
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Settings as SettingsIcon } from "lucide-react";
+import { ArrowLeft, Settings as SettingsIcon, Monitor, GitBranch, Server } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { McpServerManager } from "@/features/mcp/components/McpServerManager";
 import { GeneralSettings } from "./GeneralSettings";
-import { McpConfigManager } from "./McpConfigManager";
-import { GitLabSettings } from "./GitLabSettings";
-import { GitHubSettings } from "./GitHubSettings";
+import { GitServicesSettings } from "./GitServicesSettings";
 import { useTranslation } from "react-i18next";
 
 interface SettingsPageProps {
   onBack: () => void;
-  initialTab?: string;
+  initialCategory?: string;
 }
 
-export function SettingsPage({ onBack, initialTab }: SettingsPageProps) {
+type SettingsCategory = "general" | "git-services" | "mcp";
+
+interface CategoryItem {
+  id: SettingsCategory;
+  label: string;
+  icon: React.ReactNode;
+}
+
+export function SettingsPage({ onBack, initialCategory }: SettingsPageProps) {
   const { t } = useTranslation();
-  
+  const [selectedCategory, setSelectedCategory] = useState<SettingsCategory>(
+    (initialCategory as SettingsCategory) || "general"
+  );
+
+  const categories: CategoryItem[] = [
+    {
+      id: "general",
+      label: t("settings.categories.general"),
+      icon: <Monitor className="h-4 w-4" />
+    },
+    {
+      id: "git-services",
+      label: t("settings.categories.gitServices"),
+      icon: <GitBranch className="h-4 w-4" />
+    },
+    {
+      id: "mcp",
+      label: t("settings.categories.mcp"),
+      icon: <Server className="h-4 w-4" />
+    }
+  ];
+
+  const renderContent = () => {
+    switch (selectedCategory) {
+      case "general":
+        return <GeneralSettings />;
+      case "git-services":
+        return <GitServicesSettings />;
+      case "mcp":
+        return <McpServerManager />;
+      default:
+        return null;
+    }
+  };
+
   return (
-    <div className="h-screen bg-background">
-      <div className="border-b">
-        <div className="container mx-auto p-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <Button variant="ghost" size="icon" onClick={onBack}>
-                <ArrowLeft className="h-4 w-4" />
-              </Button>
-              <div className="flex items-center gap-2">
-                <SettingsIcon className="h-5 w-5" />
-                <h1 className="text-2xl font-bold">{t('settings.title')}</h1>
-              </div>
+    <div className="h-screen bg-background flex flex-col">
+      {/* Header */}
+      <div className="border-b flex-shrink-0">
+        <div className="p-4">
+          <div className="flex items-center gap-4">
+            <Button variant="ghost" size="icon" onClick={onBack}>
+              <ArrowLeft className="h-4 w-4" />
+            </Button>
+            <div className="flex items-center gap-2">
+              <SettingsIcon className="h-5 w-5" />
+              <h1 className="text-2xl font-bold">{t("settings.title")}</h1>
             </div>
           </div>
         </div>
       </div>
 
-      <div className="container mx-auto p-6">
-        <Tabs defaultValue={initialTab || "general"} className="w-full">
-          <TabsList className="grid w-full grid-cols-5 max-w-[1000px]">
-            <TabsTrigger value="general">{t('settings.generalSettings')}</TabsTrigger>
-            <TabsTrigger value="gitlab">GitLab</TabsTrigger>
-            <TabsTrigger value="github">GitHub</TabsTrigger>
-            <TabsTrigger value="mcp">{t('settings.mcpServers')}</TabsTrigger>
-            <TabsTrigger value="mcp-config">{t('settings.mcpConfiguration')}</TabsTrigger>
-          </TabsList>
+      {/* Main Content */}
+      <div className="flex-1 flex overflow-hidden">
+        {/* Sidebar */}
+        <div className="w-64 border-r bg-muted/10 p-4 overflow-y-auto">
+          <nav className="space-y-1">
+            {categories.map((category) => (
+              <button
+                key={category.id}
+                onClick={() => setSelectedCategory(category.id)}
+                className={cn(
+                  "w-full flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-md transition-colors",
+                  selectedCategory === category.id
+                    ? "bg-primary text-primary-foreground"
+                    : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                )}
+              >
+                {category.icon}
+                {category.label}
+              </button>
+            ))}
+          </nav>
+        </div>
 
-          <TabsContent value="general" className="space-y-4">
-            <GeneralSettings />
-          </TabsContent>
-
-          <TabsContent value="gitlab" className="space-y-4">
-            <GitLabSettings />
-          </TabsContent>
-
-          <TabsContent value="github" className="space-y-4">
-            <GitHubSettings />
-          </TabsContent>
-
-          <TabsContent value="mcp" className="space-y-4">
-            <Card>
-              <CardHeader>
-                <CardTitle>MCP Server Management</CardTitle>
-                <CardDescription>
-                  Manage and configure Model Context Protocol (MCP) servers
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <McpServerManager />
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="mcp-config" className="space-y-4">
-            <McpConfigManager />
-          </TabsContent>
-        </Tabs>
+        {/* Content Area */}
+        <div className="flex-1 overflow-y-auto">
+          <div className="max-w-4xl mx-auto p-6">
+            {renderContent()}
+          </div>
+        </div>
       </div>
     </div>
   );
