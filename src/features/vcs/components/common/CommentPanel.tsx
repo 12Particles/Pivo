@@ -4,7 +4,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Card } from "@/components/ui/card";
 import { CodeComment } from "@/types/comment";
-import { MessageSquare, Send, Trash2, FileCode } from "lucide-react";
+import { MessageSquare, Send, Trash2, FileCode, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 interface CommentPanelProps {
@@ -14,6 +14,7 @@ interface CommentPanelProps {
   onSubmitToAgent: () => void;
   selectedText?: string;
   selectedFile?: string;
+  onClose?: () => void;
 }
 
 export function CommentPanel({
@@ -22,7 +23,8 @@ export function CommentPanel({
   onDeleteComment,
   onSubmitToAgent,
   selectedText,
-  selectedFile
+  selectedFile,
+  onClose
 }: CommentPanelProps) {
   const { t } = useTranslation();
   const [newComment, setNewComment] = useState("");
@@ -45,9 +47,21 @@ export function CommentPanel({
           <MessageSquare className="h-4 w-4" />
           {t('comments.title', 'Code Comments')}
         </h3>
-        <span className="text-sm text-muted-foreground">
-          {comments.length} {t('comments.count', 'comments')}
-        </span>
+        <div className="flex items-center gap-2">
+          <span className="text-sm text-muted-foreground">
+            {comments.length} {t('comments.count', 'comments')}
+          </span>
+          {onClose && (
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={onClose}
+              className="h-7 w-7 p-0"
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          )}
+        </div>
       </div>
 
       {/* Add new comment section */}

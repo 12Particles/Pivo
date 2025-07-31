@@ -17,8 +17,7 @@ import {
   TreePine,
   GitCompare,
   X,
-  PanelRightOpen,
-  PanelRightClose
+  PanelRightOpen
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useTranslation } from "react-i18next";
@@ -797,20 +796,22 @@ export function FileTreeDiff({ projectPath, taskId, worktreePath, refreshKey = 0
                   ))}
                 </TabsList>
                 <div className="px-2 flex items-center gap-1">
-                  <Button
-                    size="sm"
-                    variant={showCommentPanel ? "default" : "ghost"}
-                    onClick={() => setShowCommentPanel(!showCommentPanel)}
-                    className="h-7"
-                  >
-                    {showCommentPanel ? <PanelRightClose className="h-3 w-3 mr-1" /> : <PanelRightOpen className="h-3 w-3 mr-1" />}
-                    <span className="text-xs">{t('comments.title', 'Comments')}</span>
-                    {comments.length > 0 && (
-                      <span className="ml-1 text-xs bg-primary text-primary-foreground rounded-full px-1.5 py-0.5 min-w-[20px] text-center">
-                        {comments.length}
-                      </span>
-                    )}
-                  </Button>
+                  {!showCommentPanel && (
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => setShowCommentPanel(true)}
+                      className="h-7"
+                    >
+                      <PanelRightOpen className="h-3 w-3 mr-1" />
+                      <span className="text-xs">{t('comments.title', 'Comments')}</span>
+                      {comments.length > 0 && (
+                        <span className="ml-1 text-xs bg-primary text-primary-foreground rounded-full px-1.5 py-0.5 min-w-[20px] text-center">
+                          {comments.length}
+                        </span>
+                      )}
+                    </Button>
+                  )}
                 </div>
               </div>
               
@@ -852,6 +853,7 @@ export function FileTreeDiff({ projectPath, taskId, worktreePath, refreshKey = 0
             onSubmitToAgent={handleSubmitToAgent}
             selectedText={selectedText}
             selectedFile={activeTab}
+            onClose={() => setShowCommentPanel(false)}
           />
         </div>
       )}

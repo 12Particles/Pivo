@@ -5,13 +5,11 @@ import { useTranslation } from "react-i18next";
 
 interface ConversationHeaderProps {
   isRunning: boolean;
-  isSending: boolean;
   onStopExecution: () => void;
 }
 
 export function ConversationHeader({ 
   isRunning, 
-  isSending, 
   onStopExecution 
 }: ConversationHeaderProps) {
   const { t } = useTranslation();
@@ -27,9 +25,6 @@ export function ConversationHeader({
               </Badge>
               <Loader2 className="h-4 w-4 animate-spin text-blue-500" />
             </>
-          )}
-          {isSending && !isRunning && (
-            <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
           )}
         </div>
         {isRunning && (

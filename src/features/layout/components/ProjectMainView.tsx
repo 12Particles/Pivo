@@ -129,7 +129,11 @@ export const ProjectMainView: React.FC<ProjectMainViewProps> = ({
 
   return (
     <div className="h-full flex flex-col">
-      {toolbar && <div className="border-b px-4 py-2 bg-background">{toolbar}</div>}
+      {toolbar && (
+        <div className="border-b px-4 py-2 bg-background flex justify-end">
+          {toolbar}
+        </div>
+      )}
       
       {bottomPanel ? (
         <PanelGroup direction="vertical" className="flex-1">

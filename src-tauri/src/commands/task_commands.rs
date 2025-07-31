@@ -222,8 +222,8 @@ async fn handle_send_message(
         "executionId": execution.id,
     }));
     
-    // 10. Emit state update
-    emit_state_update(app, state, cli_state, task_id).await;
+    // 10. Don't emit state update immediately - let the frontend handle the state change
+    // The execution:started event is enough to update the UI state
     
     Ok(())
 }
@@ -281,8 +281,7 @@ async fn handle_stop_execution(
         }));
     }
     
-    // Emit state update
-    emit_state_update(app, state, cli_state, task_id).await;
+    // Don't emit state update immediately - let the frontend handle the state change
     
     Ok(())
 }

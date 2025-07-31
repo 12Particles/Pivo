@@ -26,7 +26,6 @@ export const TaskConversation: React.FC<TaskConversationProps> = ({ task }) => {
   // Local UI state only
   const [input, setInput] = useState('');
   const [images, setImages] = useState<string[]>([]);
-  const [isSending, setIsSending] = useState(false);
   const [pendingCodeComment, setPendingCodeComment] = useState<string | null>(null);
   
   // Get state from backend
@@ -48,7 +47,6 @@ export const TaskConversation: React.FC<TaskConversationProps> = ({ task }) => {
       return;
     }
     
-    setIsSending(true);
     setInput('');
     const imagesToSend = [...images];
     setImages([]);
@@ -64,8 +62,6 @@ export const TaskConversation: React.FC<TaskConversationProps> = ({ task }) => {
       // Restore input on error
       setInput(message);
       setImages(imagesToSend);
-    } finally {
-      setIsSending(false);
     }
   }, [input, images, conversationState.canSendMessage, task.id, sendMessage, t]);
   
@@ -157,7 +153,6 @@ export const TaskConversation: React.FC<TaskConversationProps> = ({ task }) => {
     <div className="h-full flex flex-col">
       <ConversationHeader
         isRunning={conversationState.isExecuting}
-        isSending={isSending}
         onStopExecution={handleStopExecution}
       />
       
@@ -165,7 +160,7 @@ export const TaskConversation: React.FC<TaskConversationProps> = ({ task }) => {
         messages={conversationState.messages}
         collapsedMessages={new Set()}
         onToggleCollapse={() => {}}
-        isSending={isSending}
+        isSending={false}
         execution={null}
         taskStatus={task.status}
       />
@@ -173,7 +168,7 @@ export const TaskConversation: React.FC<TaskConversationProps> = ({ task }) => {
       <MessageInput
         input={input}
         images={images}
-        isSending={isSending}
+        isSending={false}
         pendingMessages={[]}
         executionStatus={conversationState.isExecuting ? CodingAgentExecutionStatus.Running : undefined}
         onInputChange={setInput}
