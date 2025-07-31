@@ -5,6 +5,7 @@ mod repository;
 mod commands;
 mod logging;
 mod menu;
+mod window_manager;
 
 use std::sync::Arc;
 use services::{TaskService, ProjectService, ProcessService, McpServerManager, CodingAgentExecutorService, MergeRequestService, ConfigService, FileWatcherService};
@@ -13,12 +14,14 @@ use tauri::Manager;
 use tokio::sync::Mutex;
 use commands::mcp::McpState;
 use commands::cli::CliState;
+use window_manager::ProjectWindowManager;
 
 pub struct AppState {
     pub task_service: Arc<TaskService>,
     pub project_service: Arc<ProjectService>,
     pub process_service: Arc<ProcessService>,
     pub merge_request_service: Arc<MergeRequestService>,
+    pub window_manager: Arc<ProjectWindowManager>,
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -56,6 +59,7 @@ pub fn run() {
                     .unwrap_or_else(|e| log::warn!("Failed to load config from db: {}", e));
                 let config_service = Arc::new(Mutex::new(config_service_inner));
                 let file_watcher_service = Arc::new(FileWatcherService::new(handle.clone()));
+                let window_manager = Arc::new(ProjectWindowManager::new(handle.clone()));
                 
                 // Store app state
                 app.manage(AppState {
@@ -63,6 +67,7 @@ pub fn run() {
                     project_service,
                     process_service,
                     merge_request_service,
+                    window_manager,
                 });
                 
                 // Store config service
@@ -148,6 +153,10 @@ pub fn run() {
             commands::logging::open_log_file,
             commands::logging::clear_logs,
             commands::window::show_log_viewer,
+            commands::window::open_project_window,
+            commands::window::close_project_window,
+            commands::window::get_project_window,
+            commands::window::list_open_project_windows,
             commands::gitlab::get_gitlab_config,
             commands::gitlab::update_gitlab_config,
             commands::gitlab::create_gitlab_mr,

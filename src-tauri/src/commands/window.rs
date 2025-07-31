@@ -1,4 +1,5 @@
-use tauri::{Manager, WebviewUrl, WebviewWindowBuilder};
+use tauri::{Manager, State, WebviewUrl, WebviewWindowBuilder};
+use crate::AppState;
 
 #[tauri::command]
 pub async fn show_log_viewer(app: tauri::AppHandle) -> Result<(), String> {
@@ -22,4 +23,36 @@ pub async fn show_log_viewer(app: tauri::AppHandle) -> Result<(), String> {
     }
     
     Ok(())
+}
+
+#[tauri::command]
+pub async fn open_project_window(
+    project_id: String,
+    project_name: String,
+    state: State<'_, AppState>
+) -> Result<String, String> {
+    state.window_manager.open_project_window(&project_id, &project_name).await
+}
+
+#[tauri::command]
+pub async fn close_project_window(
+    project_id: String,
+    state: State<'_, AppState>
+) -> Result<(), String> {
+    state.window_manager.close_project_window(&project_id).await
+}
+
+#[tauri::command]
+pub async fn get_project_window(
+    project_id: String,
+    state: State<'_, AppState>
+) -> Result<Option<String>, String> {
+    Ok(state.window_manager.get_project_window(&project_id).await)
+}
+
+#[tauri::command]
+pub async fn list_open_project_windows(
+    state: State<'_, AppState>
+) -> Result<Vec<(String, String)>, String> {
+    Ok(state.window_manager.list_open_projects().await)
 }
