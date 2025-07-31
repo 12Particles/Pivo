@@ -1,4 +1,6 @@
-// Temporary compatibility layer for VCS hooks
+// VCS hooks - functionality moved to integration components
+// Temporary exports to fix compilation errors
+
 export function useGitHubAuth() {
   return {
     config: null,

@@ -18,6 +18,7 @@ import { useTranslation } from 'react-i18next';
 import { ImperativePanelHandle } from 'react-resizable-panels';
 import { Task, TaskStatus, CreateTaskRequest, UpdateTaskRequest } from '@/types';
 import { useEvent } from '@/lib/events';
+import { useTaskCommand } from './conversation/hooks/useTaskCommand';
 
 export function TasksView() {
   const { t } = useTranslation();
@@ -42,6 +43,9 @@ export function TasksView() {
   const [showCreateTaskDialog, setShowCreateTaskDialog] = useState(false);
   const [showEditTaskDialog, setShowEditTaskDialog] = useState(false);
   const [taskToEdit, setTaskToEdit] = useState<Task | null>(null);
+  
+  // Task command hook
+  const { sendCommand: executeTaskCommand } = useTaskCommand();
 
   
   const leftPanelRef = useRef<ImperativePanelHandle>(null);
@@ -56,7 +60,7 @@ export function TasksView() {
   }, [currentProject]);
   
   // Listen for task status updates
-  useEvent('task-status-updated', (updatedTask) => {
+  useEvent('task:status-changed', ({ task: updatedTask }) => {
     setTasks(prevTasks => 
       prevTasks.map(task => 
         task.id === updatedTask.id ? updatedTask : task
@@ -93,7 +97,12 @@ export function TasksView() {
       // If shouldStart is true, execute the task immediately
       if (shouldStart) {
         const initialMessage = `请执行以下任务：\n\n标题：${task.title}\n${task.description ? `\n描述：${task.description}` : ''}`;
-        await taskApi.execute(task.id, initialMessage, images);
+        await executeTaskCommand({
+          type: 'SEND_MESSAGE',
+          taskId: task.id,
+          message: initialMessage,
+          images
+        });
       }
     } catch (error) {
       console.error('Failed to create task:', error);
@@ -142,7 +151,11 @@ export function TasksView() {
     // Attempt management is now handled by backend
     // Just send the execute command
     try {
-      await taskApi.execute(selectedTask.id);
+      await executeTaskCommand({
+        type: 'SEND_MESSAGE',
+        taskId: selectedTask.id,
+        message: 'Start working on this task'
+      });
     } catch (error) {
       console.error('Failed to execute task:', error);
     }
@@ -226,7 +239,11 @@ export function TasksView() {
                   // 构建包含任务上下文的初始消息 - 与 create&start 使用相同的格式
                   const initialMessage = `请执行以下任务：\n\n标题：${task.title}\n${task.description ? `\n描述：${task.description}` : ''}`;
                   // 注意：从任务卡片执行时无法获取原始图片，因为图片不存储在任务中
-                  await taskApi.execute(task.id, initialMessage);
+                  await executeTaskCommand({
+                    type: 'SEND_MESSAGE',
+                    taskId: task.id,
+                    message: initialMessage
+                  });
                 } catch (error) {
                   console.error('Failed to execute task:', error);
                 }

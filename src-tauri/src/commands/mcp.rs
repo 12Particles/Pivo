@@ -1,6 +1,5 @@
 use crate::services::mcp_server::{
-    McpServer, McpServerManager, McpCapabilities, McpServerStatus,
-    ToolExecutionRequest
+    McpServer, McpServerManager, McpCapabilities, McpServerStatus
 };
 use std::sync::Arc;
 use tauri::State;
@@ -84,20 +83,6 @@ pub async fn list_mcp_tools(
     state.manager.send_request(&server_id, "tools/list", None)
 }
 
-#[tauri::command]
-pub async fn execute_mcp_tool(
-    state: State<'_, McpState>,
-    request: ToolExecutionRequest,
-) -> Result<String, String> {
-    state.manager.send_request(
-        &request.server_id,
-        "tools/call",
-        Some(serde_json::json!({
-            "name": request.tool_name,
-            "arguments": request.arguments,
-        })),
-    )
-}
 
 #[tauri::command]
 pub async fn list_mcp_resources(

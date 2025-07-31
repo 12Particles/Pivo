@@ -5,41 +5,28 @@ use uuid::Uuid;
 use crate::{
     commands::cli::CliState,
     AppState,
+    models::TaskStatus,
 };
 
+// Simplified command system based on RFC
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "type")]
 pub enum TaskCommand {
-    #[serde(rename = "START_EXECUTION")]
-    StartExecution { 
-        #[serde(rename = "taskId")]
-        task_id: String, 
-        payload: Option<StartExecutionPayload> 
-    },
+    /// Send message (requires existing Attempt)
     #[serde(rename = "SEND_MESSAGE")]
     SendMessage { 
         #[serde(rename = "taskId")]
         task_id: String, 
-        payload: SendMessagePayload 
+        message: String,
+        images: Option<Vec<String>>,
     },
+    
+    /// Stop current execution
     #[serde(rename = "STOP_EXECUTION")]
     StopExecution { 
         #[serde(rename = "taskId")]
-        task_id: String 
+        task_id: String,
     },
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct StartExecutionPayload {
-    #[serde(rename = "initialMessage")]
-    initial_message: Option<String>,
-    images: Option<Vec<String>>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct SendMessagePayload {
-    message: String,
-    images: Option<Vec<String>>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -69,14 +56,11 @@ pub async fn execute_task_command(
     log::info!("Executing task command: {:?}", command);
     
     match command {
-        TaskCommand::StartExecution { task_id, payload } => {
-            start_execution(&app, &state, &cli_state, &task_id, payload).await
-        }
-        TaskCommand::SendMessage { task_id, payload } => {
-            send_message(&app, &state, &cli_state, &task_id, payload).await
+        TaskCommand::SendMessage { task_id, message, images } => {
+            handle_send_message(&app, &state, &cli_state, &task_id, message, images).await
         }
         TaskCommand::StopExecution { task_id } => {
-            stop_execution(&app, &state, &cli_state, &task_id).await
+            handle_stop_execution(&app, &state, &cli_state, &task_id).await
         }
     }
 }
@@ -127,104 +111,39 @@ pub async fn get_conversation_state(
         messages,
         is_executing,
         current_attempt_id: current_attempt.map(|a| a.id.clone()),
-        can_send_message: !is_executing || current_attempt.is_some(),
+        can_send_message: !is_executing && current_attempt.is_some(),
         current_execution,
     })
 }
 
-// Helper functions
-
-async fn start_execution(
+// Core logic based on RFC
+async fn handle_send_message(
     app: &AppHandle,
     state: &State<'_, AppState>,
     cli_state: &State<'_, CliState>,
     task_id: &str,
-    payload: Option<StartExecutionPayload>,
+    message: String,
+    images: Option<Vec<String>>,
 ) -> Result<(), String> {
     let task_service = &state.task_service;
     let task_uuid = Uuid::parse_str(task_id).map_err(|e| e.to_string())?;
     
-    // Update task status to Working
-    let updated_task = task_service.update_task_status(task_uuid, crate::models::TaskStatus::Working)
-        .await
-        .map_err(|e| e.to_string())?;
-    
-    // Emit task status update event
-    let _ = app.emit("task-status-updated", &updated_task);
-    
-    // Get or create attempt
+    // 1. Get the latest Attempt, error if none exists
     let attempts = task_service.list_task_attempts(task_uuid)
         .await
         .map_err(|e| e.to_string())?;
     
-    let attempt = if let Some(existing) = attempts.last() {
-        existing.clone()
-    } else {
-        let req = crate::models::CreateTaskAttemptRequest {
-            task_id: task_uuid,
-            executor: None,
-            base_branch: None,
-        };
-        task_service.create_task_attempt(req)
-            .await
-            .map_err(|e| e.to_string())?
+    let attempt = attempts.last()
+        .ok_or("No attempt found for this task. Please create an attempt first.")?
+        .clone();
+    
+    // 2. Get resume session ID if available
+    let resume_session_id = match attempt.executor.as_deref() {
+        Some("claude") | Some("claude_code") | Some("ClaudeCode") => attempt.claude_session_id.clone(),
+        _ => None,
     };
     
-    // Get project for task
-    let task = task_service.get_task(task_uuid)
-        .await
-        .map_err(|e| e.to_string())?
-        .ok_or("Task not found")?;
-    
-    let project_uuid = Uuid::parse_str(&task.project_id).map_err(|e| e.to_string())?;
-    let project = state.project_service
-        .get_project(project_uuid)
-        .await
-        .map_err(|e| e.to_string())?
-        .ok_or("Project not found")?;
-    
-    // Get the prompt from payload or use a default
-    let prompt = if let Some(payload) = payload {
-        payload.initial_message.unwrap_or_else(|| "Start working on this task".to_string())
-    } else {
-        "Start working on this task".to_string()
-    };
-    
-    // Determine agent type from executor field
-    let agent_type = match attempt.executor.as_deref() {
-        Some("claude") | Some("claude_code") | Some("ClaudeCode") => 
-            crate::services::coding_agent_executor::CodingAgentType::ClaudeCode,
-        Some("gemini") | Some("gemini_cli") | Some("GeminiCli") => 
-            crate::services::coding_agent_executor::CodingAgentType::GeminiCli,
-        _ => crate::services::coding_agent_executor::CodingAgentType::ClaudeCode, // Default to Claude
-    };
-    
-    // Execute prompt with the appropriate agent
-    let _execution = crate::commands::cli::execute_prompt(
-        cli_state.clone(),
-        prompt,
-        task_id.to_string(),
-        attempt.id.clone(),
-        if attempt.worktree_path.is_empty() { project.path.clone() } else { attempt.worktree_path.clone() },
-        agent_type,
-        None, // No resume session for new execution
-    ).await?;
-    
-    // Emit state update
-    emit_state_update(app, state, cli_state, task_id).await;
-    
-    Ok(())
-}
-
-async fn send_message(
-    app: &AppHandle,
-    state: &State<'_, AppState>,
-    cli_state: &State<'_, CliState>,
-    task_id: &str,
-    payload: SendMessagePayload,
-) -> Result<(), String> {
-    // In the new model, each message creates a new execution
-    // Check if there's already an active execution and stop it first
+    // 3. Check if there's already an active execution and stop it first
     let executions = cli_state.service.list_executions();
     if let Some(exec) = executions.iter().find(|e| 
         e.task_id == task_id && 
@@ -237,21 +156,79 @@ async fn send_message(
         cli_state.service.stop_execution(&exec.id).await?;
     }
     
-    // Start a new execution with the message
-    log::info!("Starting new execution for task {} with message and {} images", 
-        task_id, payload.images.as_ref().map(|imgs| imgs.len()).unwrap_or(0));
-    start_execution(app, state, cli_state, task_id, Some(StartExecutionPayload {
-        initial_message: Some(payload.message),
-        images: payload.images,
-    })).await?;
+    // 4. Get task and project info
+    let task = task_service.get_task(task_uuid)
+        .await
+        .map_err(|e| e.to_string())?
+        .ok_or("Task not found")?;
     
-    // Emit state update
+    let project_uuid = Uuid::parse_str(&task.project_id).map_err(|e| e.to_string())?;
+    let project = state.project_service
+        .get_project(project_uuid)
+        .await
+        .map_err(|e| e.to_string())?
+        .ok_or("Project not found")?;
+    
+    // 5. Update task status to Working if not already
+    if task.status != TaskStatus::Working {
+        let updated_task = task_service.update_task_status(task_uuid, TaskStatus::Working)
+            .await
+            .map_err(|e| e.to_string())?;
+        
+        // Emit task:status-changed event
+        let _ = app.emit("task:status-changed", &serde_json::json!({
+            "taskId": task_id,
+            "previousStatus": task.status,
+            "newStatus": TaskStatus::Working,
+            "task": updated_task,
+        }));
+    }
+    
+    // 6. Determine agent type from executor field
+    let agent_type = match attempt.executor.as_deref() {
+        Some("claude") | Some("claude_code") | Some("ClaudeCode") => 
+            crate::services::coding_agent_executor::CodingAgentType::ClaudeCode,
+        Some("gemini") | Some("gemini_cli") | Some("GeminiCli") => 
+            crate::services::coding_agent_executor::CodingAgentType::GeminiCli,
+        _ => crate::services::coding_agent_executor::CodingAgentType::ClaudeCode, // Default to Claude
+    };
+    
+    // 7. Combine message with images if provided
+    let prompt = if let Some(imgs) = &images {
+        if !imgs.is_empty() {
+            format!("{}\n\n[Images: {} attached]", message, imgs.len())
+        } else {
+            message
+        }
+    } else {
+        message
+    };
+    
+    // 8. Execute with resume session
+    let execution = crate::commands::cli::execute_prompt(
+        cli_state.clone(),
+        prompt,
+        task_id.to_string(),
+        attempt.id.clone(),
+        if attempt.worktree_path.is_empty() { project.path.clone() } else { attempt.worktree_path.clone() },
+        agent_type,
+        resume_session_id, // Use saved session ID
+    ).await?;
+    
+    // 9. Emit execution:started event
+    let _ = app.emit("execution:started", &serde_json::json!({
+        "taskId": task_id,
+        "attemptId": attempt.id,
+        "executionId": execution.id,
+    }));
+    
+    // 10. Emit state update
     emit_state_update(app, state, cli_state, task_id).await;
     
     Ok(())
 }
 
-async fn stop_execution(
+async fn handle_stop_execution(
     app: &AppHandle,
     state: &State<'_, AppState>,
     cli_state: &State<'_, CliState>,
@@ -260,22 +237,49 @@ async fn stop_execution(
     let task_service = &state.task_service;
     let task_uuid = Uuid::parse_str(task_id).map_err(|e| e.to_string())?;
     
-    // Get current execution
-    let executions = cli_state.service.list_executions();
-    if let Some(execution) = executions.iter().find(|e| e.task_id == task_id) {
-        crate::commands::cli::stop_cli_execution(
-            cli_state.clone(),
-            execution.id.clone(),
-        ).await?;
-    }
-    
-    // Update task status back to Backlog when stopping
-    let updated_task = task_service.update_task_status(task_uuid, crate::models::TaskStatus::Backlog)
+    // Get current execution and attempt ID from the latest attempt
+    let attempts = task_service.list_task_attempts(task_uuid)
         .await
         .map_err(|e| e.to_string())?;
     
-    // Emit task status update event
-    let _ = app.emit("task-status-updated", &updated_task);
+    let attempt_id = attempts.last()
+        .map(|a| a.id.clone())
+        .unwrap_or_default();
+    
+    let executions = cli_state.service.list_executions();
+    if let Some(execution) = executions.iter().find(|e| e.task_id == task_id) {
+        let exec_id = execution.id.clone();
+        
+        cli_state.service.stop_execution(&exec_id).await?;
+        
+        // Emit execution:completed event
+        let _ = app.emit("execution:completed", &serde_json::json!({
+            "taskId": task_id,
+            "attemptId": attempt_id,
+            "executionId": exec_id,
+            "status": "cancelled",
+        }));
+    }
+    
+    // Update task status back to Backlog when stopping
+    let task = task_service.get_task(task_uuid)
+        .await
+        .map_err(|e| e.to_string())?
+        .ok_or("Task not found")?;
+    
+    if task.status != TaskStatus::Backlog {
+        let updated_task = task_service.update_task_status(task_uuid, TaskStatus::Backlog)
+            .await
+            .map_err(|e| e.to_string())?;
+        
+        // Emit task:status-changed event
+        let _ = app.emit("task:status-changed", &serde_json::json!({
+            "taskId": task_id,
+            "previousStatus": task.status,
+            "newStatus": TaskStatus::Backlog,
+            "task": updated_task,
+        }));
+    }
     
     // Emit state update
     emit_state_update(app, state, cli_state, task_id).await;
@@ -290,7 +294,7 @@ async fn emit_state_update(
     task_id: &str
 ) {
     if let Ok(conversation_state) = get_conversation_state(state.clone(), cli_state.clone(), task_id.to_string()).await {
-        let _ = app.emit("conversation-state-update", &serde_json::json!({
+        let _ = app.emit("state:conversation-sync", &serde_json::json!({
             "taskId": task_id,
             "state": conversation_state,
         }));

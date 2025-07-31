@@ -54,27 +54,6 @@ export class TaskApi {
     return invoke<void>('delete_task', { id });
   }
   
-  /**
-   * Execute a task (start execution)
-   */
-  async execute(id: string, initialMessage?: string, images?: string[]): Promise<void> {
-    if (initialMessage) {
-      // Use the new task command approach with initial message
-      return invoke<void>('execute_task_command', {
-        command: {
-          type: 'START_EXECUTION',
-          taskId: id,
-          payload: {
-            initialMessage: initialMessage,
-            images: images || null
-          }
-        }
-      });
-    } else {
-      // Fallback to simple execute without message
-      return invoke<void>('execute_task', { id });
-    }
-  }
 }
 
 // Export singleton instance

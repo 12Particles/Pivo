@@ -76,33 +76,32 @@ pub async fn update_task_status(
     status: TaskStatus,
 ) -> Result<Task, String> {
     let uuid = Uuid::parse_str(&id).map_err(|e| e.to_string())?;
+    
+    // Get previous status before update
+    let previous_task = state
+        .task_service
+        .get_task(uuid)
+        .await
+        .map_err(|e| e.to_string())?
+        .ok_or("Task not found")?;
+    let previous_status = previous_task.status.clone();
+    
     let task = state
         .task_service
-        .update_task_status(uuid, status)
+        .update_task_status(uuid, status.clone())
         .await
         .map_err(|e| e.to_string())?;
     
-    // Emit task status update event
-    let _ = app_handle.emit("task-status-updated", &task);
+    // Emit task status update event with new format
+    let _ = app_handle.emit("task:status-changed", &serde_json::json!({
+        "taskId": id,
+        "previousStatus": previous_status,
+        "newStatus": status,
+        "task": &task
+    }));
     
     Ok(task)
 }
 
-#[tauri::command]
-pub async fn execute_task(
-    state: State<'_, AppState>,
-    cli_state: State<'_, crate::commands::cli::CliState>,
-    app_handle: AppHandle,
-    id: String,
-) -> Result<(), String> {
-    // Simply delegate to task_commands
-    crate::commands::task_commands::execute_task_command(
-        app_handle,
-        state,
-        cli_state,
-        crate::commands::task_commands::TaskCommand::StartExecution {
-            task_id: id,
-            payload: None,
-        },
-    ).await
-}
+// Removed execute_task - functionality moved to SendMessage in task_commands
+// Tasks must have an existing attempt before sending messages

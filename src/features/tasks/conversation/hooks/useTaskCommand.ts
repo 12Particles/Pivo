@@ -1,15 +1,22 @@
 import { useCallback } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 
-export interface TaskCommand {
-  type: 'START_EXECUTION' | 'SEND_MESSAGE' | 'STOP_EXECUTION';
-  taskId: string;
-  payload?: any;
-}
+// Simplified command types based on RFC
+export type TaskCommand = 
+  | {
+      type: 'SEND_MESSAGE';
+      taskId: string;
+      message: string;
+      images?: string[];
+    }
+  | {
+      type: 'STOP_EXECUTION';
+      taskId: string;
+    };
 
 /**
  * Hook for sending commands to the backend
- * All operations are command-based, no state management here
+ * Simplified API based on RFC - no START_EXECUTION, attempt must exist
  */
 export function useTaskCommand() {
   const sendCommand = useCallback(async (command: TaskCommand) => {
@@ -21,20 +28,13 @@ export function useTaskCommand() {
     }
   }, []);
 
-  // Convenience methods
-  const startExecution = useCallback(async (taskId: string, initialMessage?: string) => {
-    return sendCommand({
-      type: 'START_EXECUTION',
-      taskId,
-      payload: { initialMessage }
-    });
-  }, [sendCommand]);
-
+  // Send message (requires existing attempt)
   const sendMessage = useCallback(async (taskId: string, message: string, images?: string[]) => {
     return sendCommand({
       type: 'SEND_MESSAGE',
       taskId,
-      payload: { message, images }
+      message,
+      images
     });
   }, [sendCommand]);
 
@@ -47,7 +47,6 @@ export function useTaskCommand() {
 
   return {
     sendCommand,
-    startExecution,
     sendMessage,
     stopExecution
   };

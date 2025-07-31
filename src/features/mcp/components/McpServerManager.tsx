@@ -38,7 +38,7 @@ export function McpServerManager() {
   const loadServers = async () => {
     try {
       setIsLoading(true);
-      const serverList = await mcpApi.list();
+      const serverList = await mcpApi.listServers();
       setServers(serverList);
     } catch (error) {
       console.error('Failed to load MCP servers:', error);
@@ -96,7 +96,7 @@ export function McpServerManager() {
 
   const handleStartServer = async (id: string) => {
     try {
-      await mcpApi.start(id);
+      await mcpApi.startServer(id);
       await loadServers();
       toast({
         title: "Success",
@@ -114,7 +114,7 @@ export function McpServerManager() {
 
   const handleStopServer = async (id: string) => {
     try {
-      await mcpApi.stop(id);
+      await mcpApi.stopServer(id);
       await loadServers();
       toast({
         title: "Success",

@@ -25,9 +25,9 @@ export function useAppInitialization() {
     });
     
     // Initialize MCP servers
-    mcpApi.list().then(servers => {
+    mcpApi.listServers().then((servers: any[]) => {
       logger.info(`Found ${servers.length} MCP servers`);
-    }).catch(error => {
+    }).catch((error: any) => {
       logger.error('Failed to list MCP servers', error);
     });
     

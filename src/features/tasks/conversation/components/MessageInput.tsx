@@ -79,15 +79,48 @@ export function MessageInput({
 
       if (selected) {
         const files = Array.isArray(selected) ? selected : [selected];
-        const imagePromises = files.map(async (file) => {
-          const data = await readFile(file);
-          // Convert to base64 for display
-          const base64 = btoa(String.fromCharCode(...new Uint8Array(data)));
-          return `data:image/png;base64,${base64}`;
-        });
+        const maxFileSize = 10 * 1024 * 1024; // 10MB limit
+        const validImages: string[] = [];
         
-        const imageUrls = await Promise.all(imagePromises);
-        onImagesChange([...images, ...imageUrls]);
+        for (const file of files.slice(0, 5 - images.length)) { // Limit to 5 total images
+          try {
+            const data = await readFile(file);
+            
+            // Check file size
+            if (data.byteLength > maxFileSize) {
+              toast({
+                title: t('common.error'),
+                description: t('ai.imageTooLarge', { max: '10MB' }),
+                variant: "destructive",
+              });
+              continue;
+            }
+            
+            // Convert Uint8Array to base64 safely
+            const uint8Array = new Uint8Array(data);
+            let binary = '';
+            const chunkSize = 8192;
+            
+            for (let i = 0; i < uint8Array.length; i += chunkSize) {
+              const chunk = uint8Array.slice(i, i + chunkSize);
+              binary += String.fromCharCode.apply(null, Array.from(chunk));
+            }
+            
+            const base64 = btoa(binary);
+            
+            // Determine image type from file extension
+            const extension = file.split('.').pop()?.toLowerCase() || 'png';
+            const mimeType = extension === 'jpg' ? 'jpeg' : extension;
+            
+            validImages.push(`data:image/${mimeType};base64,${base64}`);
+          } catch (error) {
+            console.error(`Failed to process image ${file}:`, error);
+          }
+        }
+        
+        if (validImages.length > 0) {
+          onImagesChange([...images, ...validImages]);
+        }
       }
     } catch (error) {
       console.error("Failed to select images:", error);
@@ -101,7 +134,6 @@ export function MessageInput({
 
   const removeImage = (index: number) => {
     const newImages = [...images];
-    URL.revokeObjectURL(newImages[index]);
     newImages.splice(index, 1);
     onImagesChange(newImages);
   };

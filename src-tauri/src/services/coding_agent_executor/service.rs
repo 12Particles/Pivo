@@ -75,20 +75,22 @@ impl CodingAgentExecutorService {
                             break;
                         }
                     }
+                    // Get execution ID for the event
+                    let mut exec_id = String::new();
+                    for (_id, process) in executions.iter() {
+                        if process.execution_context.attempt_id == attempt_id {
+                            exec_id = process.execution.id.clone();
+                            break;
+                        }
+                    }
                     drop(executions); // Release lock before emitting
                     
-                    // Emit updated state
-                    let _ = app_handle.emit("task-execution-summary", &TaskExecutionSummary {
-                        task_id: task_id.clone(),
-                        active_attempt_id: None,
-                        is_running: false,
-                        agent_type: None,
-                    });
-                    
-                    // Emit a special event to trigger conversation state update
-                    let _ = app_handle.emit("execution-completed", serde_json::json!({
+                    // Emit execution:completed event
+                    let _ = app_handle.emit("execution:completed", serde_json::json!({
                         "taskId": task_id,
                         "attemptId": attempt_id,
+                        "executionId": exec_id,
+                        "status": "success",
                     }));
                     
                     // Update task status to Reviewing
@@ -98,9 +100,20 @@ impl CodingAgentExecutorService {
                     tauri::async_runtime::spawn(async move {
                         use crate::services::task_service::TaskService;
                         let task_service = TaskService::new(db_repo_clone.pool().clone());
-                        if let Ok(task) = task_service.update_task_status(task_uuid, TaskStatus::Reviewing).await {
-                            // Emit task status update event
-                            let _ = app_handle_clone.emit("task-status-updated", &task);
+                        
+                        // Get current task status first
+                        if let Ok(Some(current_task)) = task_service.get_task(task_uuid).await {
+                            let previous_status = current_task.status.clone();
+                            
+                            if let Ok(updated_task) = task_service.update_task_status(task_uuid, TaskStatus::Reviewing).await {
+                                // Emit task:status-changed event with before/after status
+                                let _ = app_handle_clone.emit("task:status-changed", serde_json::json!({
+                                    "taskId": task_id,
+                                    "previousStatus": previous_status,
+                                    "newStatus": TaskStatus::Reviewing,
+                                    "task": updated_task,
+                                }));
+                            }
                         }
                     });
                     
@@ -126,7 +139,7 @@ impl CodingAgentExecutorService {
                 }
                 
                 // Save to database - encode the full message data
-                let db_message = crate::commands::task_attempts::ConversationMessage {
+                let db_message = crate::models::ConversationMessage {
                     role: match conversation_msg.role {
                         MessageRole::User => "user",
                         MessageRole::Assistant => "assistant",
@@ -148,10 +161,10 @@ impl CodingAgentExecutorService {
                     let _ = conversation_repo.add_message(attempt_uuid, db_message).await;
                 });
                 
-                // Emit event to frontend with ConversationMessage
-                let _ = app_handle.emit("coding-agent-message", serde_json::json!({
-                    "task_id": task_id,
-                    "attempt_id": attempt_id,
+                // Emit message:added event
+                let _ = app_handle.emit("message:added", serde_json::json!({
+                    "taskId": task_id,
+                    "attemptId": attempt_id,
                     "message": conversation_msg,
                 }));
             }
@@ -215,9 +228,7 @@ impl CodingAgentExecutorService {
             });
         } // Lock is dropped here
         
-        // Emit events for execution start
-        self.emit_attempt_execution_state(attempt_id);
-        self.emit_task_execution_summary(task_id);
+        // Events are now handled in execute_prompt through execution:started
         
         // Create and send user message
         let user_message = ConversationMessage::new(
@@ -267,9 +278,7 @@ impl CodingAgentExecutorService {
             }
         };
         
-        // Emit events
-        self.emit_attempt_execution_state(attempt_id);
-        self.emit_task_execution_summary(task_id);
+        // State updates are handled through conversation state sync
         
         Ok(final_execution)
     }
@@ -360,9 +369,13 @@ impl CodingAgentExecutorService {
             agent.stop_execution(execution_id, &execution_context).await?;
         }
         
-        // Emit the updated state
-        self.emit_attempt_execution_state(&attempt_id);
-        self.emit_task_execution_summary(&task_id);
+        // Emit execution:completed event
+        let _ = self.app_handle.emit("execution:completed", serde_json::json!({
+            "taskId": task_id,
+            "attemptId": attempt_id,
+            "executionId": execution_id,
+            "status": "cancelled",
+        }));
         
         Ok(())
     }
@@ -448,17 +461,8 @@ impl CodingAgentExecutorService {
     }
     
     // Event emitters
-    fn emit_attempt_execution_state(&self, attempt_id: &str) {
-        if let Some(state) = self.get_attempt_execution_state(attempt_id) {
-            let _ = self.app_handle.emit("attempt-execution-update", &state);
-        }
-    }
-    
-    fn emit_task_execution_summary(&self, task_id: &str) {
-        let summary = self.get_task_execution_summary(task_id);
-        info!("Emitting task-execution-summary for task {}: {:?}", task_id, summary);
-        let _ = self.app_handle.emit("task-execution-summary", &summary);
-    }
+    // Removed redundant event emitters - using simplified event system per RFC
+    // State is now synced through state:conversation-sync event
     
     // Configuration
     pub fn configure_claude_api_key(&self, api_key: &str) -> Result<(), String> {

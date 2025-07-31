@@ -59,7 +59,7 @@ export function useTaskConversationState(taskId: string) {
 
     // Subscribe to state updates - single channel
     const unsubscribeStateUpdate = listen<{ taskId: string; state: ConversationState }>(
-      'conversation-state-update',
+      'state:conversation-sync',
       (event) => {
         if (event.payload.taskId === taskId && mounted) {
           setState(event.payload.state);
@@ -67,20 +67,32 @@ export function useTaskConversationState(taskId: string) {
       }
     );
     
-    // Listen for execution completed events to refresh state
-    const unsubscribeExecutionCompleted = listen<{ taskId: string; attemptId: string }>(
-      'execution-completed',
+    // Listen for execution started events
+    const unsubscribeExecutionStarted = listen<{ taskId: string; attemptId: string; executionId: string }>(
+      'execution:started',
       (event) => {
         if (event.payload.taskId === taskId && mounted) {
-          // Reload state when execution completes
+          // Update execution state
+          setState(prev => ({ ...prev, isExecuting: true }));
+        }
+      }
+    );
+    
+    // Listen for execution completed events to refresh state
+    const unsubscribeExecutionCompleted = listen<{ taskId: string; attemptId: string; executionId: string; status: string }>(
+      'execution:completed',
+      (event) => {
+        if (event.payload.taskId === taskId && mounted) {
+          // Update execution state and reload
+          setState(prev => ({ ...prev, isExecuting: false }));
           loadState();
         }
       }
     );
     
     // Also listen to real-time messages for smoother UX
-    const unsubscribeMessages = listen<any>('coding-agent-message', (event) => {
-      if (mounted && event.payload.task_id === taskId && !isLoadingInitialState) {
+    const unsubscribeMessages = listen<any>('message:added', (event) => {
+      if (mounted && event.payload.taskId === taskId && !isLoadingInitialState) {
         // Add message to state optimistically
         setState(prev => {
           if (!event.payload.message) return prev;
@@ -96,7 +108,7 @@ export function useTaskConversationState(taskId: string) {
           }
           // Generate a unique id if not provided
           const messageId = event.payload.message.id || 
-            `${event.payload.attempt_id}-${event.payload.message.timestamp}-${role}-${messageType}-${Date.now()}`;
+            `${event.payload.attemptId}-${event.payload.message.timestamp}-${role}-${messageType}-${Date.now()}`;
           
           // Create properly typed message based on role and messageType
           let newMessage: Message;
@@ -204,6 +216,7 @@ export function useTaskConversationState(taskId: string) {
       mounted = false;
       unsubscribeStateUpdate.then(unsub => unsub());
       unsubscribeMessages.then(unsub => unsub());
+      unsubscribeExecutionStarted.then(unsub => unsub());
       unsubscribeExecutionCompleted.then(unsub => unsub());
     };
   }, [taskId]);

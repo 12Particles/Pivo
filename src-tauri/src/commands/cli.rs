@@ -1,6 +1,5 @@
 use crate::services::coding_agent_executor::{
-    CodingAgentExecutorService, CodingAgentExecution, AttemptExecutionState, 
-    TaskExecutionSummary, CodingAgentType
+    CodingAgentExecutorService, CodingAgentExecution, CodingAgentType
 };
 use std::sync::Arc;
 use tauri::State;
@@ -31,62 +30,6 @@ pub async fn execute_prompt(
     ).await
 }
 
-#[tauri::command]
-pub async fn execute_claude_prompt(
-    state: State<'_, CliState>,
-    prompt: String,
-    task_id: String,
-    attempt_id: String,
-    working_directory: String,
-    resume_session_id: Option<String>,
-) -> Result<CodingAgentExecution, String> {
-    state.service.execute_claude_prompt(
-        &prompt,
-        &task_id,
-        &attempt_id,
-        &working_directory,
-        resume_session_id,
-    ).await
-}
-
-#[tauri::command]
-pub async fn execute_gemini_prompt(
-    state: State<'_, CliState>,
-    prompt: String,
-    task_id: String,
-    attempt_id: String,
-    working_directory: String,
-) -> Result<CodingAgentExecution, String> {
-    state.service.execute_gemini_prompt(
-        &prompt,
-        &task_id,
-        &attempt_id,
-        &working_directory,
-    ).await
-}
-
-#[tauri::command]
-pub async fn stop_cli_execution(
-    state: State<'_, CliState>,
-    execution_id: String,
-) -> Result<(), String> {
-    state.service.stop_execution(&execution_id).await
-}
-
-#[tauri::command]
-pub async fn get_cli_execution(
-    state: State<'_, CliState>,
-    execution_id: String,
-) -> Result<Option<CodingAgentExecution>, String> {
-    Ok(state.service.get_execution(&execution_id))
-}
-
-#[tauri::command]
-pub async fn list_cli_executions(
-    state: State<'_, CliState>,
-) -> Result<Vec<CodingAgentExecution>, String> {
-    Ok(state.service.list_executions())
-}
 
 #[tauri::command]
 pub async fn configure_claude_api_key(
@@ -141,33 +84,6 @@ pub async fn save_images_to_temp(
     }
     
     Ok(paths)
-}
-
-// New commands for enhanced state management
-
-#[tauri::command]
-pub async fn get_attempt_execution_state(
-    state: State<'_, CliState>,
-    attempt_id: String,
-) -> Result<Option<AttemptExecutionState>, String> {
-    Ok(state.service.get_attempt_execution_state(&attempt_id))
-}
-
-#[tauri::command]
-pub async fn get_task_execution_summary(
-    state: State<'_, CliState>,
-    task_id: String,
-) -> Result<TaskExecutionSummary, String> {
-    Ok(state.service.get_task_execution_summary(&task_id))
-}
-
-
-#[tauri::command]
-pub async fn is_attempt_active(
-    state: State<'_, CliState>,
-    attempt_id: String,
-) -> Result<bool, String> {
-    Ok(state.service.is_attempt_active(&attempt_id))
 }
 
 #[tauri::command]

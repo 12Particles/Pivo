@@ -3,6 +3,8 @@ import { toast } from '@/hooks/use-toast';
 import { useTranslation } from 'react-i18next';
 import { Task, Project, CodingAgentExecutionStatus } from '@/types';
 import { eventBus } from '@/lib/events/EventBus';
+import { listen } from '@tauri-apps/api/event';
+import { taskAttemptApi } from '@/services/api/TaskAttemptApi';
 
 // Hooks
 import { useTaskCommand } from './hooks/useTaskCommand';
@@ -130,10 +132,30 @@ export const TaskConversation: React.FC<TaskConversationProps> = ({ task }) => {
     sendCodeComment();
   }, [pendingCodeComment, task.id, conversationState, sendMessage, toast, t]);
   
+  // Listen for session ID and update attempt
+  useEffect(() => {
+    const unsubscribe = listen('session:received', async (event: any) => {
+      const { attemptId, sessionId } = event.payload;
+      
+      // Only handle if this attempt belongs to current task
+      if (conversationState.currentAttemptId === attemptId) {
+        try {
+          await taskAttemptApi.updateClaudeSessionId(attemptId, sessionId);
+          console.log('Updated attempt with Claude session ID:', sessionId);
+        } catch (error) {
+          console.error('Failed to update Claude session ID:', error);
+        }
+      }
+    });
+    
+    return () => {
+      unsubscribe.then(fn => fn());
+    };
+  }, [conversationState.currentAttemptId]);
+  
   return (
     <div className="h-full flex flex-col">
       <ConversationHeader
-        execution={conversationState.currentExecution || null}
         isRunning={conversationState.isExecuting}
         isSending={isSending}
         onStopExecution={handleStopExecution}

@@ -4,7 +4,7 @@
 
 import { invoke } from '@tauri-apps/api/core';
 import { gitApi as originalGitApi } from '@/lib/api';
-import { GitStatus, GitInfo } from '@/types';
+import { GitStatus } from '@/types';
 
 export class GitApi {
   private api = originalGitApi;
@@ -58,13 +58,6 @@ export class GitApi {
     return invoke('git_pull', { path });
   }
   
-  /**
-   * Extract git info from a directory
-   */
-  async extractGitInfo(path: string): Promise<GitInfo> {
-    return invoke<GitInfo>('extract_git_info_from_path', { path });
-  }
-  
   // Additional methods for backward compatibility
   async getCurrentBranch(repoPath: string): Promise<string> {
     return this.api.getCurrentBranch(repoPath);
@@ -97,8 +90,3 @@ export class GitApi {
 
 // Export singleton instance
 export const gitApi = new GitApi();
-
-// Also export as gitInfoApi for compatibility
-export const gitInfoApi = {
-  extractGitInfo: gitApi.extractGitInfo.bind(gitApi)
-};

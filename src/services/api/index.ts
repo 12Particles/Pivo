@@ -5,7 +5,6 @@
 export * from './ProjectApi';
 export * from './TaskApi';
 export * from './TaskAttemptApi';
-export * from './ExecutionApi';
 export * from './GitApi';
 export * from './ProcessApi';
 export * from './McpApi';
@@ -17,8 +16,7 @@ export * from './GitLabApi';
 export { projectApi } from './ProjectApi';
 export { taskApi } from './TaskApi';
 export { taskAttemptApi } from './TaskAttemptApi';
-export { executionApi, cliApi } from './ExecutionApi';
-export { gitApi, gitInfoApi } from './GitApi';
+export { gitApi } from './GitApi';
 export { processApi } from './ProcessApi';
 export { mcpApi } from './McpApi';
 export { loggingApi } from './LoggingApi';

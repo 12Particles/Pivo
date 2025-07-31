@@ -8,15 +8,9 @@ import {
   CreateProjectRequest,
   UpdateProjectRequest,
   ExecutionProcess,
-  ProcessType,
   GitStatus,
   McpServer,
-  ToolExecutionRequest,
-  CodingAgentExecution,
-  GitInfo,
   TaskAttempt,
-  AttemptStatus,
-  CodingAgentType
 } from "@/types";
 
 // Task API
@@ -48,16 +42,7 @@ export const taskApi = {
 
 // Task Attempt API
 export const taskAttemptApi = {
-  create: async (taskId: string, executor?: string, baseBranch?: string): Promise<TaskAttempt> => {
-    const request = {
-      task_id: taskId,
-      executor: executor || null,
-      base_branch: baseBranch || null
-    };
-    return await invoke("create_task_attempt", { request });
-  },
-
-  get: async (id: string): Promise<TaskAttempt | null> => {
+get: async (id: string): Promise<TaskAttempt | null> => {
     return await invoke("get_task_attempt", { id });
   },
 
@@ -65,20 +50,7 @@ export const taskAttemptApi = {
     return await invoke("list_task_attempts", { taskId });
   },
 
-  updateStatus: async (id: string, status: AttemptStatus): Promise<TaskAttempt> => {
-    return await invoke("update_attempt_status", { id, status });
-  },
-
-  saveConversation: async (attemptId: string, messages: any[]): Promise<any> => {
-    const request = { messages };
-    return await invoke("save_attempt_conversation", { attemptId, request });
-  },
-
-  getConversation: async (attemptId: string): Promise<any> => {
-    return await invoke("get_attempt_conversation", { attemptId });
-  },
-
-  updateClaudeSessionId: async (attemptId: string, claudeSessionId: string): Promise<void> => {
+updateClaudeSessionId: async (attemptId: string, claudeSessionId: string): Promise<void> => {
     return await invoke("update_attempt_claude_session", { attemptId, claudeSessionId });
   },
 };
@@ -112,26 +84,6 @@ export const projectApi = {
 
 // Process API
 export const processApi = {
-  spawn: async (
-    taskAttemptId: string,
-    processType: ProcessType,
-    command: string,
-    args: string[],
-    workingDirectory: string
-  ): Promise<string> => {
-    return await invoke("spawn_process", {
-      taskAttemptId,
-      processType,
-      command,
-      args,
-      workingDirectory,
-    });
-  },
-
-  kill: async (processId: string): Promise<void> => {
-    return await invoke("kill_process", { processId });
-  },
-
   get: async (id: string): Promise<ExecutionProcess | null> => {
     return await invoke("get_process", { id });
   },
@@ -242,10 +194,6 @@ export const mcpApi = {
     return await invoke("list_mcp_tools", { serverId });
   },
 
-  executeTool: async (request: ToolExecutionRequest): Promise<string> => {
-    return await invoke("execute_mcp_tool", { request });
-  },
-
   listResources: async (serverId: string): Promise<string> => {
     return await invoke("list_mcp_resources", { serverId });
   },
@@ -269,75 +217,6 @@ export const mcpApi = {
 
 // CLI API
 export const cliApi = {
-
-  // Execution management API
-  executePrompt: async (
-    prompt: string,
-    taskId: string,
-    attemptId: string,
-    workingDirectory: string,
-    agentType: CodingAgentType,
-    projectPath?: string,
-    resumeSessionId?: string
-  ): Promise<CodingAgentExecution> => {
-    return await invoke("execute_prompt", {
-      prompt,
-      taskId,
-      attemptId,
-      workingDirectory,
-      agentType,
-      projectPath,
-      resumeSessionId,
-    });
-  },
-
-  // Deprecated: Use executePrompt instead
-  executeClaudePrompt: async (
-    prompt: string,
-    taskId: string,
-    attemptId: string,
-    workingDirectory: string,
-    projectPath?: string,
-    resumeSessionId?: string
-  ): Promise<CodingAgentExecution> => {
-    return await invoke("execute_claude_prompt", {
-      prompt,
-      taskId,
-      attemptId,
-      workingDirectory,
-      projectPath,
-      resumeSessionId,
-    });
-  },
-
-  executeGeminiPrompt: async (
-    prompt: string,
-    taskId: string,
-    attemptId: string,
-    workingDirectory: string,
-    projectPath?: string
-  ): Promise<CodingAgentExecution> => {
-    return await invoke("execute_gemini_prompt", {
-      prompt,
-      taskId,
-      attemptId,
-      workingDirectory,
-      projectPath,
-    });
-  },
-
-  stopExecution: async (executionId: string): Promise<void> => {
-    return await invoke("stop_cli_execution", { executionId });
-  },
-
-  getExecution: async (executionId: string): Promise<CodingAgentExecution | null> => {
-    return await invoke("get_cli_execution", { executionId });
-  },
-
-  listExecutions: async (): Promise<CodingAgentExecution[]> => {
-    return await invoke("list_cli_executions");
-  },
-
   configureClaudeApiKey: async (apiKey: string): Promise<void> => {
     return await invoke("configure_claude_api_key", { apiKey });
   },
@@ -350,47 +229,11 @@ export const cliApi = {
     return await invoke("save_images_to_temp", { base64Images });
   },
 
-  // New attempt-based execution API
-  getAttemptExecutionState: async (attemptId: string): Promise<any> => {
-    return await invoke("get_attempt_execution_state", { attemptId });
-  },
-
-  getTaskExecutionSummary: async (taskId: string): Promise<any> => {
-    return await invoke("get_task_execution_summary", { taskId });
-  },
-
-  addMessage: async (
-    attemptId: string,
-    role: string,
-    content: string,
-    images: string[],
-    metadata?: any
-  ): Promise<void> => {
-    return await invoke("add_message", {
-      attemptId,
-      role,
-      content,
-      images,
-      metadata,
-    });
-  },
-
-  isAttemptActive: async (attemptId: string): Promise<boolean> => {
-    return await invoke("is_attempt_active", { attemptId });
-  },
-
   getRunningTasks: async (): Promise<string[]> => {
     return await invoke("get_running_tasks");
   },
 };
 
-
-// Git Info API
-export const gitInfoApi = {
-  extractGitInfo: async (path: string): Promise<GitInfo> => {
-    return await invoke("extract_git_info_from_path", { path });
-  },
-};
 
 // Logging API
 export const loggingApi = {

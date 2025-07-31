@@ -40,8 +40,8 @@ export function TaskDetailsPanel({
 
   // Listen for attempt creation events
   useEffect(() => {
-    const unsubscribe = eventBus.subscribe("task-attempt-created", (payload: any) => {
-      if (payload.task_id === task?.id) {
+    const unsubscribe = eventBus.subscribe("task:attempt-created", (payload: any) => {
+      if (payload.taskId === task?.id) {
         // Reload attempts when a new attempt is created for this task
         loadLatestAttempt();
       }

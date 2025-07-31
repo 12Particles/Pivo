@@ -20,45 +20,13 @@ export function useTaskExecutionStatus() {
   const [taskToActiveAttempt, setTaskToActiveAttempt] = useState<Map<string, string>>(new Map());
 
   useEffect(() => {
-    // Listen for execution status updates
-    const unsubscribeStatus = eventBus.subscribe('task-execution-summary', (summary) => {
-      const { task_id, is_running, agent_type, active_attempt_id } = summary;
-      if (active_attempt_id) {
-        setAttemptStatuses(prev => {
-          const newMap = new Map(prev);
-          newMap.set(active_attempt_id, {
-            isRunning: is_running,
-            agentType: agent_type ? agent_type as CodingAgentType : null,
-            taskId: task_id,
-          });
-          return newMap;
-        });
-        
-        // Update task to attempt mapping
-        if (is_running) {
-          setTaskToActiveAttempt(prev => {
-            const newMap = new Map(prev);
-            newMap.set(task_id, active_attempt_id);
-            return newMap;
-          });
-        }
-      } else if (!is_running) {
-        // Clear task to attempt mapping when execution is not running
-        setTaskToActiveAttempt(prev => {
-          const newMap = new Map(prev);
-          newMap.delete(task_id);
-          return newMap;
-        });
-      }
-    });
-
     // Listen for execution started events
-    const unsubscribeStarted = eventBus.subscribe('execution-started', ({ taskId, attemptId, agentType }) => {
+    const unsubscribeStarted = eventBus.subscribe('execution:started', ({ taskId, attemptId }) => {
       setAttemptStatuses(prev => {
         const newMap = new Map(prev);
         newMap.set(attemptId, {
           isRunning: true,
-          agentType,
+          agentType: null, // agentType not provided in new event
           taskId,
         });
         return newMap;
@@ -73,7 +41,7 @@ export function useTaskExecutionStatus() {
     });
 
     // Listen for execution stopped/completed events
-    const unsubscribeStopped = eventBus.subscribe('execution-stopped', ({ taskId, attemptId }) => {
+    const unsubscribeStopped = eventBus.subscribe('execution:stopped', ({ taskId, attemptId }) => {
       setAttemptStatuses(prev => {
         const newMap = new Map(prev);
         newMap.set(attemptId, {
@@ -95,7 +63,7 @@ export function useTaskExecutionStatus() {
     });
 
     // Listen for execution completed events
-    const unsubscribeCompleted = eventBus.subscribe('execution-completed', ({ taskId, attemptId }) => {
+    const unsubscribeCompleted = eventBus.subscribe('execution:completed', ({ taskId, attemptId }) => {
       setAttemptStatuses(prev => {
         const newMap = new Map(prev);
         newMap.set(attemptId, {
@@ -117,7 +85,6 @@ export function useTaskExecutionStatus() {
     });
 
     return () => {
-      unsubscribeStatus();
       unsubscribeStarted();
       unsubscribeStopped();
       unsubscribeCompleted();

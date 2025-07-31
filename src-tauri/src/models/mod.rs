@@ -6,6 +6,7 @@ pub mod git_diff;
 pub mod git_provider;
 pub mod config;
 pub mod merge_request;
+pub mod conversation;
 
 pub use task::*;
 pub use project::*;
@@ -15,3 +16,4 @@ pub use git_diff::*;
 pub use git_provider::*;
 pub use config::*;
 pub use merge_request::*;
+pub use conversation::*;

@@ -1,5 +1,5 @@
 use uuid::Uuid;
-use crate::commands::task_attempts::{AttemptConversation, ConversationMessage};
+use crate::models::{AttemptConversation, ConversationMessage};
 use super::DatabaseRepository;
 
 pub struct ConversationRepository<'a> {

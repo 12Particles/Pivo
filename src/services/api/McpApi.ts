@@ -3,7 +3,7 @@
  */
 
 import { mcpApi as originalMcpApi } from '@/lib/api';
-import { McpServer, ToolExecutionRequest } from '@/types';
+import { McpServer } from '@/types';
 import { logger } from '@/lib/logger';
 
 export class McpApi {
@@ -35,11 +35,6 @@ export class McpApi {
     return this.api.startServer(serverId);
   }
   
-  // Alias for compatibility
-  async start(serverId: string): Promise<void> {
-    return this.startServer(serverId);
-  }
-  
   /**
    * Stop an MCP server
    */
@@ -48,21 +43,11 @@ export class McpApi {
     return this.api.stopServer(serverId);
   }
   
-  // Alias for compatibility
-  async stop(serverId: string): Promise<void> {
-    return this.stopServer(serverId);
-  }
-  
   /**
    * List all registered MCP servers
    */
   async listServers(): Promise<McpServer[]> {
     return this.api.listServers();
-  }
-  
-  // Alias for compatibility
-  async list(): Promise<McpServer[]> {
-    return this.listServers();
   }
   
   /**
@@ -89,18 +74,6 @@ export class McpApi {
    */
   async listTools(serverId: string): Promise<any> {
     const response = await this.api.listTools(serverId);
-    return JSON.parse(response);
-  }
-  
-  /**
-   * Execute a tool on an MCP server
-   */
-  async executeTool(request: ToolExecutionRequest): Promise<any> {
-    logger.debug('Executing MCP tool', { 
-      serverId: request.server_id,
-      toolName: request.tool_name 
-    });
-    const response = await this.api.executeTool(request);
     return JSON.parse(response);
   }
   

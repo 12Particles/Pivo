@@ -3,46 +3,10 @@
  */
 
 import { processApi as originalProcessApi } from '@/lib/api';
-import { ExecutionProcess, ProcessType } from '@/types';
-import { logger } from '@/lib/logger';
+import { ExecutionProcess } from '@/types';
 
 export class ProcessApi {
   private api = originalProcessApi;
-  
-  /**
-   * Spawn a new process
-   */
-  async spawn(
-    taskAttemptId: string,
-    processType: ProcessType,
-    command: string,
-    args: string[],
-    workingDirectory: string
-  ): Promise<string> {
-    logger.debug('Spawning process', {
-      taskAttemptId,
-      processType,
-      command,
-      args,
-      workingDirectory
-    });
-    
-    return this.api.spawn(
-      taskAttemptId,
-      processType,
-      command,
-      args,
-      workingDirectory
-    );
-  }
-  
-  /**
-   * Kill a running process
-   */
-  async kill(processId: string): Promise<void> {
-    logger.debug('Killing process', { processId });
-    return this.api.kill(processId);
-  }
   
   /**
    * Get process by ID

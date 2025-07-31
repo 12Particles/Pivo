@@ -229,24 +229,25 @@ impl ClaudeCodeAgent {
                         if let Ok(json_value) = serde_json::from_str::<serde_json::Value>(&content) {
                             if json_value["type"] == "system" && json_value["subtype"] == "init" {
                                 if let Some(session_id) = json_value["session_id"].as_str() {
-                                    info!("Stored Claude session ID: {}", session_id);
-                                    let _ = app_handle.emit("claude-session-id-received", serde_json::json!({
-                                        "task_id": task_id,
-                                        "claude_session_id": session_id
-                                    }));
+                                    info!("Received Claude session ID: {}", session_id);
+                                    // Session ID should be handled through attempt update
+                                    // We'll need to update the attempt with this session ID
+                                    let session_id_clone = session_id.to_string();
+                                    let attempt_id_clone = attempt_id.clone();
+                                    let app_handle_clone = app_handle.clone();
+                                    
+                                    tauri::async_runtime::spawn(async move {
+                                        // Emit event to update attempt with session ID
+                                        let _ = app_handle_clone.emit("session:received", serde_json::json!({
+                                            "attemptId": attempt_id_clone,
+                                            "sessionId": session_id_clone,
+                                        }));
+                                    });
                                 }
                             }
                         }
                         
-                        // Still emit raw output for debugging
-                        let output = CodingAgentOutput {
-                            execution_id: execution_id.clone(),
-                            task_id: task_id.clone(),
-                            output_type: CodingAgentOutputType::Stdout,
-                            content,
-                            timestamp: Utc::now(),
-                        };
-                        let _ = app_handle.emit("coding-agent-output", &output);
+                        // Debug output removed - no longer needed with new event architecture
                     }
                 }
                 
@@ -287,9 +288,9 @@ impl ClaudeCodeAgent {
         // Handle stderr
         if let Some(stderr) = child.stderr.take() {
             let execution_id = execution_id.to_string();
-            let task_id = task_id.to_string();
+            let _task_id = task_id.to_string();
             let _attempt_id = attempt_id.to_string();
-            let app_handle = self.app_handle.clone();
+            let _app_handle = self.app_handle.clone();
             
             thread::spawn(move || {
                 let reader = BufReader::new(stderr);
@@ -298,14 +299,7 @@ impl ClaudeCodeAgent {
                         // Log stderr for debugging
                         log::warn!("Claude stderr: {}", content);
                         
-                        let output = CodingAgentOutput {
-                            execution_id: execution_id.clone(),
-                            task_id: task_id.clone(),
-                            output_type: CodingAgentOutputType::Stderr,
-                            content,
-                            timestamp: Utc::now(),
-                        };
-                        let _ = app_handle.emit("coding-agent-output", &output);
+                        // Debug stderr output removed - no longer needed with new event architecture
                     }
                 }
                 debug!("Stderr reader thread ended for execution: {}", execution_id);

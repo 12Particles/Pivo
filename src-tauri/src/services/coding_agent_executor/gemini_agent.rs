@@ -4,7 +4,7 @@ use std::io::{BufRead, BufReader, Write};
 use std::thread;
 use std::sync::{Arc, Mutex};
 use std::sync::mpsc::Sender;
-use tauri::{AppHandle, Emitter};
+use tauri::AppHandle;
 use log::{info, debug};
 use chrono::Utc;
 use uuid::Uuid;
@@ -61,7 +61,7 @@ impl GeminiCliAgent {
         
         // Handle stdout
         if let Some(stdout) = child.stdout.take() {
-            let app_handle = self.app_handle.clone();
+            let _app_handle = self.app_handle.clone();
             let execution_id_clone = execution_id.to_string();
             let task_id_clone = task_id.to_string();
             let attempt_id_clone = attempt_id.to_string();
@@ -87,15 +87,7 @@ impl GeminiCliAgent {
                             }
                         }
                         
-                        // Still emit raw output for debugging
-                        let output = CodingAgentOutput {
-                            execution_id: execution_id_clone.clone(),
-                            task_id: task_id_clone.clone(),
-                            output_type: CodingAgentOutputType::Stdout,
-                            content,
-                            timestamp: Utc::now(),
-                        };
-                        let _ = app_handle.emit("coding-agent-output", &output);
+                        // Debug output removed - no longer needed with new event architecture
                     }
                 }
                 
@@ -129,11 +121,7 @@ impl GeminiCliAgent {
                     message: complete_msg,
                 });
                 
-                // Also notify that the process has completed
-                let _ = app_handle.emit("coding-agent-process-completed", serde_json::json!({
-                    "execution_id": execution_id_clone,
-                    "task_id": task_id_clone
-                }));
+                // Process completion is now handled through message channel
                 
                 debug!("Stdout reader thread ended for execution: {}", execution_id_clone);
             });
@@ -141,22 +129,15 @@ impl GeminiCliAgent {
         
         // Handle stderr
         if let Some(stderr) = child.stderr.take() {
-            let app_handle = self.app_handle.clone();
+            let _app_handle = self.app_handle.clone();
             let execution_id_clone = execution_id.to_string();
-            let task_id_clone = task_id.to_string();
+            let _task_id_clone = task_id.to_string();
             
             thread::spawn(move || {
                 let reader = BufReader::new(stderr);
                 for line in reader.lines() {
-                    if let Ok(content) = line {
-                        let output = CodingAgentOutput {
-                            execution_id: execution_id_clone.clone(),
-                            task_id: task_id_clone.clone(),
-                            output_type: CodingAgentOutputType::Stderr,
-                            content,
-                            timestamp: Utc::now(),
-                        };
-                        let _ = app_handle.emit("coding-agent-output", &output);
+                    if let Ok(_content) = line {
+                        // Debug stderr output removed - no longer needed with new event architecture
                     }
                 }
                 debug!("Stderr reader thread ended for execution: {}", execution_id_clone);

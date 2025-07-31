@@ -3,7 +3,7 @@ use crate::models::{
     CreateTaskRequest, Task, TaskStatus, UpdateTaskRequest,
     CreateTaskAttemptRequest, TaskAttempt, TaskAttemptRow, AttemptStatus,
 };
-use crate::commands::task_attempts::{AttemptConversation, ConversationMessage};
+use crate::models::{AttemptConversation, ConversationMessage};
 use crate::services::git_service::GitService;
 use uuid::Uuid;
 use std::path::Path;
