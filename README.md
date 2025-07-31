@@ -1,5 +1,6 @@
 # Pivo - Task-focused programming environment designed for the right vibe
 
+
 ![License](https://img.shields.io/badge/License-MIT-blue.svg)
 ![Tauri](https://img.shields.io/badge/Tauri-2.x-orange.svg)
 ![React](https://img.shields.io/badge/React-18.x-blue.svg)
