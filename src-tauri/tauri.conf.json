@@ -39,7 +39,8 @@
       "exceptionDomain": "",
       "signingIdentity": "Developer ID Application: Zhao Dong (9WZQSGSX3A)",
       "providerShortName": "9WZQSGSX3A",
-      "entitlements": "entitlements.plist"
+      "entitlements": "entitlements.plist",
+      "hardenedRuntime": true
     }
   }
 }

@@ -77,7 +77,12 @@ jobs:
           security list-keychain -d user -s $KEYCHAIN_PATH
 
       - name: Build for Apple Silicon
-        run: pnpm tauri build --target aarch64-apple-darwin
+        run: |
+          # Build with proper signing
+          pnpm tauri build --target aarch64-apple-darwin
+          
+          # Verify signature
+          codesign -dvv src-tauri/target/aarch64-apple-darwin/release/bundle/macos/Pivo.app
 
       - name: Build for Intel
         run: pnpm tauri build --target x86_64-apple-darwin
