@@ -36,57 +36,77 @@ pub fn run() {
             let handle = app.handle();
             
             // Initialize logging
-            logging::init_logging().expect("Failed to initialize logging");
+            if let Err(e) = logging::init_logging() {
+                eprintln!("Failed to initialize logging: {}", e);
+                return Err(Box::new(std::io::Error::new(
+                    std::io::ErrorKind::Other,
+                    format!("Failed to initialize logging: {}", e)
+                )));
+            }
             log::info!("Starting Pivo application");
             
-            // Initialize database
-            tauri::async_runtime::block_on(async {
-                let pool = db::init_database(&handle).await
-                    .expect("Failed to initialize database");
-                
-                // Create database repository
-                let db_repository = Arc::new(DatabaseRepository::new(pool.clone()));
-                
-                // Create services
-                let task_service = Arc::new(TaskService::new(pool.clone()));
-                let project_service = Arc::new(ProjectService::new(pool.clone()));
-                let process_service = Arc::new(ProcessService::new(pool.clone()));
-                let merge_request_service = Arc::new(MergeRequestService::new(pool.clone()));
-                let mcp_manager = Arc::new(McpServerManager::new(handle.clone()));
-                let cli_service = Arc::new(CodingAgentExecutorService::new(handle.clone(), db_repository.clone()));
-                let mut config_service_inner = ConfigService::new(pool.clone());
-                config_service_inner.load_from_db().await
-                    .unwrap_or_else(|e| log::warn!("Failed to load config from db: {}", e));
-                let config_service = Arc::new(Mutex::new(config_service_inner));
-                let file_watcher_service = Arc::new(FileWatcherService::new(handle.clone()));
-                let window_manager = Arc::new(ProjectWindowManager::new(handle.clone()));
-                
-                // Store app state
-                app.manage(AppState {
-                    task_service,
-                    project_service,
-                    process_service,
-                    merge_request_service,
-                    window_manager,
-                });
-                
-                // Store config service
-                app.manage(config_service);
-                
-                
-                // Store MCP state
-                app.manage(McpState {
-                    manager: mcp_manager,
-                });
-                
-                // Store CLI state
-                app.manage(CliState {
-                    service: cli_service,
-                });
-                
-                // Store file watcher service
-                app.manage(file_watcher_service);
+            // Initialize database and services
+            let setup_result = tauri::async_runtime::block_on(async {
+                match db::init_database(&handle).await {
+                    Ok(pool) => {
+                        // Create database repository
+                        let db_repository = Arc::new(DatabaseRepository::new(pool.clone()));
+                        
+                        // Create services
+                        let task_service = Arc::new(TaskService::new(pool.clone()));
+                        let project_service = Arc::new(ProjectService::new(pool.clone()));
+                        let process_service = Arc::new(ProcessService::new(pool.clone()));
+                        let merge_request_service = Arc::new(MergeRequestService::new(pool.clone()));
+                        let mcp_manager = Arc::new(McpServerManager::new(handle.clone()));
+                        let cli_service = Arc::new(CodingAgentExecutorService::new(handle.clone(), db_repository.clone()));
+                        let mut config_service_inner = ConfigService::new(pool.clone());
+                        config_service_inner.load_from_db().await
+                            .unwrap_or_else(|e| log::warn!("Failed to load config from db: {}", e));
+                        let config_service = Arc::new(Mutex::new(config_service_inner));
+                        let file_watcher_service = Arc::new(FileWatcherService::new(handle.clone()));
+                        let window_manager = Arc::new(ProjectWindowManager::new(handle.clone()));
+                        
+                        // Store app state
+                        app.manage(AppState {
+                            task_service,
+                            project_service,
+                            process_service,
+                            merge_request_service,
+                            window_manager,
+                        });
+                        
+                        // Store config service
+                        app.manage(config_service);
+                        
+                        
+                        // Store MCP state
+                        app.manage(McpState {
+                            manager: mcp_manager,
+                        });
+                        
+                        // Store CLI state
+                        app.manage(CliState {
+                            service: cli_service,
+                        });
+                        
+                        // Store file watcher service
+                        app.manage(file_watcher_service);
+                        
+                        Ok(())
+                    }
+                    Err(e) => {
+                        Err(e)
+                    }
+                }
             });
+            
+            if let Err(e) = setup_result {
+                eprintln!("Failed to initialize application: {}", e);
+                return Err(Box::new(std::io::Error::new(
+                    std::io::ErrorKind::Other,
+                    format!("Failed to initialize application: {}", e)
+                )));
+            }
             
             // Setup menu events after app state is initialized
             menu::setup_menu_events(app)?;
@@ -183,5 +203,8 @@ pub fn run() {
             services::unwatch_all,
         ])
         .run(tauri::generate_context!())
-        .expect("error while running tauri application");
+        .unwrap_or_else(|e| {
+            eprintln!("Error while running tauri application: {}", e);
+            std::process::exit(1);
+        });
 }
