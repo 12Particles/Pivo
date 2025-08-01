@@ -1,7 +1,6 @@
 import { TodoList } from "@/components/ui/todo-list";
 import { FileTreeRenderer } from "./FileTreeRenderer";
 import { JsonRenderer } from "./JsonRenderer";
-import { CodeBlockRenderer } from "./CodeBlockRenderer";
 import { CustomDiffRenderer } from "./CustomDiffRenderer";
 import { MarkdownRenderer } from "./MarkdownRenderer";
 

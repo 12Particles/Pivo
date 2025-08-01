@@ -1,0 +1,192 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-macos:
+    runs-on: macos-latest
+    environment: APPLE_CERTIFICATE
+    outputs:
+      version: ${{ steps.get_version.outputs.version }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Get version
+        id: get_version
+        run: |
+          if [[ "${{ github.ref }}" == refs/tags/* ]]; then
+            VERSION=${GITHUB_REF#refs/tags/}
+          else
+            VERSION=$(grep '"version"' package.json | cut -d '"' -f 4)
+            VERSION="v$VERSION"
+          fi
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Building version: $VERSION"
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: 8
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-darwin,x86_64-apple-darwin
+
+      - name: Setup Rust cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: './src-tauri -> target'
+
+      - name: Install dependencies
+        run: pnpm install
+
+      - name: Import certificates
+        env:
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+        run: |
+          # Create variables
+          CERTIFICATE_PATH=$RUNNER_TEMP/build_certificate.p12
+          KEYCHAIN_PATH=$RUNNER_TEMP/app-signing.keychain-db
+
+          # Import certificate from secrets
+          echo -n "$APPLE_CERTIFICATE" | base64 --decode -o $CERTIFICATE_PATH
+
+          # Create temporary keychain
+          security create-keychain -p actions $KEYCHAIN_PATH
+          security set-keychain-settings -lut 21600 $KEYCHAIN_PATH
+          security unlock-keychain -p actions $KEYCHAIN_PATH
+
+          # Import certificate to keychain
+          security import $CERTIFICATE_PATH -P "$APPLE_CERTIFICATE_PASSWORD" -A -t cert -f pkcs12 -k $KEYCHAIN_PATH
+          security list-keychain -d user -s $KEYCHAIN_PATH
+
+      - name: Build for Apple Silicon
+        run: pnpm tauri build --target aarch64-apple-darwin
+
+      - name: Build for Intel
+        run: pnpm tauri build --target x86_64-apple-darwin
+
+      - name: Build Universal Binary
+        run: pnpm tauri build --target universal-apple-darwin
+
+      - name: Notarize macOS app
+        env:
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+          APPLE_TEAM_ID: "9WZQSGSX3A"
+        run: |
+          # Universal app path
+          APP_PATH="src-tauri/target/universal-apple-darwin/release/bundle/macos/Pivo.app"
+          
+          # Create ZIP for notarization
+          echo "Creating ZIP for notarization..."
+          ditto -c -k --keepParent "$APP_PATH" "Pivo.zip"
+          
+          # Submit for notarization
+          echo "Submitting for notarization..."
+          xcrun notarytool submit "Pivo.zip" \
+            --apple-id "$APPLE_ID" \
+            --password "$APPLE_PASSWORD" \
+            --team-id "$APPLE_TEAM_ID" \
+            --wait
+          
+          # Staple the notarization ticket
+          echo "Stapling notarization ticket..."
+          xcrun stapler staple "$APP_PATH"
+          
+          # Clean up
+          rm -f "Pivo.zip"
+
+      - name: Create DMG
+        run: |
+          # Install create-dmg
+          npm install -g create-dmg
+          
+          # Create DMG for universal binary
+          cd src-tauri/target/universal-apple-darwin/release/bundle/macos
+          create-dmg Pivo.app || true
+          
+          # Rename to include version
+          VERSION="${{ steps.get_version.outputs.version }}"
+          mv "Pivo "*.dmg "Pivo-${VERSION}-universal.dmg" || mv Pivo.dmg "Pivo-${VERSION}-universal.dmg"
+          
+          # Also create architecture-specific DMGs
+          cd $GITHUB_WORKSPACE
+          
+          # ARM64 DMG
+          cd src-tauri/target/aarch64-apple-darwin/release/bundle/macos
+          create-dmg Pivo.app || true
+          mv "Pivo "*.dmg "Pivo-${VERSION}-arm64.dmg" || mv Pivo.dmg "Pivo-${VERSION}-arm64.dmg"
+          
+          cd $GITHUB_WORKSPACE
+          
+          # x86_64 DMG
+          cd src-tauri/target/x86_64-apple-darwin/release/bundle/macos
+          create-dmg Pivo.app || true
+          mv "Pivo "*.dmg "Pivo-${VERSION}-x64.dmg" || mv Pivo.dmg "Pivo-${VERSION}-x64.dmg"
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-binaries
+          path: |
+            src-tauri/target/*/release/bundle/macos/*.dmg
+          retention-days: 1
+
+  create-release:
+    needs: build-macos
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: macos-binaries
+          path: ./artifacts
+
+      - name: Create Release
+        id: create_release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ needs.build-macos.outputs.version }}
+          name: Pivo ${{ needs.build-macos.outputs.version }}
+          draft: true
+          prerelease: false
+          generate_release_notes: true
+          files: |
+            ./artifacts/**/*.dmg
+          body: |
+            ## 下载
+
+            ### macOS
+            - **通用版本** (推荐): `Pivo-${{ needs.build-macos.outputs.version }}-universal.dmg` - 支持 Intel 和 Apple Silicon
+            - **Apple Silicon**: `Pivo-${{ needs.build-macos.outputs.version }}-arm64.dmg` - 仅支持 M1/M2/M3 Mac
+            - **Intel**: `Pivo-${{ needs.build-macos.outputs.version }}-x64.dmg` - 仅支持 Intel Mac
+
+            ### 安装说明
+            1. 下载对应你系统的 DMG 文件
+            2. 双击打开 DMG
+            3. 将 Pivo 拖拽到 Applications 文件夹
+            4. 首次打开时，右键点击 Pivo 并选择"打开"
+
+            ### 系统要求
+            - macOS 10.15 (Catalina) 或更高版本
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -32,6 +32,14 @@
       "icons/128x128@2x.png",
       "icons/icon.icns",
       "icons/icon.ico"
-    ]
+    ],
+    "macOS": {
+      "frameworks": [],
+      "minimumSystemVersion": "10.15",
+      "exceptionDomain": "",
+      "signingIdentity": "Developer ID Application: Zhao Dong (9WZQSGSX3A)",
+      "providerShortName": "9WZQSGSX3A",
+      "entitlements": "entitlements.plist"
+    }
   }
 }
