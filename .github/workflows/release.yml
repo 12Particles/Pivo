@@ -174,20 +174,20 @@ jobs:
           files: |
             ./artifacts/**/*.dmg
           body: |
-            ## 下载
+            ## Downloads
 
             ### macOS
-            - **通用版本** (推荐): `Pivo-${{ needs.build-macos.outputs.version }}-universal.dmg` - 支持 Intel 和 Apple Silicon
-            - **Apple Silicon**: `Pivo-${{ needs.build-macos.outputs.version }}-arm64.dmg` - 仅支持 M1/M2/M3 Mac
-            - **Intel**: `Pivo-${{ needs.build-macos.outputs.version }}-x64.dmg` - 仅支持 Intel Mac
+            - **Universal** (Recommended): `Pivo-${{ needs.build-macos.outputs.version }}-universal.dmg` - Works on both Intel and Apple Silicon Macs
+            - **Apple Silicon**: `Pivo-${{ needs.build-macos.outputs.version }}-arm64.dmg` - For M1/M2/M3 Macs only
+            - **Intel**: `Pivo-${{ needs.build-macos.outputs.version }}-x64.dmg` - For Intel Macs only
 
-            ### 安装说明
-            1. 下载对应你系统的 DMG 文件
-            2. 双击打开 DMG
-            3. 将 Pivo 拖拽到 Applications 文件夹
-            4. 首次打开时，右键点击 Pivo 并选择"打开"
+            ### Installation
+            1. Download the DMG file for your system
+            2. Double-click to open the DMG
+            3. Drag Pivo to your Applications folder
+            4. On first launch, right-click Pivo and select "Open"
 
-            ### 系统要求
-            - macOS 10.15 (Catalina) 或更高版本
+            ### System Requirements
+            - macOS 10.15 (Catalina) or later
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
