@@ -87,6 +87,9 @@ jobs:
           
           # Verify signature
           codesign -dvv src-tauri/target/aarch64-apple-darwin/release/bundle/macos/Pivo.app
+          
+          # Check entitlements
+          codesign -d --entitlements - src-tauri/target/aarch64-apple-darwin/release/bundle/macos/Pivo.app
 
       - name: Build for Intel
         run: pnpm tauri build --target x86_64-apple-darwin
