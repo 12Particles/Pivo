@@ -95,3 +95,9 @@ pub struct UpdateTaskRequest {
     pub assignee: Option<String>,
     pub tags: Option<Vec<String>>,
 }
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct CreateTaskResponse {
+    pub task: Task,
+    pub warning: Option<String>,
+}

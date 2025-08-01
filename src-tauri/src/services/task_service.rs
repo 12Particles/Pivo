@@ -49,11 +49,25 @@ impl TaskService {
         };
         
         match self.create_task_attempt(attempt_req).await {
-            Ok(_) => log::info!("Created initial attempt for task {}", id),
-            Err(e) => log::error!("Failed to create initial attempt for task {}: {}", id, e),
+            Ok(_) => {
+                log::info!("Created initial attempt for task {}", id);
+                Ok(task)
+            },
+            Err(e) => {
+                log::error!("Failed to create initial attempt for task {}: {}", id, e);
+                // Delete the task since we couldn't create the worktree
+                sqlx::query("DELETE FROM tasks WHERE id = ?")
+                    .bind(id.to_string())
+                    .execute(&self.pool)
+                    .await?;
+                
+                // Return the error to the user
+                Err(sqlx::Error::Io(std::io::Error::new(
+                    std::io::ErrorKind::Other,
+                    format!("Failed to create worktree: {}", e)
+                )))
+            }
         }
-        
-        Ok(task)
     }
 
     pub async fn get_task(&self, id: Uuid) -> Result<Option<Task>, sqlx::Error> {
@@ -162,19 +176,20 @@ impl TaskService {
         let task = self.get_task(req.task_id).await?
             .ok_or_else(|| sqlx::Error::RowNotFound)?;
         
-        // Get project path
-        let project_row: (String,) = sqlx::query_as(
-            "SELECT path FROM projects WHERE id = ?"
+        // Get project path and main_branch
+        let project_row: (String, String) = sqlx::query_as(
+            "SELECT path, main_branch FROM projects WHERE id = ?"
         )
         .bind(task.project_id.to_string())
         .fetch_one(&self.pool)
         .await?;
         
         let project_path = project_row.0;
+        let project_main_branch = project_row.1;
         
         // Create a unique branch name for this attempt
         let branch = format!("task-{}-{}", task_id, id.to_string().split('-').next().unwrap());
-        let base_branch = req.base_branch.unwrap_or_else(|| "main".to_string());
+        let base_branch = req.base_branch.unwrap_or(project_main_branch);
         
         // Create worktree with baseline tracking
         let git_service = GitService::new();

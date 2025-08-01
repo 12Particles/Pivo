@@ -25,8 +25,8 @@ impl ProjectService {
 
         sqlx::query(
             r#"
-            INSERT INTO projects (id, name, description, path, git_repo, git_provider, setup_script, dev_script, created_at, updated_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
+            INSERT INTO projects (id, name, description, path, git_repo, git_provider, main_branch, setup_script, dev_script, created_at, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
             "#,
         )
         .bind(id.to_string())
@@ -35,6 +35,7 @@ impl ProjectService {
         .bind(&req.path)
         .bind(&req.git_repo)
         .bind(&git_provider)
+        .bind(&req.main_branch.unwrap_or_else(|| "main".to_string()))
         .bind(&req.setup_script)
         .bind(&req.dev_script)
         .execute(&self.pool)
@@ -99,6 +100,11 @@ impl ProjectService {
             };
             update_parts.push("git_provider = ?");
             params.push(git_provider);
+        }
+
+        if let Some(main_branch) = &req.main_branch {
+            update_parts.push("main_branch = ?");
+            params.push(main_branch.clone());
         }
 
         if let Some(setup_script) = &req.setup_script {

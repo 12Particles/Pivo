@@ -12,6 +12,7 @@ pub struct ProjectInfo {
     pub name: String,
     pub description: Option<String>,
     pub git_repo: Option<String>,
+    pub main_branch: Option<String>,
     pub setup_script: Option<String>,
     pub dev_script: Option<String>,
     pub has_git: bool,
@@ -103,6 +104,7 @@ pub async fn refresh_all_git_providers(
                 description: None,
                 path: None,
                 git_repo: project.git_repo.clone(),
+                main_branch: None,
                 setup_script: None,
                 dev_script: None,
             };
@@ -197,8 +199,45 @@ pub async fn read_project_info(path: String) -> Result<ProjectInfo, String> {
     
     // Get git remote URL if available
     let mut git_repo = None;
+    let mut main_branch = None;
     if has_git {
         log::info!("Checking git remotes for path: {}", project_path.display());
+        
+        // Get current branch
+        if let Ok(output) = std::process::Command::new("git")
+            .arg("symbolic-ref")
+            .arg("--short")
+            .arg("HEAD")
+            .current_dir(&project_path)
+            .output()
+        {
+            if output.status.success() {
+                let branch = String::from_utf8_lossy(&output.stdout).trim().to_string();
+                if !branch.is_empty() {
+                    main_branch = Some(branch);
+                    log::info!("Found current branch: {:?}", main_branch);
+                }
+            }
+        }
+        
+        // If we couldn't get the current branch, try to get the default branch from remote
+        if main_branch.is_none() {
+            if let Ok(output) = std::process::Command::new("git")
+                .arg("symbolic-ref")
+                .arg("refs/remotes/origin/HEAD")
+                .current_dir(&project_path)
+                .output()
+            {
+                if output.status.success() {
+                    let remote_head = String::from_utf8_lossy(&output.stdout).trim().to_string();
+                    // Extract branch name from refs/remotes/origin/main
+                    if let Some(branch) = remote_head.split('/').last() {
+                        main_branch = Some(branch.to_string());
+                        log::info!("Found default branch from remote: {:?}", main_branch);
+                    }
+                }
+            }
+        }
         
         // First try to get origin remote
         if let Ok(output) = std::process::Command::new("git")
@@ -364,6 +403,7 @@ pub async fn read_project_info(path: String) -> Result<ProjectInfo, String> {
         name,
         description,
         git_repo,
+        main_branch,
         setup_script,
         dev_script,
         has_git,

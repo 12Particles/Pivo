@@ -14,6 +14,7 @@ export interface ProjectInfo {
   name: string;
   description?: string;
   git_repo?: string;
+  main_branch?: string;
   setup_script?: string;
   dev_script?: string;
   has_git: boolean;

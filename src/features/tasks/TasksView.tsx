@@ -18,10 +18,12 @@ import { useTranslation } from 'react-i18next';
 import { ImperativePanelHandle } from 'react-resizable-panels';
 import { Task, TaskStatus, CreateTaskRequest, UpdateTaskRequest } from '@/types';
 import { useEvent } from '@/lib/events';
+import { useToast } from '@/hooks/use-toast';
 import { useTaskCommand } from './conversation/hooks/useTaskCommand';
 
 export function TasksView() {
   const { t } = useTranslation();
+  const { toast } = useToast();
   const { currentProject } = useApp();
   const {
     leftPanelVisible,
@@ -94,6 +96,12 @@ export function TasksView() {
       setSelectedTask(task);
       setShowCreateTaskDialog(false);
       
+      // Show success toast
+      toast({
+        title: t('task.createTaskSuccess'),
+        description: t('task.taskCreated', { title: task.title }),
+      });
+      
       // If shouldStart is true, execute the task immediately
       if (shouldStart) {
         const initialMessage = `请执行以下任务：\n\n标题：${task.title}\n${task.description ? `\n描述：${task.description}` : ''}`;
@@ -106,6 +114,26 @@ export function TasksView() {
       }
     } catch (error) {
       console.error('Failed to create task:', error);
+      
+      // Parse error message
+      let errorMessage = t('task.createTaskError');
+      if (error instanceof Error) {
+        // Check if it's a worktree creation error
+        if (error.message.includes('ambiguous argument') || error.message.includes('unknown revision')) {
+          errorMessage = t('task.worktreeCreationError', { 
+            defaultValue: 'Failed to create worktree. Please check your project\'s main branch configuration in project settings.' 
+          });
+        } else {
+          errorMessage = error.message;
+        }
+      }
+      
+      // Show error toast
+      toast({
+        title: t('task.createTaskError'),
+        description: errorMessage,
+        variant: 'destructive',
+      });
     }
   };
   

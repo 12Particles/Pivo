@@ -10,6 +10,7 @@ pub struct Project {
     pub path: String,
     pub git_repo: Option<String>,
     pub git_provider: Option<String>, // "github" or "gitlab"
+    pub main_branch: String,
     pub setup_script: Option<String>,
     pub dev_script: Option<String>,
     pub created_at: DateTime<Utc>,
@@ -25,6 +26,7 @@ pub struct ProjectRow {
     pub path: String,
     pub git_repo: Option<String>,
     pub git_provider: Option<String>,
+    pub main_branch: String,
     pub setup_script: Option<String>,
     pub dev_script: Option<String>,
     pub created_at: String,
@@ -41,6 +43,7 @@ impl From<ProjectRow> for Project {
             path: row.path,
             git_repo: row.git_repo,
             git_provider: row.git_provider,
+            main_branch: row.main_branch,
             setup_script: row.setup_script,
             dev_script: row.dev_script,
             created_at: DateTime::parse_from_rfc3339(&row.created_at)
@@ -64,6 +67,7 @@ pub struct CreateProjectRequest {
     pub description: Option<String>,
     pub path: String,
     pub git_repo: Option<String>,
+    pub main_branch: Option<String>,
     pub setup_script: Option<String>,
     pub dev_script: Option<String>,
 }
@@ -74,6 +78,7 @@ pub struct UpdateProjectRequest {
     pub description: Option<String>,
     pub path: Option<String>,
     pub git_repo: Option<String>,
+    pub main_branch: Option<String>,
     pub setup_script: Option<String>,
     pub dev_script: Option<String>,
 }

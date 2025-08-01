@@ -6,10 +6,13 @@ import {
   ToastTitle,
   ToastViewport,
 } from "@/components/ui/toast"
-import { useToast } from "@/hooks/use-toast"
+import { useContext } from "react"
+import { ToastContext } from "@/hooks/use-toast"
 
 export function Toaster() {
-  const { toasts } = useToast()
+  // Try to use context if available, otherwise use empty array
+  const context = useContext(ToastContext)
+  const toasts = context?.toasts || []
 
   return (
     <ToastProvider>

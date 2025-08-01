@@ -58,18 +58,97 @@ impl GitService {
         branch_name: &str,
         base_branch: &str,
     ) -> Result<WorktreeInfo, String> {
-        // First get the base commit
-        let base_commit = self.get_branch_commit(repo_path, base_branch)?;
+        // Try to get the base branch, if it doesn't exist, try to detect the default branch
+        let actual_base_branch = match self.get_branch_commit(repo_path, base_branch) {
+            Ok(_) => base_branch.to_string(),
+            Err(_) => {
+                log::warn!("Base branch '{}' not found, trying to detect default branch", base_branch);
+                // If the specified base branch doesn't exist, try to detect the default branch
+                self.detect_default_branch(repo_path)?
+            }
+        };
+        
+        log::info!("Using base branch: {}", actual_base_branch);
+        
+        // Get the base commit using the actual base branch
+        let base_commit = self.get_branch_commit(repo_path, &actual_base_branch)?;
         
         // Create the worktree
-        let worktree_path = self.create_worktree(repo_path, branch_name, base_branch)?;
+        let worktree_path = self.create_worktree(repo_path, branch_name, &actual_base_branch)?;
         
         Ok(WorktreeInfo {
             path: worktree_path.to_string_lossy().to_string(),
             branch: branch_name.to_string(),
-            base_branch: base_branch.to_string(),
+            base_branch: actual_base_branch,
             base_commit,
         })
+    }
+    
+    /// Detect the default branch of the repository
+    pub fn detect_default_branch(&self, repo_path: &Path) -> Result<String, String> {
+        // First, try to get the default branch from remote HEAD
+        let output = Command::new("git")
+            .current_dir(repo_path)
+            .args(&["symbolic-ref", "refs/remotes/origin/HEAD"])
+            .output();
+        
+        if let Ok(output) = output {
+            if output.status.success() {
+                let remote_head = String::from_utf8_lossy(&output.stdout).trim().to_string();
+                // Extract branch name from refs/remotes/origin/main
+                if let Some(branch) = remote_head.split('/').last() {
+                    log::info!("Detected default branch from remote HEAD: {}", branch);
+                    return Ok(branch.to_string());
+                }
+            }
+        }
+        
+        // If that doesn't work, try to list all branches and look for common default branch names
+        let output = Command::new("git")
+            .current_dir(repo_path)
+            .args(&["branch", "-r"])
+            .output()
+            .map_err(|e| format!("Failed to list remote branches: {}", e))?;
+        
+        if output.status.success() {
+            let branches = String::from_utf8_lossy(&output.stdout);
+            
+            // Try common default branch names in order
+            let common_defaults = ["main", "master", "develop", "development", "trunk"];
+            for default in &common_defaults {
+                if branches.contains(&format!("origin/{}", default)) {
+                    log::info!("Found common default branch: {}", default);
+                    return Ok(default.to_string());
+                }
+            }
+            
+            // If no common default found, try to get the first branch
+            for line in branches.lines() {
+                let branch = line.trim();
+                if branch.starts_with("origin/") && !branch.contains("HEAD") {
+                    let branch_name = branch.strip_prefix("origin/").unwrap_or(branch);
+                    log::info!("Using first available branch: {}", branch_name);
+                    return Ok(branch_name.to_string());
+                }
+            }
+        }
+        
+        // Last resort: try current branch
+        let output = Command::new("git")
+            .current_dir(repo_path)
+            .args(&["rev-parse", "--abbrev-ref", "HEAD"])
+            .output()
+            .map_err(|e| format!("Failed to get current branch: {}", e))?;
+        
+        if output.status.success() {
+            let current_branch = String::from_utf8_lossy(&output.stdout).trim().to_string();
+            if !current_branch.is_empty() && current_branch != "HEAD" {
+                log::info!("Using current branch as default: {}", current_branch);
+                return Ok(current_branch);
+            }
+        }
+        
+        Err("Could not detect default branch".to_string())
     }
     
     /// Get the commit hash of a branch

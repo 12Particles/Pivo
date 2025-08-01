@@ -34,6 +34,7 @@ export interface Project {
   path: string;
   git_repo?: string;
   git_provider?: string;
+  main_branch: string;
   setup_script?: string;
   dev_script?: string;
   created_at: string;
@@ -46,6 +47,7 @@ export interface CreateProjectRequest {
   description?: string;
   path: string;
   git_repo?: string;
+  main_branch?: string;
   setup_script?: string;
   dev_script?: string;
 }
@@ -55,6 +57,7 @@ export interface UpdateProjectRequest {
   description?: string;
   path?: string;
   git_repo?: string;
+  main_branch?: string;
   setup_script?: string;
   dev_script?: string;
 }

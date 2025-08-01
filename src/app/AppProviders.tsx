@@ -13,6 +13,7 @@ import { LayoutProvider } from '@/contexts/LayoutContext';
 import { SettingsProvider } from '@/contexts/SettingsContext';
 import { ErrorProvider } from '@/contexts/ErrorContext';
 import { ThemeProvider } from './ThemeProvider';
+import { ToastProvider } from '@/hooks/use-toast';
 
 // Create a stable QueryClient instance
 const queryClient = new QueryClient({
@@ -39,13 +40,15 @@ export function AppProviders({ children }: AppProvidersProps) {
         <ErrorProvider>
           <SettingsProvider>
             <ThemeProvider>
-              <LayoutProvider>
-                <AppProvider>
-                  {children}
-                  <Toaster />
-                  <ErrorNotification />
-                </AppProvider>
-              </LayoutProvider>
+              <ToastProvider>
+                <LayoutProvider>
+                  <AppProvider>
+                    {children}
+                    <Toaster />
+                    <ErrorNotification />
+                  </AppProvider>
+                </LayoutProvider>
+              </ToastProvider>
             </ThemeProvider>
           </SettingsProvider>
         </ErrorProvider>

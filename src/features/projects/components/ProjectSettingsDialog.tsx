@@ -43,6 +43,7 @@ export function ProjectSettingsDialog({
     description: "",
     path: "",
     git_repo: "",
+    main_branch: "main",
     setup_script: "",
     dev_script: "",
   });
@@ -55,6 +56,7 @@ export function ProjectSettingsDialog({
         description: initialValues.description || "",
         path: initialValues.path || "",
         git_repo: initialValues.git_repo || "",
+        main_branch: initialValues.main_branch || "main",
         setup_script: initialValues.setup_script || "",
         dev_script: initialValues.dev_script || "",
       });
@@ -65,6 +67,7 @@ export function ProjectSettingsDialog({
         description: "",
         path: "",
         git_repo: "",
+        main_branch: "main",
         setup_script: "",
         dev_script: "",
       });
@@ -174,6 +177,16 @@ export function ProjectSettingsDialog({
                   }
                 }}
                 placeholder="e.g., git@github.com:user/repo.git or https://github.com/user/repo"
+              />
+            </div>
+            
+            <div className="grid gap-2">
+              <Label htmlFor="main_branch">{t('project.mainBranch')}</Label>
+              <Input
+                id="main_branch"
+                value={formData.main_branch}
+                onChange={(e) => setFormData({ ...formData, main_branch: e.target.value })}
+                placeholder="main"
               />
             </div>
             

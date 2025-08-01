@@ -108,6 +108,7 @@ export function ProjectsView() {
             path: values.path,
             description: values.description,
             git_repo: values.git_repo,
+            main_branch: values.main_branch,
             setup_script: values.setup_script,
             dev_script: values.dev_script
           });
