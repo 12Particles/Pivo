@@ -2,9 +2,9 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-    <!-- App Sandbox enabled with specific permissions -->
+    <!-- Disable App Sandbox for now -->
     <key>com.apple.security.app-sandbox</key>
-    <true/>
+    <false/>
     
     <!-- Network permissions -->
     <key>com.apple.security.network.client</key>
@@ -36,16 +36,5 @@
     <key>com.apple.security.inherit</key>
     <true/>
     
-    <!-- Allow SQLite database access -->
-    <key>com.apple.security.temporary-exception.mach-lookup.global-name</key>
-    <array>
-        <string>com.apple.coreservices.launchservicesd</string>
-    </array>
-    
-    <!-- Allow Terminal and shell access -->
-    <key>com.apple.security.temporary-exception.apple-events</key>
-    <array>
-        <string>com.apple.Terminal</string>
-    </array>
 </dict>
 </plist>
