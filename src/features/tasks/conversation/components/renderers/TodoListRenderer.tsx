@@ -27,14 +27,14 @@ export function TodoListRenderer({ todos }: TodoListRendererProps) {
         return (
           <div key={todo.id || index} className="flex items-start gap-2">
             {isCompleted ? (
-              <CheckSquare className="h-4 w-4 text-green-600 mt-0.5 flex-shrink-0" />
+              <CheckSquare className="h-4 w-4 text-green-600 dark:text-green-400 mt-0.5 flex-shrink-0" />
             ) : (
-              <Square className="h-4 w-4 text-gray-400 mt-0.5 flex-shrink-0" />
+              <Square className="h-4 w-4 text-gray-500 dark:text-gray-400 mt-0.5 flex-shrink-0" />
             )}
             <div className="flex-1">
               <span className={cn(
                 "text-sm",
-                isCompleted && "line-through text-gray-500"
+                isCompleted && "line-through text-gray-500 dark:text-gray-400"
               )}>
                 {todo.content}
               </span>

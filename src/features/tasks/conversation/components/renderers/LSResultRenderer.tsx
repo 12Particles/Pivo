@@ -23,16 +23,16 @@ export function LSResultRenderer({ content }: LSResultRendererProps) {
         return (
           <div key={index} className="flex items-center gap-2">
             {isDirectory ? (
-              <Folder className="h-3 w-3 text-blue-500 flex-shrink-0" />
+              <Folder className="h-3 w-3 text-blue-600 dark:text-blue-400 flex-shrink-0" />
             ) : (
-              <File className="h-3 w-3 text-gray-500 flex-shrink-0" />
+              <File className="h-3 w-3 text-gray-600 dark:text-gray-400 flex-shrink-0" />
             )}
-            <span className="truncate">{fileName}</span>
+            <span className="truncate text-current">{fileName}</span>
           </div>
         );
       })}
       {hasMore && (
-        <div className="text-gray-500 italic mt-1">
+        <div className="text-gray-600 dark:text-gray-400 italic mt-1">
           ... and {moreCount} more {moreCount === 1 ? 'item' : 'items'}
         </div>
       )}

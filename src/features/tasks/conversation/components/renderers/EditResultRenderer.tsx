@@ -69,7 +69,7 @@ export function EditResultRenderer({ content }: EditResultRendererProps) {
   
   if (!filePath) {
     // Fallback to default rendering if pattern doesn't match
-    return <div className="whitespace-pre-wrap text-sm">{content}</div>;
+    return <div className="whitespace-pre-wrap text-sm text-current">{content}</div>;
   }
   
   const displayPath = getDisplayPath(filePath, currentProject?.path);
@@ -82,10 +82,10 @@ export function EditResultRenderer({ content }: EditResultRendererProps) {
       <div className="flex items-start gap-2">
         <CheckCircle2 className="h-4 w-4 text-green-600 mt-0.5 flex-shrink-0" />
         <div className="flex-1">
-          <div className="text-sm">
+          <div className="text-sm text-current">
             File updated successfully:
           </div>
-          <code className="text-xs bg-muted px-1 py-0.5 rounded block mt-1">
+          <code className="text-xs bg-muted text-muted-foreground px-1 py-0.5 rounded block mt-1">
             {displayPath}
           </code>
           {replacementCount !== null && (
@@ -109,7 +109,7 @@ export function EditResultRenderer({ content }: EditResultRendererProps) {
           <div className="text-xs text-muted-foreground mb-1">
             Preview of edited section:
           </div>
-          <div className="border rounded-lg overflow-hidden">
+          <div className="border rounded-lg overflow-hidden bg-gray-50 dark:bg-gray-800/50 border-gray-200 dark:border-gray-700">
             <div className="overflow-x-auto">
               <div className="inline-block min-w-full">
                 {parsedLines.map((line, index) => (
@@ -118,13 +118,13 @@ export function EditResultRenderer({ content }: EditResultRendererProps) {
                     className="font-mono text-xs whitespace-pre flex w-full"
                     style={{ minWidth: 'max-content' }}
                   >
-                    <div className="flex-shrink-0 w-10 px-1.5 text-xs border-r select-none min-h-[1.25rem] flex items-center justify-end text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+                    <div className="flex-shrink-0 w-10 px-1.5 text-xs border-r select-none min-h-[1.25rem] flex items-center justify-end text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 border-gray-200 dark:border-gray-700">
                       <span className="inline-block text-right text-xs">
                         {line.lineNumber}
                       </span>
                     </div>
-                    <div className="flex-1 px-2 min-h-[1.25rem] flex items-center">
-                      <span className="text-xs">{line.content}</span>
+                    <div className="flex-1 px-2 min-h-[1.25rem] flex items-center bg-gray-50 dark:bg-gray-800/50">
+                      <span className="text-xs text-gray-800 dark:text-gray-200">{line.content}</span>
                     </div>
                   </div>
                 ))}

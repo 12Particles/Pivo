@@ -9,6 +9,7 @@ import { WriteResultRenderer } from "../renderers/WriteResultRenderer";
 import { EditResultRenderer } from "../renderers/EditResultRenderer";
 import { LSResultRenderer } from "../renderers/LSResultRenderer";
 import { BashResultRenderer } from "../renderers/BashResultRenderer";
+import { GrepResultRenderer } from "../renderers/GrepResultRenderer";
 import { AssistantToolResultMessage } from "../../types";
 
 interface TodoItem {
@@ -33,6 +34,7 @@ export function ToolResultMessage({ message }: MessageComponentProps) {
   const isEditResult = toolName === "Edit" || toolName === "MultiEdit";
   const isLSResult = toolName === "LS";
   const isBashResult = toolName === "Bash";
+  const isGrepResult = toolName === "Grep";
   
   if (isTodoWriteResult) {
     try {
@@ -82,19 +84,19 @@ export function ToolResultMessage({ message }: MessageComponentProps) {
   }
   
   return (
-    <div className="bg-muted/20 border-b w-full">
-      <div className="py-3 px-4 w-full">
+    <div className="bg-muted/20 border-b">
+      <div className="py-3 px-4">
         <MessageHeader
           icon={<FileText className={`h-4 w-4 ${isError ? 'text-red-600' : 'text-gray-600'}`} />}
           title={t('ai.toolResult')}
           timestamp={message.timestamp}
         />
         
-        <div className="ml-7 text-sm w-full overflow-x-auto">
+        <div className="ml-7 text-sm overflow-x-auto">
           <div className={`p-3 rounded-md border ${
             isError 
-              ? 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800' 
-              : 'bg-gray-50 dark:bg-gray-900 border-gray-200 dark:border-gray-700'
+              ? 'bg-red-50 dark:bg-red-950/20 border-red-200 dark:border-red-800 text-red-900 dark:text-red-100' 
+              : 'bg-gray-50 dark:bg-gray-800/50 border-gray-200 dark:border-gray-700 text-gray-800 dark:text-gray-200'
           }`}>
             {isGlobResult ? (
               <GlobResultRenderer content={message.content} toolName={toolName} />
@@ -106,6 +108,8 @@ export function ToolResultMessage({ message }: MessageComponentProps) {
               <LSResultRenderer content={message.content} />
             ) : isBashResult ? (
               <BashResultRenderer content={message.content} />
+            ) : isGrepResult ? (
+              <GrepResultRenderer content={message.content} />
             ) : (
               <ContentRenderer content={message.content} />
             )}

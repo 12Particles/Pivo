@@ -24,7 +24,7 @@ export function GlobResultRenderer({ content, toolName }: GlobResultRendererProp
   );
   
   if (!isGlobResult) {
-    return <div className="whitespace-pre-wrap">{content}</div>;
+    return <div className="whitespace-pre-wrap text-current">{content}</div>;
   }
   
   // Convert to relative paths using unified display path function
@@ -52,7 +52,7 @@ export function GlobResultRenderer({ content, toolName }: GlobResultRendererProp
         return (
           <div key={index} className="flex items-center gap-2 text-sm py-0.5">
             <Icon className="h-3 w-3 text-muted-foreground flex-shrink-0" />
-            <code className="text-xs bg-muted px-1 py-0.5 rounded break-all">
+            <code className="text-xs bg-muted text-muted-foreground px-1 py-0.5 rounded break-all">
               {path}
             </code>
           </div>

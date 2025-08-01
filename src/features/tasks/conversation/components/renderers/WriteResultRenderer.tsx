@@ -20,7 +20,7 @@ export function WriteResultRenderer({ content }: WriteResultRendererProps) {
   
   if (!filePath) {
     // Fallback to default rendering if pattern doesn't match
-    return <div className="whitespace-pre-wrap">{content}</div>;
+    return <div className="whitespace-pre-wrap text-current">{content}</div>;
   }
   
   const displayPath = getDisplayPath(filePath, currentProject?.path);
@@ -34,7 +34,7 @@ export function WriteResultRenderer({ content }: WriteResultRendererProps) {
           <div className="text-sm">
             File {isCreated ? 'created' : 'updated'} successfully:
           </div>
-          <code className="text-xs bg-muted px-1 py-0.5 rounded block mt-1">
+          <code className="text-xs bg-muted text-muted-foreground px-1 py-0.5 rounded block mt-1">
             {displayPath}
           </code>
         </div>
@@ -45,7 +45,7 @@ export function WriteResultRenderer({ content }: WriteResultRendererProps) {
           <div className="text-xs text-muted-foreground mb-1">
             Preview of changes:
           </div>
-          <pre className="bg-muted text-muted-foreground px-3 py-2 rounded text-xs overflow-x-auto font-mono">
+          <pre className="bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-100 px-3 py-2 rounded text-xs overflow-x-auto font-mono border border-gray-200 dark:border-gray-700">
             <code>{snippet}</code>
           </pre>
         </div>

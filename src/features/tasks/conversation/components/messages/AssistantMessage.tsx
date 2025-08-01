@@ -18,15 +18,15 @@ export function AssistantMessage({ message }: MessageComponentProps) {
   const images = assistantMessage.metadata?.images;
   
   return (
-    <div className="bg-background border-b w-full">
-      <div className="py-3 px-4 w-full">
+    <div className="bg-background border-b">
+      <div className="py-3 px-4">
         <MessageHeader
           icon={<Bot className="h-4 w-4 text-green-600" />}
           title="Claude"
           timestamp={message.timestamp}
         />
         
-        <div className="ml-7 text-sm w-full">
+        <div className="ml-7 text-sm">
           {thinking && (
             <div className="mb-3">
               <Button

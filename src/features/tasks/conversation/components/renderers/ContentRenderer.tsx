@@ -3,6 +3,7 @@ import { FileTreeRenderer } from "./FileTreeRenderer";
 import { JsonRenderer } from "./JsonRenderer";
 import { CodeBlockRenderer } from "./CodeBlockRenderer";
 import { CustomDiffRenderer } from "./CustomDiffRenderer";
+import { MarkdownRenderer } from "./MarkdownRenderer";
 
 interface ContentRendererProps {
   content: string;
@@ -27,14 +28,26 @@ export function ContentRenderer({ content }: ContentRendererProps) {
     return <TodoList content={content} />;
   }
   
-  // Check for code blocks
-  if (content.includes("```")) {
-    return <CodeBlockRenderer content={content} />;
+  // Check if content has markdown indicators
+  const hasMarkdown = 
+    content.includes('**') || 
+    content.includes('*') || 
+    content.includes('#') || 
+    content.includes('```') ||
+    content.includes('[') && content.includes('](') ||
+    content.includes('> ') ||
+    content.includes('- ') ||
+    content.includes('1. ') ||
+    content.includes('|') ||
+    content.includes('`');
+  
+  if (hasMarkdown) {
+    return <MarkdownRenderer content={content} />;
   }
   
-  // Default rendering
+  // Default rendering for plain text
   return (
-    <div className="whitespace-pre-wrap break-words overflow-x-auto">
+    <div className="whitespace-pre-wrap break-words overflow-x-auto text-current">
       {content}
     </div>
   );

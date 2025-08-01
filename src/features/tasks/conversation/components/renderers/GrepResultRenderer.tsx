@@ -2,27 +2,38 @@ import { useState } from "react";
 import { ChevronDown, ChevronUp } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
-interface BashResultRendererProps {
+interface GrepResultRendererProps {
   content: string;
 }
 
-export function BashResultRenderer({ content }: BashResultRendererProps) {
+export function GrepResultRenderer({ content }: GrepResultRendererProps) {
   const { t } = useTranslation();
   const [isExpanded, setIsExpanded] = useState(false);
   
-  const lines = content.split('\n');
-  const hasMoreThanTwoLines = lines.length > 2;
+  // Split content into lines
+  const lines = content.split('\n').filter(line => line.trim());
   
-  const displayContent = hasMoreThanTwoLines && !isExpanded 
-    ? lines.slice(0, 2).join('\n') + '...'
-    : content;
+  // For long file paths or content, we want to show only 2 lines initially
+  const maxInitialLines = 2;
+  const hasMoreLines = lines.length > maxInitialLines;
+  
+  // Get display content based on expansion state
+  const displayLines = isExpanded ? lines : lines.slice(0, maxInitialLines);
   
   return (
-    <div>
-      <div className={`whitespace-pre-wrap break-all overflow-x-auto text-current ${!isExpanded && hasMoreThanTwoLines ? 'line-clamp-2' : ''}`}>
-        {displayContent}
+    <div className="font-mono text-xs">
+      <div className="space-y-1">
+        {displayLines.map((line, index) => (
+          <div 
+            key={index} 
+            className="break-all overflow-wrap-anywhere text-gray-800 dark:text-gray-200"
+          >
+            {line}
+          </div>
+        ))}
       </div>
-      {hasMoreThanTwoLines && (
+      
+      {hasMoreLines && (
         <button
           onClick={() => setIsExpanded(!isExpanded)}
           className="mt-2 flex items-center gap-1 text-xs text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300"

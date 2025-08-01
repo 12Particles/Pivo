@@ -45,7 +45,7 @@ export function MessageList({
 
   return (
     <ScrollArea className="flex-1 bg-muted/5">
-      <div className="min-h-full w-full">
+      <div className="min-h-full w-full pr-2">
         {messages.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-64 text-muted-foreground">
             <Sparkles className="h-12 w-12 mb-4" />
