@@ -2,9 +2,9 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-    <!-- App Sandbox enabled for security -->
+    <!-- App Sandbox disabled - required for developer tools functionality -->
     <key>com.apple.security.app-sandbox</key>
-    <true/>
+    <false/>
     
     <!-- Network permissions -->
     <key>com.apple.security.network.client</key>
