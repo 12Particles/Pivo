@@ -74,7 +74,11 @@ jobs:
 
           # Import certificate to keychain
           security import $CERTIFICATE_PATH -P "$APPLE_CERTIFICATE_PASSWORD" -A -t cert -f pkcs12 -k $KEYCHAIN_PATH
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k actions $KEYCHAIN_PATH
           security list-keychain -d user -s $KEYCHAIN_PATH
+          
+          # Verify certificate
+          security find-identity -v -p codesigning
 
       - name: Build for Apple Silicon
         run: |
