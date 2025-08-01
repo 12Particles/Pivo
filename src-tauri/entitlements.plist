@@ -2,9 +2,9 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-    <!-- Disable App Sandbox for now -->
+    <!-- App Sandbox enabled for security -->
     <key>com.apple.security.app-sandbox</key>
-    <false/>
+    <true/>
     
     <!-- Network permissions -->
     <key>com.apple.security.network.client</key>
@@ -12,15 +12,11 @@
     <key>com.apple.security.network.server</key>
     <true/>
     
-    <!-- File permissions -->
+    <!-- File permissions for user-selected files -->
     <key>com.apple.security.files.user-selected.read-write</key>
     <true/>
     <key>com.apple.security.files.downloads.read-write</key>
     <true/>
-    <key>com.apple.security.temporary-exception.files.absolute-path.read-write</key>
-    <array>
-        <string>/</string>
-    </array>
     
     <!-- Required for Hardened Runtime -->
     <key>com.apple.security.cs.allow-jit</key>
