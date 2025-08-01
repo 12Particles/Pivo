@@ -198,6 +198,8 @@ pub fn run() {
             commands::system::open_in_terminal,
             commands::filesystem::search_project_files,
             commands::filesystem::search_files_from_current_dir,
+            commands::command::search_commands,
+            commands::command::get_command_content,
             services::watch_worktree,
             services::unwatch_worktree,
             services::unwatch_all,

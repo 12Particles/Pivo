@@ -10,7 +10,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { MentionTextarea } from "@/components/ui/mention-textarea";
+import { EnhancedTextarea } from "@/components/ui/enhanced-textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Task, TaskPriority, UpdateTaskRequest } from "@/types";
 import { useTranslation } from "react-i18next";
@@ -128,13 +128,15 @@ export function EditTaskDialog({ open, onOpenChange, task, onSubmit }: EditTaskD
 
             <div className="grid gap-2">
               <Label htmlFor="description">{t('task.taskDescription')}</Label>
-              <MentionTextarea
+              <EnhancedTextarea
                 id="description"
                 value={formData.description || ""}
                 onChange={(value) => setFormData({ ...formData, description: value })}
                 placeholder={t('task.enterTaskDescription')}
                 searchPath={currentProject?.path}
                 rows={3}
+                enableMentions={true}
+                enableCommands={true}
               />
             </div>
 

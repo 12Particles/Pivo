@@ -13,6 +13,7 @@ export * from './GitHubApi';
 export * from './GitLabApi';
 export * from './FileSystemApi';
 export * from './WindowApi';
+export * from './CommandApi';
 
 // Re-export commonly used services
 export { projectApi } from './ProjectApi';
@@ -25,3 +26,4 @@ export { loggingApi } from './LoggingApi';
 export { gitHubApi } from './GitHubApi';
 export { gitLabApi } from './GitLabApi';
 export { windowApi } from './WindowApi';
+export { commandApi } from './CommandApi';

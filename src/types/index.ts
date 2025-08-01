@@ -307,3 +307,9 @@ export type {
   MergeStatus, 
   PipelineStatus 
 } from '@/lib/types/mergeRequest';
+
+// Re-export command types
+export type {
+  Command,
+  CommandSearchResult
+} from './command';

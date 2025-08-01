@@ -1,5 +1,5 @@
 import { Button } from "@/components/ui/button";
-import { MentionTextarea } from "@/components/ui/mention-textarea";
+import { EnhancedTextarea } from "@/components/ui/enhanced-textarea";
 import { ImagePlus, X, Send, Loader2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { open } from "@tauri-apps/plugin-dialog";
@@ -177,7 +177,7 @@ export function MessageInput({
           <ImagePlus className="h-4 w-4" />
         </Button>
         
-        <MentionTextarea
+        <EnhancedTextarea
           value={input}
           onChange={onInputChange}
           onKeyDown={onKeyPress}
@@ -187,6 +187,8 @@ export function MessageInput({
           className="flex-1 min-h-[36px] max-h-[120px]"
           disabled={isDisabled}
           rows={1}
+          enableMentions={true}
+          enableCommands={true}
         />
         
         <Button 

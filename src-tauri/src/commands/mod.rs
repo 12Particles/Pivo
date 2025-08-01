@@ -13,3 +13,4 @@ pub mod gitlab;
 pub mod github;
 pub mod system;
 pub mod filesystem;
+pub mod command;
