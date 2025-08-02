@@ -32,6 +32,7 @@ pub trait CodingAgent: Send + Sync {
 /// Context for executing a coding agent
 #[derive(Debug, Clone)]
 pub struct ExecutionContext {
+    pub execution_id: String,
     pub task_id: String,
     pub attempt_id: String,
     pub working_directory: String,

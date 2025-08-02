@@ -197,10 +197,7 @@ impl CodingAgent for ClaudeCodeAgent {
         execution_context: ExecutionContext,
         message_sender: Sender<ChannelMessage>,
     ) -> Result<CodingAgentExecution, String> {
-        let execution_id = format!("claude-{}-{}", 
-            chrono::Utc::now().timestamp(),
-            &execution_context.task_id[..8]
-        );
+        let execution_id = execution_context.execution_id.clone();
         
         info!("Starting Claude Code execution: {}", execution_id);
         info!("Working directory: {}", execution_context.working_directory);
@@ -322,9 +319,15 @@ impl CodingAgent for ClaudeCodeAgent {
                         
                         // Also check for session ID in system messages
                         if let Ok(json_value) = serde_json::from_str::<serde_json::Value>(&content) {
+                            // Log all system messages for debugging
+                            if json_value["type"] == "system" {
+                                debug!("System message received: type={}, subtype={}", 
+                                    json_value["type"], json_value.get("subtype").unwrap_or(&serde_json::Value::Null));
+                            }
+                            
                             if json_value["type"] == "system" && json_value["subtype"] == "init" {
                                 if let Some(session_id) = json_value["session_id"].as_str() {
-                                    info!("Received Claude session ID: {}", session_id);
+                                    info!("Received Claude session ID: {} for attempt: {}", session_id, attempt_id);
                                     // Directly update the attempt with session ID in backend
                                     let session_id_clone = session_id.to_string();
                                     let attempt_id_clone = attempt_id.clone();
@@ -463,9 +466,21 @@ impl CodingAgent for ClaudeCodeAgent {
             log::info!("Found child process for execution {}, attempting to kill", execution_id);
             
             // Try to kill the process
+            let pid = child.id();
             match child.kill() {
                 Ok(_) => {
-                    log::info!("Successfully sent kill signal to process");
+                    log::info!("Successfully sent kill signal to process PID {}", pid);
+                    
+                    // On macOS/Unix, also kill any child processes
+                    #[cfg(unix)]
+                    {
+                        std::thread::sleep(std::time::Duration::from_millis(100));
+                        let _ = std::process::Command::new("pkill")
+                            .arg("-P")
+                            .arg(pid.to_string())
+                            .output();
+                    }
+                    
                     // Wait for the process to actually terminate
                     match child.wait() {
                         Ok(status) => {
@@ -483,11 +498,39 @@ impl CodingAgent for ClaudeCodeAgent {
                     #[cfg(unix)]
                     {
                         let pid = child.id();
-                        log::info!("Trying SIGKILL on PID {}", pid);
+                        log::info!("Trying SIGKILL on PID {} and its process group", pid);
                         unsafe {
+                            // First try to kill the entire process group
+                            let pgid = libc::getpgid(pid as i32);
+                            if pgid > 0 {
+                                log::info!("Killing process group {}", pgid);
+                                let _ = libc::killpg(pgid, libc::SIGTERM);
+                                std::thread::sleep(std::time::Duration::from_millis(100));
+                                let _ = libc::killpg(pgid, libc::SIGKILL);
+                            }
+                            
+                            // Then kill the specific process
                             let result = libc::kill(pid as i32, libc::SIGKILL);
                             if result != 0 {
                                 log::error!("SIGKILL failed with error code: {}", result);
+                            }
+                        }
+                    }
+                    
+                    #[cfg(target_os = "macos")]
+                    {
+                        // On macOS, also try to kill child processes
+                        let pid = child.id();
+                        let output = std::process::Command::new("pkill")
+                            .arg("-P")
+                            .arg(pid.to_string())
+                            .output();
+                        
+                        if let Ok(output) = output {
+                            if !output.status.success() {
+                                log::warn!("pkill -P {} failed", pid);
+                            } else {
+                                log::info!("Successfully killed child processes of PID {}", pid);
                             }
                         }
                     }

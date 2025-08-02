@@ -75,16 +75,22 @@ impl CodingAgentExecutorService {
                             let session_id_clone = session_id.to_string();
                             let db_repo_clone = db_repository.clone();
                             
-                            tauri::async_runtime::spawn(async move {
+                            // Use blocking wait to ensure session ID is saved before continuing
+                            let save_result = tauri::async_runtime::block_on(async move {
                                 use crate::services::task_service::TaskService;
                                 let task_service = TaskService::new(db_repo_clone.pool().clone());
                                 
-                                if let Err(e) = task_service.update_attempt_claude_session(attempt_uuid, session_id_clone).await {
-                                    log::error!("Failed to update Claude session ID: {}", e);
-                                } else {
+                                task_service.update_attempt_claude_session(attempt_uuid, session_id_clone).await
+                            });
+                            
+                            match save_result {
+                                Ok(_) => {
                                     info!("Successfully saved Claude session ID for attempt: {}", attempt_id);
                                 }
-                            });
+                                Err(e) => {
+                                    log::error!("Failed to update Claude session ID: {}", e);
+                                }
+                            }
                         }
                     }
                     continue; // Don't save session_update messages
@@ -227,6 +233,7 @@ impl CodingAgentExecutorService {
         };
         
         let execution_context = ExecutionContext {
+            execution_id: execution_id.clone(),
             task_id: task_id.to_string(),
             attempt_id: attempt_id.to_string(),
             working_directory: working_directory.to_string(),

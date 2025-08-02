@@ -7,7 +7,6 @@ use std::sync::mpsc::Sender;
 use tauri::AppHandle;
 use log::{info, debug};
 use chrono::Utc;
-use uuid::Uuid;
 use super::agent::{CodingAgent, ExecutionContext, ChannelMessage};
 use super::types::*;
 use super::message::MessageConverter;
@@ -163,7 +162,7 @@ impl CodingAgent for GeminiCliAgent {
     ) -> Result<CodingAgentExecution, String> {
         info!("Executing Gemini CLI prompt for task: {}", execution_context.task_id);
         
-        let execution_id = Uuid::new_v4().to_string();
+        let execution_id = execution_context.execution_id.clone();
         let execution = CodingAgentExecution {
             id: execution_id.clone(),
             task_id: execution_context.task_id.clone(),

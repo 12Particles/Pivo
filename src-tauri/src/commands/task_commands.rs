@@ -144,20 +144,49 @@ async fn handle_send_message(
         .await
         .map_err(|e| e.to_string())?;
     
-    let attempt = attempts.last()
+    let mut attempt = attempts.last()
         .ok_or("No attempt found for this task. Please create an attempt first.")?
         .clone();
     
-    // 2. Get resume session ID if available
-    let resume_session_id = match attempt.executor.as_deref() {
-        Some("claude") | Some("claude_code") | Some("ClaudeCode") => {
-            log::info!("Attempt {} has Claude session ID: {:?}", attempt.id, attempt.claude_session_id);
+    // 2. Determine agent type and update executor field if needed
+    let agent_type = match attempt.executor.as_deref() {
+        Some("claude") | Some("claude_code") | Some("ClaudeCode") => 
+            crate::services::coding_agent_executor::CodingAgentType::ClaudeCode,
+        Some("gemini") | Some("gemini_cli") | Some("GeminiCli") => 
+            crate::services::coding_agent_executor::CodingAgentType::GeminiCli,
+        _ => crate::services::coding_agent_executor::CodingAgentType::ClaudeCode, // Default to Claude
+    };
+    
+    // Update executor field if not set or different
+    let executor_str = match &agent_type {
+        crate::services::coding_agent_executor::CodingAgentType::ClaudeCode => "claude_code",
+        crate::services::coding_agent_executor::CodingAgentType::GeminiCli => "gemini_cli",
+    };
+    
+    if attempt.executor.as_deref() != Some(executor_str) {
+        log::info!("Updating attempt {} executor from {:?} to {}", attempt.id, attempt.executor, executor_str);
+        let attempt_uuid = Uuid::parse_str(&attempt.id).map_err(|e| e.to_string())?;
+        task_service.update_attempt_executor(attempt_uuid, executor_str.to_string())
+            .await
+            .map_err(|e| e.to_string())?;
+        
+        // Update local attempt object
+        attempt.executor = Some(executor_str.to_string());
+    }
+    
+    // 3. Get resume session ID if available (now that executor is set correctly)
+    let resume_session_id = match executor_str {
+        "claude_code" => {
+            log::info!("Attempt {} Claude session ID: {:?}", attempt.id, attempt.claude_session_id);
+            if attempt.claude_session_id.is_none() {
+                log::info!("No Claude session ID found for attempt {}, this is expected for first execution", attempt.id);
+            }
             attempt.claude_session_id.clone()
         },
         _ => None,
     };
     
-    // 3. Check if there's already an active execution and stop it first
+    // 4. Check if there's already an active execution and stop it first
     let executions = cli_state.service.list_executions();
     if let Some(exec) = executions.iter().find(|e| 
         e.task_id == task_id && 
@@ -170,7 +199,7 @@ async fn handle_send_message(
         cli_state.service.stop_execution(&exec.id).await?;
     }
     
-    // 4. Get task and project info
+    // 5. Get task and project info
     let task = task_service.get_task(task_uuid)
         .await
         .map_err(|e| e.to_string())?
@@ -183,7 +212,7 @@ async fn handle_send_message(
         .map_err(|e| e.to_string())?
         .ok_or("Project not found")?;
     
-    // 5. Update task status to Working if not already
+    // 6. Update task status to Working if not already
     if task.status != TaskStatus::Working {
         let updated_task = task_service.update_task_status(task_uuid, TaskStatus::Working)
             .await
@@ -197,15 +226,6 @@ async fn handle_send_message(
             "task": updated_task,
         }));
     }
-    
-    // 6. Determine agent type from executor field
-    let agent_type = match attempt.executor.as_deref() {
-        Some("claude") | Some("claude_code") | Some("ClaudeCode") => 
-            crate::services::coding_agent_executor::CodingAgentType::ClaudeCode,
-        Some("gemini") | Some("gemini_cli") | Some("GeminiCli") => 
-            crate::services::coding_agent_executor::CodingAgentType::GeminiCli,
-        _ => crate::services::coding_agent_executor::CodingAgentType::ClaudeCode, // Default to Claude
-    };
     
     // 7. Combine message with images if provided
     let prompt = if let Some(imgs) = &images {

@@ -349,4 +349,16 @@ impl TaskService {
         
         Ok(())
     }
+    
+    pub async fn update_attempt_executor(&self, attempt_id: Uuid, executor: String) -> Result<(), sqlx::Error> {
+        sqlx::query(
+            "UPDATE task_attempts SET executor = ? WHERE id = ?"
+        )
+        .bind(&executor)
+        .bind(attempt_id.to_string())
+        .execute(&self.pool)
+        .await?;
+        
+        Ok(())
+    }
 }
