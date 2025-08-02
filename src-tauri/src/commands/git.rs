@@ -1,6 +1,5 @@
 use crate::models::{DiffMode, DiffResult, RebaseStatus};
 use crate::services::GitService;
-use crate::utils::command::execute_git;
 use std::path::Path;
 
 // Original git commands

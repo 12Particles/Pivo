@@ -7,6 +7,8 @@ use crate::models::{AttemptConversation, ConversationMessage};
 use crate::services::git_service::GitService;
 use uuid::Uuid;
 use std::path::Path;
+use deunicode::deunicode;
+use slug::slugify;
 
 pub struct TaskService {
     pool: DbPool,
@@ -15,6 +17,118 @@ pub struct TaskService {
 impl TaskService {
     pub fn new(pool: DbPool) -> Self {
         Self { pool }
+    }
+    
+    /// Generate a branch name from task title
+    fn generate_branch_name(&self, title: &str, task_id: &Uuid) -> String {
+        // First transliterate any non-ASCII characters to ASCII
+        let ascii_title = deunicode(title);
+        
+        // Then slugify to create URL-safe string
+        let slug = slugify(&ascii_title);
+        
+        // Get UUID suffix (8 characters)
+        let uuid_string = task_id.to_string();
+        let uuid_suffix = uuid_string.split('-').next().unwrap_or("00000000");
+        
+        // Calculate max length for slug part
+        // Total max length: 45 chars (safe for most git systems, accounting for prefix)
+        // Format: task/{slug}-{uuid}
+        // Prefix: "task/" = 5 chars
+        // UUID part: 8 chars + 1 dash = 9 chars
+        // So slug can be at most: 45 - 5 - 9 = 31 chars
+        const MAX_TOTAL_LENGTH: usize = 45;
+        const PREFIX_LENGTH: usize = 5; // "task/"
+        const UUID_WITH_DASH_LENGTH: usize = 9; // 8 chars + 1 dash
+        const MAX_SLUG_LENGTH: usize = MAX_TOTAL_LENGTH - PREFIX_LENGTH - UUID_WITH_DASH_LENGTH;
+        
+        // Limit slug length and ensure it's not too short
+        let mut branch_name = if slug.len() > MAX_SLUG_LENGTH {
+            // Take only complete words if possible
+            let truncated = slug.chars().take(MAX_SLUG_LENGTH).collect::<String>();
+            // Try to avoid cutting in the middle of a word
+            if let Some(last_dash_pos) = truncated.rfind('-') {
+                if last_dash_pos > 10 { // Keep at least 10 chars
+                    truncated[..last_dash_pos].to_string()
+                } else {
+                    truncated
+                }
+            } else {
+                truncated
+            }
+        } else {
+            slug
+        };
+        
+        // If the slug is empty or too short, use "task"
+        if branch_name.is_empty() || branch_name.len() < 3 {
+            branch_name = "task".to_string();
+        }
+        
+        // Combine with prefix and UUID suffix
+        format!("task/{}-{}", branch_name, &uuid_suffix[..8])
+    }
+    
+    /// Check if a branch already exists
+    async fn branch_exists(&self, project_path: &str, branch_name: &str) -> Result<bool, sqlx::Error> {
+        match GitService::list_branches(Path::new(project_path)) {
+            Ok(branches) => Ok(branches.contains(&branch_name.to_string())),
+            Err(e) => {
+                log::error!("Failed to list branches: {}", e);
+                // Assume it doesn't exist if we can't check
+                Ok(false)
+            }
+        }
+    }
+    
+    /// Generate a unique branch name
+    async fn generate_unique_branch_name(&self, project_path: &str, title: &str, task_id: &Uuid) -> Result<String, sqlx::Error> {
+        let base_name = self.generate_branch_name(title, task_id);
+        
+        // Check if the branch already exists
+        if !self.branch_exists(project_path, &base_name).await? {
+            return Ok(base_name);
+        }
+        
+        // If it exists, try adding a counter
+        // We need to ensure the total length stays within 45 chars (including prefix)
+        const MAX_BRANCH_LENGTH: usize = 45;
+        
+        for i in 2..=10 {
+            let counter_suffix = format!("-{}", i);
+            let max_base_length = MAX_BRANCH_LENGTH - counter_suffix.len();
+            
+            // Truncate base_name if needed to accommodate the counter
+            let truncated_base = if base_name.len() > max_base_length {
+                // Use char boundary safe truncation
+                let mut truncated = String::new();
+                for ch in base_name.chars() {
+                    if truncated.len() + ch.len_utf8() <= max_base_length {
+                        truncated.push(ch);
+                    } else {
+                        break;
+                    }
+                }
+                truncated
+            } else {
+                base_name.clone()
+            };
+            
+            let branch_name = format!("{}{}", truncated_base, counter_suffix);
+            
+            if !self.branch_exists(project_path, &branch_name).await? {
+                return Ok(branch_name);
+            }
+        }
+        
+        // If all attempts failed, fall back to UUID-based name with prefix
+        // Also ensure this doesn't exceed 45 chars
+        let fallback = format!("task/task-{}", task_id);
+        if fallback.len() > MAX_BRANCH_LENGTH {
+            Ok(format!("task/task-{}", &task_id.to_string()[..30])) // 30 + 10 ("task/task-") = 40
+        } else {
+            Ok(fallback)
+        }
     }
 
     pub async fn create_task(&self, req: CreateTaskRequest) -> Result<Task, sqlx::Error> {
@@ -172,7 +286,7 @@ impl TaskService {
         let id = Uuid::new_v4();
         let task_id = req.task_id.to_string();
         
-        // Get the task to find its project
+        // Get the task to find its project and title
         let task = self.get_task(req.task_id).await?
             .ok_or_else(|| sqlx::Error::RowNotFound)?;
         
@@ -187,8 +301,8 @@ impl TaskService {
         let project_path = project_row.0;
         let project_main_branch = project_row.1;
         
-        // Create a unique branch name for this attempt
-        let branch = format!("task-{}-{}", task_id, id.to_string().split('-').next().unwrap());
+        // Generate a meaningful branch name from the task title
+        let branch = self.generate_unique_branch_name(&project_path, &task.title, &req.task_id).await?;
         let base_branch = req.base_branch.unwrap_or(project_main_branch);
         
         // Create worktree with baseline tracking
