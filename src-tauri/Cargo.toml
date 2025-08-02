@@ -31,6 +31,7 @@ chrono = { version = "0.4.41", features = ["serde"] }
 tauri-plugin-dialog = "2.3.0"
 tauri-plugin-fs = "2.4.0"
 slug = "0.1.6"
+deunicode = "1.6"
 async-trait = "0.1.88"
 reqwest = { version = "0.12.22", features = ["json", "native-tls-vendored"] }
 lazy_static = "1.5.0"

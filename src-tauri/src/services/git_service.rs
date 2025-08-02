@@ -22,7 +22,8 @@ impl GitService {
         branch_name: &str,
         base_branch: &str,
     ) -> Result<PathBuf, String> {
-        let worktree_name = branch_name;
+        // Replace slashes with dashes to create a flat directory structure
+        let worktree_name = branch_name.replace('/', "-");
         let worktree_path = self.temp_dir.join(&worktree_name);
         
         log::info!("Creating worktree for branch {} at {:?}", branch_name, worktree_path);
