@@ -535,14 +535,21 @@ impl GitService {
 
     /// Get repository status
     pub fn get_status(&self, repo_path: &Path) -> Result<GitStatus, String> {
-        let output = execute_git(&["status", "--porcelain"], repo_path)
+        log::info!("[GitService] Getting status for path: {:?}", repo_path);
+        
+        // Use -uall to show all untracked files, not just directories
+        // Use -z to get null-terminated output for better handling of special characters
+        let output = execute_git(&["-c", "core.quotepath=false", "status", "--porcelain", "-uall"], repo_path)
             .map_err(|e| format!("Failed to get status: {}", e))?;
 
         if !output.status.success() {
-            return Err(String::from_utf8_lossy(&output.stderr).to_string());
+            let error = String::from_utf8_lossy(&output.stderr).to_string();
+            log::error!("[GitService] Git status failed: {}", error);
+            return Err(error);
         }
 
         let status_text = String::from_utf8_lossy(&output.stdout);
+        log::info!("[GitService] Git status output: {}", status_text);
         let mut files = GitStatus::default();
 
         for line in status_text.lines() {
@@ -649,6 +656,14 @@ impl GitService {
             }
         }
 
+        log::info!("[GitService] Status result: added={}, modified={}, deleted={}, untracked={}", 
+            files.added.len(), files.modified.len(), files.deleted.len(), files.untracked.len());
+        
+        // Log untracked files if any
+        if !files.untracked.is_empty() {
+            log::info!("[GitService] Untracked files: {:?}", files.untracked);
+        }
+        
         Ok(files)
     }
 

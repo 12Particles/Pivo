@@ -138,17 +138,34 @@ export function FileTreeDiff({ projectPath, taskId, worktreePath, refreshKey = 0
   const loadGitStatus = async () => {
     // Only load if we have a worktree path
     if (!worktreePath) {
+      console.log("[FileTreeDiff] No worktree path, clearing trees");
       setFileTree([]);
       setChangedFilesOnly([]);
       setChangedFilesTree([]);
       return;
     }
     
+    console.log("[FileTreeDiff] Loading git status for worktree:", {
+      worktreePath,
+      projectPath,
+      taskId
+    });
+    
     try {
       const status = await gitApi.getStatus(worktreePath);
+      console.log("[FileTreeDiff] Git status loaded:", {
+        added: status.added.length,
+        modified: status.modified.length,
+        deleted: status.deleted.length,
+        untracked: status.untracked.length,
+        addedFiles: status.added,
+        modifiedFiles: status.modified,
+        deletedFiles: status.deleted,
+        untrackedFiles: status.untracked
+      });
       buildFileTree(status);
     } catch (error) {
-      console.error("Failed to load git status:", error);
+      console.error("[FileTreeDiff] Failed to load git status:", error);
       // Clear the tree on error
       setFileTree([]);
       setChangedFilesOnly([]);
@@ -207,8 +224,15 @@ export function FileTreeDiff({ projectPath, taskId, worktreePath, refreshKey = 0
   const loadAllFiles = async () => {
     if (!worktreePath || allFilesLoaded) return;
     
+    console.log("[FileTreeDiff] Loading all files for worktree:", worktreePath);
+    
     try {
       const fileList = await gitApi.listAllFiles(worktreePath);
+      console.log("[FileTreeDiff] All files loaded:", {
+        count: fileList.length,
+        sampleFiles: fileList.slice(0, 10), // Show first 10 files as sample
+        worktreePath
+      });
       
       // Build file tree from flat list of file paths
       const root: FileNode[] = [];
@@ -317,13 +341,22 @@ export function FileTreeDiff({ projectPath, taskId, worktreePath, refreshKey = 0
       ...status.added.map(f => ({ path: f, status: "added" as const })),
       ...status.modified.map(f => ({ path: f, status: "modified" as const })),
       ...status.deleted.map(f => ({ path: f, status: "deleted" as const })),
+      ...status.untracked.map(f => ({ path: f, status: "added" as const })), // Treat untracked as added for display
     ];
+
+    console.log("[FileTreeDiff] Building file tree:", {
+      totalFiles: allFiles.length,
+      worktreePath,
+      allFiles: allFiles,
+      untrackedFiles: status.untracked
+    });
 
     // Build status map for quick lookup
     const statusMap: GitStatusMap = {};
     status.added.forEach(f => statusMap[f] = "added");
     status.modified.forEach(f => statusMap[f] = "modified");
     status.deleted.forEach(f => statusMap[f] = "deleted");
+    status.untracked.forEach(f => statusMap[f] = "added"); // Treat untracked as added
     setGitStatusMap(statusMap);
 
     // Build changed files only list
@@ -333,6 +366,7 @@ export function FileTreeDiff({ projectPath, taskId, worktreePath, refreshKey = 0
       type: "file" as const,
       status,
     }));
+    console.log("[FileTreeDiff] Changed files list:", changedFiles);
     setChangedFilesOnly(changedFiles);
 
     // Build changed files tree structure

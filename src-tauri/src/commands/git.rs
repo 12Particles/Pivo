@@ -67,19 +67,62 @@ pub async fn get_diff(repo_path: String, staged: bool) -> Result<String, String>
 
 #[tauri::command]
 pub async fn list_all_files(repo_path: String) -> Result<Vec<String>, String> {
-    let output = execute_git(&["ls-tree", "-r", "HEAD", "--name-only"], repo_path.as_ref())
-        .map_err(|e| format!("Failed to list files: {}", e))?;
-
-    if !output.status.success() {
-        return Err(String::from_utf8_lossy(&output.stderr).to_string());
+    use std::fs;
+    use std::path::PathBuf;
+    
+    let repo_path_buf = PathBuf::from(&repo_path);
+    let mut all_files = Vec::new();
+    
+    // Function to recursively collect files
+    fn collect_files(dir: &Path, base_path: &Path, files: &mut Vec<String>) -> Result<(), String> {
+        if let Ok(entries) = fs::read_dir(dir) {
+            for entry in entries {
+                if let Ok(entry) = entry {
+                    let path = entry.path();
+                    let file_name = path.file_name()
+                        .and_then(|n| n.to_str())
+                        .unwrap_or("");
+                    
+                    // Skip hidden files, .git directory, and common build/dependency directories
+                    if file_name.starts_with('.') 
+                        || file_name == "node_modules" 
+                        || file_name == "target"
+                        || file_name == "build"
+                        || file_name == "dist" {
+                        continue;
+                    }
+                    
+                    if path.is_dir() {
+                        collect_files(&path, base_path, files)?;
+                    } else if path.is_file() {
+                        // Get relative path from repo root
+                        if let Ok(relative_path) = path.strip_prefix(base_path) {
+                            if let Some(path_str) = relative_path.to_str() {
+                                files.push(path_str.to_string());
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        Ok(())
     }
-
-    let files = String::from_utf8_lossy(&output.stdout)
-        .lines()
-        .map(|s| s.to_string())
-        .collect();
-
-    Ok(files)
+    
+    // Collect all files recursively
+    collect_files(&repo_path_buf, &repo_path_buf, &mut all_files)
+        .map_err(|e| format!("Failed to list files: {}", e))?;
+    
+    // Sort files for consistent ordering
+    all_files.sort();
+    
+    log::info!("[list_all_files] Found {} files in {}", all_files.len(), repo_path);
+    if all_files.len() <= 10 {
+        log::info!("[list_all_files] Files: {:?}", all_files);
+    } else {
+        log::info!("[list_all_files] First 10 files: {:?}", &all_files[..10]);
+    }
+    
+    Ok(all_files)
 }
 
 #[tauri::command]

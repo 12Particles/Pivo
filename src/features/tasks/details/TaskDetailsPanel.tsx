@@ -64,15 +64,32 @@ export function TaskDetailsPanel({
   const loadLatestAttempt = async () => {
     if (!task) return;
     
+    console.log("[TaskDetailsPanel] Loading attempts for task:", task.id);
+    
     try {
       const attempts = await taskAttemptApi.listForTask(task.id);
+      console.log("[TaskDetailsPanel] Attempts loaded:", {
+        count: attempts.length,
+        attempts: attempts.map(a => ({
+          id: a.id,
+          worktree_path: a.worktree_path,
+          branch: a.branch,
+          created_at: a.created_at
+        }))
+      });
+      
       if (attempts.length > 0) {
         // Get the latest attempt
         const latestAttempt = attempts[attempts.length - 1];
+        console.log("[TaskDetailsPanel] Setting current attempt:", {
+          id: latestAttempt.id,
+          worktree_path: latestAttempt.worktree_path,
+          branch: latestAttempt.branch
+        });
         setCurrentAttempt(latestAttempt);
       }
     } catch (error) {
-      console.error("Failed to load attempts:", error);
+      console.error("[TaskDetailsPanel] Failed to load attempts:", error);
     }
   };
 
