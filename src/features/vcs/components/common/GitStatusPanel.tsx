@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
@@ -19,6 +18,7 @@ import {
   FileEdit
 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
+import { FileListItem } from "./FileListItem";
 
 interface GitStatusPanelProps {
   projectPath: string;
@@ -220,26 +220,26 @@ export function GitStatusPanel({ projectPath, onRefresh }: GitStatusPanelProps) 
               <div className="space-y-4">
                 {/* Modified files */}
                 {status?.modified.map((file) => (
-                  <div key={file} className="flex items-center gap-2">
-                    <Checkbox
-                      checked={selectedFiles.has(file)}
-                      onCheckedChange={() => toggleFileSelection(file)}
-                    />
-                    {getFileIcon("modified")}
-                    <span className="text-sm flex-1 truncate">{file}</span>
-                  </div>
+                  <FileListItem
+                    key={file}
+                    file={file}
+                    projectPath={projectPath}
+                    icon={getFileIcon("modified")}
+                    selected={selectedFiles.has(file)}
+                    onToggleSelection={() => toggleFileSelection(file)}
+                  />
                 ))}
                 
                 {/* Untracked files */}
                 {status?.untracked.map((file) => (
-                  <div key={file} className="flex items-center gap-2">
-                    <Checkbox
-                      checked={selectedFiles.has(file)}
-                      onCheckedChange={() => toggleFileSelection(file)}
-                    />
-                    {getFileIcon("untracked")}
-                    <span className="text-sm flex-1 truncate">{file}</span>
-                  </div>
+                  <FileListItem
+                    key={file}
+                    file={file}
+                    projectPath={projectPath}
+                    icon={getFileIcon("untracked")}
+                    selected={selectedFiles.has(file)}
+                    onToggleSelection={() => toggleFileSelection(file)}
+                  />
                 ))}
 
                 {selectedFiles.size > 0 && (
@@ -255,10 +255,13 @@ export function GitStatusPanel({ projectPath, onRefresh }: GitStatusPanelProps) 
             <ScrollArea className="flex-1">
               <div className="space-y-2">
                 {status?.added.map((file) => (
-                  <div key={file} className="flex items-center gap-2">
-                    {getFileIcon("added")}
-                    <span className="text-sm flex-1 truncate">{file}</span>
-                  </div>
+                  <FileListItem
+                    key={file}
+                    file={file}
+                    projectPath={projectPath}
+                    icon={getFileIcon("added")}
+                    showCheckbox={false}
+                  />
                 ))}
               </div>
             </ScrollArea>

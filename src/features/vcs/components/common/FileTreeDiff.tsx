@@ -26,6 +26,12 @@ import { EnhancedDiffViewer } from "./EnhancedDiffViewer";
 import { CommentPanel } from "./CommentPanel";
 import { parseGitDiff } from "@/lib/git-diff-parser";
 import { eventBus } from '@/lib/events/EventBus';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { useFileContextMenu } from "@/hooks/use-file-context-menu";
 // Simple unique ID generator
 const generateId = () => `comment-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 
@@ -58,6 +64,7 @@ interface OpenFile {
 
 export function FileTreeDiff({ projectPath, taskId, worktreePath, refreshKey = 0, changedFilePath }: FileTreeDiffProps) {
   const { t } = useTranslation();
+  const { renderContextMenuItems } = useFileContextMenu();
   const [selectedFile, setSelectedFile] = useState<string | null>(null);
   const [fileTree, setFileTree] = useState<FileNode[]>([]);
   const [changedFilesOnly, setChangedFilesOnly] = useState<FileNode[]>([]);
@@ -709,34 +716,50 @@ export function FileTreeDiff({ projectPath, taskId, worktreePath, refreshKey = 0
 
     return (
       <div key={node.path}>
-        <Button
-          variant="ghost"
-          size="sm"
-          className={cn(
-            "w-full justify-start px-2 h-8",
-            isSelected && "bg-accent",
-            "hover:bg-accent/50"
-          )}
-          style={{ paddingLeft: `${level * 16 + 8}px` }}
-          onClick={() => handleFileClick(node)}
-        >
-          {node.type === "folder" ? (
-            <>
-              {isExpanded ? (
-                <ChevronDown className="h-3 w-3 mr-1" />
-              ) : (
-                <ChevronRight className="h-3 w-3 mr-1" />
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="ghost"
+              size="sm"
+              className={cn(
+                "w-full justify-start px-2 h-8",
+                isSelected && "bg-accent",
+                "hover:bg-accent/50"
               )}
-              <FolderOpen className="h-3 w-3 mr-2" />
-            </>
-          ) : (
-            <>
-              <FileText className="h-3 w-3 mr-2 ml-4" />
-              {getStatusIcon(node.status)}
-            </>
-          )}
-          <span className="text-sm truncate">{node.name}</span>
-        </Button>
+              style={{ paddingLeft: `${level * 16 + 8}px` }}
+              onClick={() => handleFileClick(node)}
+              onContextMenu={(e) => {
+                e.preventDefault();
+                // The dropdown menu will handle the right-click
+              }}
+            >
+              {node.type === "folder" ? (
+                <>
+                  {isExpanded ? (
+                    <ChevronDown className="h-3 w-3 mr-1" />
+                  ) : (
+                    <ChevronRight className="h-3 w-3 mr-1" />
+                  )}
+                  <FolderOpen className="h-3 w-3 mr-2" />
+                </>
+              ) : (
+                <>
+                  <FileText className="h-3 w-3 mr-2 ml-4" />
+                  {getStatusIcon(node.status)}
+                </>
+              )}
+              <span className="text-sm truncate">{node.name}</span>
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent>
+            {renderContextMenuItems({
+              filePath: node.path,
+              fileName: node.name,
+              isFile: node.type === "file",
+              onViewDiff: node.type === "file" ? () => handleFileClick(node) : undefined,
+            })}
+          </DropdownMenuContent>
+        </DropdownMenu>
         {node.type === "folder" && isExpanded && node.children && (
           <div>
             {node.children.map(child => renderFileNode(child, level + 1))}
