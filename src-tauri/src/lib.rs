@@ -201,6 +201,7 @@ pub fn run() {
             commands::github::github_start_device_flow,
             commands::github::github_poll_device_auth,
             commands::system::open_in_terminal,
+            commands::system::show_in_file_manager,
             commands::filesystem::search_project_files,
             commands::filesystem::search_files_from_current_dir,
             commands::command::search_commands,
