@@ -109,21 +109,21 @@ export function ProjectList({
         </div>
       )}
       
-      <ProjectSettingsDialog
-        initialValues={selectedProject ? {
-          path: selectedProject.path,
-          name: selectedProject.name,
-          description: selectedProject.description || undefined,
-          git_repo: selectedProject.git_repo || undefined,
-          setup_script: selectedProject.setup_script || undefined,
-          dev_script: selectedProject.dev_script || undefined,
-          has_git: !!selectedProject.git_repo,
-          has_package_json: false,
-        } : undefined}
-        open={settingsOpen}
-        onOpenChange={setSettingsOpen}
-        onSubmit={async (values) => {
-          if (selectedProject) {
+      {settingsOpen && selectedProject && (
+        <ProjectSettingsDialog
+          initialValues={{
+            path: selectedProject.path,
+            name: selectedProject.name,
+            description: selectedProject.description || undefined,
+            git_repo: selectedProject.git_repo || undefined,
+            setup_script: selectedProject.setup_script || undefined,
+            dev_script: selectedProject.dev_script || undefined,
+            has_git: !!selectedProject.git_repo,
+            has_package_json: false,
+          }}
+          open={settingsOpen}
+          onOpenChange={setSettingsOpen}
+          onSubmit={async (values) => {
             await projectApi.update(selectedProject.id, {
               name: values.name,
               description: values.description,
@@ -133,15 +133,15 @@ export function ProjectList({
               dev_script: values.dev_script,
             });
             onProjectsChange?.();
-          }
-        }}
-        onDelete={selectedProject ? async () => {
-          await projectApi.delete(selectedProject.id);
-          setCurrentProject(null);
-          onProjectsChange?.();
-        } : undefined}
-        isCreating={false}
-      />
+          }}
+          onDelete={async () => {
+            await projectApi.delete(selectedProject.id);
+            setCurrentProject(null);
+            onProjectsChange?.();
+          }}
+          isCreating={false}
+        />
+      )}
     </div>
   );
 }

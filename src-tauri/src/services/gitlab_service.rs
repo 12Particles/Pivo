@@ -1,7 +1,7 @@
 use async_trait::async_trait;
 use reqwest::{Client, StatusCode};
 use serde::Deserialize;
-use std::process::Command;
+use crate::utils::command::execute_git;
 use crate::models::{
     GitLabConfig, MergeRequestInfo, GitRemoteInfo, MergeRequestState, 
     MergeStatus, PipelineStatus
@@ -155,10 +155,7 @@ impl GitPlatformService for GitLabService {
             .ok_or("GitLab Personal Access Token not configured")?;
         
         // First, get the remote URL
-        let remote_output = Command::new("git")
-            .current_dir(repo_path)
-            .args(&["remote", "get-url", "origin"])
-            .output()
+        let remote_output = execute_git(&["remote", "get-url", "origin"], repo_path.as_ref())
             .map_err(|e| format!("Failed to get remote URL: {}", e))?;
         
         if !remote_output.status.success() {
@@ -192,10 +189,7 @@ impl GitPlatformService for GitLabService {
             args.push("--force");
         }
         
-        let output = Command::new("git")
-            .current_dir(repo_path)
-            .args(&args)
-            .output()
+        let output = execute_git(&args, repo_path.as_ref())
             .map_err(|e| format!("Failed to push: {}", e))?;
         
         if !output.status.success() {

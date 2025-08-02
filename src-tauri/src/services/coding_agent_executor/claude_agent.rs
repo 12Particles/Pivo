@@ -1,128 +1,174 @@
 use async_trait::async_trait;
-use std::process::{Command, Stdio};
-use std::io::{BufRead, BufReader, Write};
-use std::thread;
-use std::sync::mpsc::Sender;
-use tauri::AppHandle;
-use log::{info, debug};
 use chrono::Utc;
-use uuid::Uuid;
+use log::{info, debug, error};
+use serde_json;
+use std::collections::HashMap;
+use std::io::{BufRead, BufReader, Write};
+use std::process::{Command, Stdio, Child};
+use std::sync::{Arc, Mutex};
+use std::sync::mpsc::Sender;
+use std::thread;
+use tauri::AppHandle;
+
 use super::agent::{CodingAgent, ExecutionContext, ChannelMessage};
-use super::types::*;
 use super::stateful_claude_converter::StatefulClaudeMessageConverter;
+use super::types::*;
 
 pub struct ClaudeCodeAgent {
     app_handle: AppHandle,
+    // Store running processes by execution_id
+    running_processes: Arc<Mutex<HashMap<String, Child>>>,
 }
 
 impl ClaudeCodeAgent {
     pub fn new(app_handle: AppHandle) -> Self {
-        Self { 
+        Self {
             app_handle,
+            running_processes: Arc::new(Mutex::new(HashMap::new())),
         }
     }
     
-    fn build_command(&self, working_directory: &str, session_id: Option<&str>, use_shell_env: bool) -> String {
-        let mut cmd_parts = vec![
-            format!("cd \"{}\"", working_directory),
-            "NODE_NO_WARNINGS=\"1\"".to_string(),
-            "npx -y @anthropic-ai/claude-code@latest -p --dangerously-skip-permissions --verbose --output-format=stream-json".to_string(),
+    fn find_claude_command() -> Option<String> {
+        // Check common locations
+        let common_paths = [
+            "/usr/local/bin/claude",
+            "/opt/homebrew/bin/claude",
+            "/home/linuxbrew/.linuxbrew/bin/claude",
+            "/usr/bin/claude",
         ];
         
-        if let Some(id) = session_id {
-            info!("Building Claude Code command with --resume {}", id);
-            cmd_parts.push(format!("--resume {}", id));
-        } else {
-            info!("Building Claude Code command without resume (new session)");
+        for path in &common_paths {
+            if std::path::Path::new(path).exists() {
+                info!("Found claude at: {}", path);
+                return Some(path.to_string());
+            }
         }
         
-        let base_cmd = cmd_parts.join(" && ");
-        
-        if use_shell_env {
-            // Use login shell to get full environment
-            let shell = std::env::var("SHELL").unwrap_or_else(|_| "/bin/zsh".to_string());
-            format!("{} -l -c '{}'", shell, base_cmd)
-        } else {
-            base_cmd
-        }
-    }
-    
-    fn find_npx(&self) -> Result<String, String> {
-        // First, try to get npx from user's default shell environment
-        info!("Attempting to find npx using shell environment...");
-        
-        // Get the user's default shell
-        let shell = std::env::var("SHELL").unwrap_or_else(|_| "/bin/zsh".to_string());
-        info!("Using shell: {}", shell);
-        
-        // Try to get npx path from shell
-        let shell_cmd = format!("{} -l -c 'which npx'", shell);
-        if let Ok(output) = Command::new("sh")
-            .arg("-c")
-            .arg(&shell_cmd)
-            .output() 
-        {
-            if output.status.success() {
-                let npx_path = String::from_utf8_lossy(&output.stdout).trim().to_string();
-                if !npx_path.is_empty() && std::path::Path::new(&npx_path).exists() {
-                    info!("Found npx via shell at: {}", npx_path);
-                    // Verify it works
-                    if let Ok(test_output) = Command::new(&npx_path)
-                        .arg("--version")
-                        .output()
-                    {
-                        if test_output.status.success() {
-                            return Ok(npx_path);
+        // Try to find in user's shell
+        let shells = ["bash", "zsh", "sh"];
+        for shell in &shells {
+            let shell_path = format!("/bin/{}", shell);
+            if !std::path::Path::new(&shell_path).exists() {
+                continue;
+            }
+            
+            // Try with login shell
+            let shell_cmd = format!("{} -l -c 'which claude'", shell);
+            if let Ok(output) = Command::new("sh")
+                .arg("-c")
+                .arg(&shell_cmd)
+                .output()
+            {
+                if output.status.success() {
+                    let claude_path = String::from_utf8_lossy(&output.stdout).trim().to_string();
+                    if !claude_path.is_empty() && std::path::Path::new(&claude_path).exists() {
+                        info!("Found claude via {} at: {}", shell, claude_path);
+                        
+                        // Verify it works
+                        if let Ok(test_output) = Command::new(&claude_path)
+                            .arg("--version")
+                            .output()
+                        {
+                            if test_output.status.success() {
+                                return Some(claude_path);
+                            }
                         }
                     }
                 }
             }
         }
         
-        // If shell method fails, try common locations
-        info!("Shell method failed, trying common paths...");
-        let npx_paths = vec![
+        // Try direct execution
+        if let Ok(output) = Command::new("claude")
+            .arg("--version")
+            .output()
+        {
+            if output.status.success() {
+                info!("claude is available in PATH");
+                return Some("claude".to_string());
+            }
+        }
+        
+        None
+    }
+
+    fn find_npx_path() -> Option<String> {
+        // Check common locations
+        let common_paths = [
             "/usr/local/bin/npx",
             "/opt/homebrew/bin/npx",
-            "/opt/homebrew/opt/node/bin/npx",
-            "/usr/local/opt/node/bin/npx",
+            "/home/linuxbrew/.linuxbrew/bin/npx",
             "/usr/bin/npx",
-            "~/.nvm/versions/node/v*/bin/npx", // NVM installations
-            "~/.volta/bin/npx", // Volta
-            "~/.fnm/node-versions/v*/installation/bin/npx", // fnm
         ];
         
-        // Expand home directory and wildcards
-        let home = std::env::var("HOME").unwrap_or_else(|_| "~".to_string());
-        let expanded_paths: Vec<String> = npx_paths.iter()
-            .flat_map(|path| {
-                let expanded = path.replace("~", &home);
-                if expanded.contains('*') {
-                    // Use glob to expand wildcards
-                    if let Ok(paths) = glob::glob(&expanded) {
-                        paths.filter_map(|p| p.ok())
-                            .map(|p| p.to_string_lossy().to_string())
-                            .collect::<Vec<_>>()
-                    } else {
-                        vec![expanded]
-                    }
-                } else {
-                    vec![expanded]
-                }
-            })
-            .collect();
-        
-        for path in &expanded_paths {
+        for path in &common_paths {
             if std::path::Path::new(path).exists() {
-                // Test if the command works
-                let test = Command::new(path)
-                    .arg("--version")
-                    .output();
-                    
-                if let Ok(output) = test {
-                    if output.status.success() {
-                        info!("Found working npx at: {}", path);
-                        return Ok(path.to_string());
+                info!("Found npx at: {}", path);
+                return Some(path.to_string());
+            }
+        }
+        
+        // Try to find in user's shell
+        let shells = ["bash", "zsh", "sh"];
+        for shell in &shells {
+            let shell_path = format!("/bin/{}", shell);
+            if !std::path::Path::new(&shell_path).exists() {
+                continue;
+            }
+            
+            // Try with login shell
+            let shell_cmd = format!("{} -l -c 'which npx'", shell);
+            if let Ok(output) = Command::new("sh")
+                .arg("-c")
+                .arg(&shell_cmd)
+                .output()
+            {
+                if output.status.success() {
+                    let npx_path = String::from_utf8_lossy(&output.stdout).trim().to_string();
+                    if !npx_path.is_empty() && std::path::Path::new(&npx_path).exists() {
+                        info!("Found npx via {} at: {}", shell, npx_path);
+                        
+                        // Verify it works
+                        if let Ok(test_output) = Command::new(&npx_path)
+                            .arg("--version")
+                            .output()
+                        {
+                            if test_output.status.success() {
+                                return Some(npx_path);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        
+        // Last resort: search in common Node.js installation paths
+        let node_paths = [
+            "/usr/local/lib/node_modules/npm/bin/npx-cli.js",
+            "/opt/homebrew/lib/node_modules/npm/bin/npx-cli.js",
+        ];
+        
+        for node_path in &node_paths {
+            if std::path::Path::new(node_path).exists() {
+                // Try to run with node
+                let _node_cmd = format!("node {}", node_path);
+                info!("Found npx-cli.js at: {}", node_path);
+                
+                // Find node executable
+                for path in &["/usr/local/bin/node", "/opt/homebrew/bin/node", "/usr/bin/node"] {
+                    if std::path::Path::new(path).exists() {
+                        // Test if the command works
+                        let test = Command::new(path)
+                            .arg(node_path)
+                            .arg("--version")
+                            .output();
+                        
+                        if let Ok(output) = test {
+                            if output.status.success() {
+                                // Return a composite command
+                                return Some(format!("{} {}", path, node_path));
+                            }
+                        }
                     }
                 }
             }
@@ -135,48 +181,89 @@ impl ClaudeCodeAgent {
         {
             if output.status.success() {
                 info!("Found npx in PATH");
-                return Ok("npx".to_string());
+                return Some("npx".to_string());
             }
         }
         
-        let err_msg = format!(
-            "npx command not found. Please ensure Node.js is installed and available. \
-            Searched shell environment and paths: {}. \
-            You may need to install Node.js or configure your shell environment properly.",
-            expanded_paths.join(", ")
-        );
-        log::error!("{}", err_msg);
-        Err(err_msg)
+        None
     }
-    
-    fn spawn_process(&self, cmd: &str, input: &str, execution_id: &str, task_id: &str, attempt_id: &str, message_sender: Sender<ChannelMessage>) -> Result<(), String> {
-        info!("Spawning Claude Code with command: {}", cmd);
+}
+
+#[async_trait]
+impl CodingAgent for ClaudeCodeAgent {
+    async fn execute_prompt(
+        &self,
+        prompt: &str,
+        execution_context: ExecutionContext,
+        message_sender: Sender<ChannelMessage>,
+    ) -> Result<CodingAgentExecution, String> {
+        let execution_id = format!("claude-{}-{}", 
+            chrono::Utc::now().timestamp(),
+            &execution_context.task_id[..8]
+        );
         
-        let mut command = Command::new("sh");
-        command.arg("-c").arg(cmd);
+        info!("Starting Claude Code execution: {}", execution_id);
+        info!("Working directory: {}", execution_context.working_directory);
+        info!("Resume session ID: {:?}", execution_context.resume_session_id);
+        
+        // Try to find installed claude command first
+        let mut using_npx = false;
+        let cmd_result = if let Some(claude_cmd) = Self::find_claude_command() {
+            info!("Using installed claude command: {}", claude_cmd);
+            Ok(claude_cmd)
+        } else {
+            info!("Claude command not found, falling back to npx");
+            using_npx = true;
+            Self::find_npx_path()
+                .ok_or("Could not find claude or npx. Please ensure claude-code is installed or Node.js and npm are available.")
+        };
+        
+        let cmd = cmd_result?;
+        
+        // Parse composite command if needed
+        let (program, base_args) = if cmd.contains(' ') {
+            let parts: Vec<&str> = cmd.split_whitespace().collect();
+            (parts[0].to_string(), parts[1..].to_vec())
+        } else {
+            (cmd, vec![])
+        };
+        
+        let mut command = Command::new(&program);
+        
+        // Add base args if any (for node npx-cli.js case)
+        for arg in base_args {
+            command.arg(arg);
+        }
+        
+        // Add claude-code args only if using npx
+        if using_npx {
+            command.arg("@anthropic-ai/claude-code@latest");
+        } else {
+            // When using claude command directly, we need these args for non-interactive streaming
+            command.arg("--print");
+            command.arg("--verbose");
+            command.arg("--output-format");
+            command.arg("stream-json");
+        }
+        
+        if let Some(session_id) = &execution_context.resume_session_id {
+            command.arg("--resume");
+            command.arg(session_id);
+        }
+        
+        command.current_dir(&execution_context.working_directory);
         command.stdin(Stdio::piped());
         command.stdout(Stdio::piped());
         command.stderr(Stdio::piped());
         
-        // Add environment variables to ensure proper PATH
-        // Include common Node.js installation paths for macOS
-        let mut path = std::env::var("PATH").unwrap_or_default();
-        let additional_paths = vec![
-            "/usr/local/bin",
-            "/opt/homebrew/bin",
-            "/opt/homebrew/opt/node/bin",
-            "/usr/local/opt/node/bin",
-            "~/.nvm/versions/node/*/bin",
-        ];
-        for p in additional_paths {
-            if !path.contains(p) {
-                path.push(':');
-                path.push_str(p);
-            }
-        }
-        command.env("PATH", path);
+        // Set environment
+        command.env("FORCE_COLOR", "0");
+        command.env("TERM", "dumb");
         
-        // Also set NODE_PATH for npm modules
+        if let Ok(anthropic_key) = std::env::var("ANTHROPIC_API_KEY") {
+            command.env("ANTHROPIC_API_KEY", anthropic_key);
+        }
+        
         if let Ok(node_path) = std::env::var("NODE_PATH") {
             command.env("NODE_PATH", node_path);
         }
@@ -191,7 +278,11 @@ impl ClaudeCodeAgent {
         
         info!("Claude Code process started with PID: {:?}", child.id());
         
+        // Store the child process
+        let _child_pid = child.id();
+        
         // Send input to stdin
+        let input = prompt.to_string();
         if let Some(mut stdin) = child.stdin.take() {
             stdin.write_all(input.as_bytes())
                 .map_err(|e| format!("Failed to write to stdin: {}", e))?;
@@ -202,10 +293,11 @@ impl ClaudeCodeAgent {
         
         // Handle stdout
         if let Some(stdout) = child.stdout.take() {
-            let execution_id = execution_id.to_string();
-            let task_id = task_id.to_string();
-            let attempt_id = attempt_id.to_string();
+            let execution_id_clone = execution_id.clone();
+            let task_id = execution_context.task_id.clone();
+            let attempt_id = execution_context.attempt_id.clone();
             let _app_handle = self.app_handle.clone();
+            let message_sender_clone = message_sender.clone();
             
             thread::spawn(move || {
                 let reader = BufReader::new(stdout);
@@ -220,7 +312,7 @@ impl ClaudeCodeAgent {
                             // Convert AgentOutput to ConversationMessage
                             if let Some(conversation_msg) = crate::services::coding_agent_executor::service::convert_to_conversation_message(&agent_output) {
                                 // Send message through channel to service
-                                let _ = message_sender.send(ChannelMessage {
+                                let _ = message_sender_clone.send(ChannelMessage {
                                     attempt_id: attempt_id.clone(),
                                     task_id: task_id.clone(),
                                     message: conversation_msg,
@@ -236,7 +328,7 @@ impl ClaudeCodeAgent {
                                     // Directly update the attempt with session ID in backend
                                     let session_id_clone = session_id.to_string();
                                     let attempt_id_clone = attempt_id.clone();
-                                    let message_sender_clone = message_sender.clone();
+                                    let message_sender_session = message_sender_clone.clone();
                                     
                                     // Send a special message to the service to update session ID
                                     let session_msg = ConversationMessage {
@@ -250,7 +342,7 @@ impl ClaudeCodeAgent {
                                         })),
                                     };
                                     
-                                    let _ = message_sender_clone.send(ChannelMessage {
+                                    let _ = message_sender_session.send(ChannelMessage {
                                         attempt_id: attempt_id_clone,
                                         task_id: task_id.clone(),
                                         message: session_msg,
@@ -282,76 +374,70 @@ impl ClaudeCodeAgent {
                     content: "Execution completed".to_string(),
                     timestamp: Utc::now(),
                     metadata: Some(serde_json::json!({
-                        "success": true,
-                        "summary": "Execution completed",
+                        "execution_id": execution_id_clone,
+                        "status": "completed"
                     })),
                 };
                 
-                let _ = message_sender.send(ChannelMessage {
+                let _ = message_sender_clone.send(ChannelMessage {
                     attempt_id: attempt_id.clone(),
                     task_id: task_id.clone(),
                     message: complete_msg,
                 });
-                
-                debug!("Stdout reader thread ended for execution: {}", execution_id);
             });
         }
         
         // Handle stderr
         if let Some(stderr) = child.stderr.take() {
-            let execution_id = execution_id.to_string();
-            let _task_id = task_id.to_string();
-            let _attempt_id = attempt_id.to_string();
-            let _app_handle = self.app_handle.clone();
+            let execution_id_clone = execution_id.clone();
+            let task_id = execution_context.task_id.clone();
+            let attempt_id = execution_context.attempt_id.clone();
+            let message_sender_clone = message_sender.clone();
             
             thread::spawn(move || {
                 let reader = BufReader::new(stderr);
                 for line in reader.lines() {
                     if let Ok(content) = line {
-                        // Log stderr for debugging
-                        log::warn!("Claude stderr: {}", content);
-                        
-                        // Debug stderr output removed - no longer needed with new event architecture
+                        // Only log actual errors, not normal output
+                        if !content.trim().is_empty() && 
+                           !content.contains("Using Claude model") &&
+                           !content.contains("Working directory:") {
+                            error!("Claude stderr: {}", content);
+                            
+                            // Send error message
+                            let error_msg = ConversationMessage {
+                                id: format!("{}-error-{}", Utc::now().to_rfc3339(), {
+                                    use rand::Rng;
+                                    let mut rng = rand::thread_rng();
+                                    rng.gen::<u32>()
+                                }),
+                                role: MessageRole::System,
+                                message_type: "error".to_string(),
+                                content: content.clone(),
+                                timestamp: Utc::now(),
+                                metadata: Some(serde_json::json!({
+                                    "execution_id": execution_id_clone,
+                                    "source": "stderr"
+                                })),
+                            };
+                            
+                            let _ = message_sender_clone.send(ChannelMessage {
+                                attempt_id: attempt_id.clone(),
+                                task_id: task_id.clone(),
+                                message: error_msg,
+                            });
+                        }
                     }
                 }
-                debug!("Stderr reader thread ended for execution: {}", execution_id);
             });
         }
         
-        // Monitor process in a separate thread
-        let _process_task_id = task_id.to_string();
-        thread::spawn(move || {
-            thread::sleep(std::time::Duration::from_millis(100));
-            match child.try_wait() {
-                Ok(Some(status)) => {
-                    log::error!("Claude Code process exited immediately with status: {:?}", status);
-                }
-                Ok(None) => {
-                    info!("Claude Code process is running normally");
-                }
-                Err(e) => {
-                    log::error!("Error checking Claude Code process status: {}", e);
-                }
-            }
-        });
+        // Store the child process handle
+        {
+            let mut processes = self.running_processes.lock().unwrap();
+            processes.insert(execution_id.clone(), child);
+        }
         
-        Ok(())
-    }
-}
-
-#[async_trait]
-impl CodingAgent for ClaudeCodeAgent {
-    
-    async fn execute_prompt(
-        &self,
-        prompt: &str,
-        execution_context: ExecutionContext,
-        message_sender: Sender<ChannelMessage>,
-    ) -> Result<CodingAgentExecution, String> {
-        info!("Executing Claude Code prompt for attempt: {} (task: {})", 
-            execution_context.attempt_id, execution_context.task_id);
-        
-        let execution_id = Uuid::new_v4().to_string();
         let execution = CodingAgentExecution {
             id: execution_id.clone(),
             task_id: execution_context.task_id.clone(),
@@ -361,43 +447,55 @@ impl CodingAgent for ClaudeCodeAgent {
             created_at: Utc::now(),
         };
         
-        // User message will be created by the service layer
-        
-        // Try with shell environment first
-        let cmd = self.build_command(&execution_context.working_directory, execution_context.resume_session_id.as_deref(), true);
-        
-        info!("Attempting to spawn Claude Code with shell environment...");
-        if let Err(e) = self.spawn_process(&cmd, prompt, &execution_id, &execution_context.task_id, &execution_context.attempt_id, message_sender.clone()) {
-            log::warn!("Failed to spawn with shell environment: {}. Trying direct execution...", e);
-            
-            // If shell method fails, try direct execution with found npx
-            if let Ok(npx_path) = self.find_npx() {
-                let direct_cmd = if npx_path != "npx" {
-                    // Use full path
-                    self.build_command(&execution_context.working_directory, execution_context.resume_session_id.as_deref(), false)
-                        .replace("npx", &npx_path)
-                } else {
-                    self.build_command(&execution_context.working_directory, execution_context.resume_session_id.as_deref(), false)
-                };
-                
-                self.spawn_process(&direct_cmd, prompt, &execution_id, &execution_context.task_id, &execution_context.attempt_id, message_sender)?;
-            } else {
-                return Err("Failed to find npx in any known location".to_string());
-            }
-        }
-        
         Ok(execution)
     }
     
     async fn stop_execution(
         &self,
-        _execution_id: &str,
-        execution_context: &ExecutionContext,
+        execution_id: &str,
+        _execution_context: &ExecutionContext,
     ) -> Result<(), String> {
-        // Kill all npx processes for this execution
-        let _ = std::process::Command::new("pkill")
-            .args(&["-f", &format!("npx.*claude-code.*{}", execution_context.resume_session_id.as_deref().unwrap_or(""))])
-            .output();
+        log::info!("Stopping Claude execution: {}", execution_id);
+        
+        // Try to get and kill the child process
+        let mut processes = self.running_processes.lock().unwrap();
+        if let Some(mut child) = processes.remove(execution_id) {
+            log::info!("Found child process for execution {}, attempting to kill", execution_id);
+            
+            // Try to kill the process
+            match child.kill() {
+                Ok(_) => {
+                    log::info!("Successfully sent kill signal to process");
+                    // Wait for the process to actually terminate
+                    match child.wait() {
+                        Ok(status) => {
+                            log::info!("Process terminated with status: {:?}", status);
+                        }
+                        Err(e) => {
+                            log::warn!("Error waiting for process to terminate: {}", e);
+                        }
+                    }
+                }
+                Err(e) => {
+                    log::error!("Failed to kill process: {}", e);
+                    
+                    // Try platform-specific kill as fallback
+                    #[cfg(unix)]
+                    {
+                        let pid = child.id();
+                        log::info!("Trying SIGKILL on PID {}", pid);
+                        unsafe {
+                            let result = libc::kill(pid as i32, libc::SIGKILL);
+                            if result != 0 {
+                                log::error!("SIGKILL failed with error code: {}", result);
+                            }
+                        }
+                    }
+                }
+            }
+        } else {
+            log::warn!("No child process found for execution {}", execution_id);
+        }
         
         Ok(())
     }

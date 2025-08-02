@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import {
   Dialog,
   DialogContent,
@@ -38,41 +38,16 @@ export function ProjectSettingsDialog({
   const { t } = useTranslation();
   const [loading, setLoading] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  // 由于组件现在是条件渲染的，可以直接使用 initialValues 作为初始值
   const [formData, setFormData] = useState({
-    name: "",
-    description: "",
-    path: "",
-    git_repo: "",
-    main_branch: "main",
-    setup_script: "",
-    dev_script: "",
+    name: initialValues?.name || "",
+    description: initialValues?.description || "",
+    path: initialValues?.path || "",
+    git_repo: initialValues?.git_repo || "",
+    main_branch: initialValues?.main_branch || "main",
+    setup_script: initialValues?.setup_script || "",
+    dev_script: initialValues?.dev_script || "",
   });
-
-  // Update form data when initialValues change
-  useEffect(() => {
-    if (initialValues) {
-      setFormData({
-        name: initialValues.name || "",
-        description: initialValues.description || "",
-        path: initialValues.path || "",
-        git_repo: initialValues.git_repo || "",
-        main_branch: initialValues.main_branch || "main",
-        setup_script: initialValues.setup_script || "",
-        dev_script: initialValues.dev_script || "",
-      });
-    } else {
-      // Reset form when dialog opens for creation
-      setFormData({
-        name: "",
-        description: "",
-        path: "",
-        git_repo: "",
-        main_branch: "main",
-        setup_script: "",
-        dev_script: "",
-      });
-    }
-  }, [initialValues, open]);
 
   const handleSelectPath = async () => {
     const selected = await openDialog({

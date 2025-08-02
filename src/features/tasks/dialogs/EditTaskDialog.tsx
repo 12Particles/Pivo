@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import {
   Dialog,
   DialogContent,
@@ -27,29 +27,21 @@ interface EditTaskDialogProps {
 export function EditTaskDialog({ open, onOpenChange, task, onSubmit }: EditTaskDialogProps) {
   const { t } = useTranslation();
   const { currentProject } = useApp();
-  const [formData, setFormData] = useState<UpdateTaskRequest>({
-    title: "",
-    description: "",
-    priority: TaskPriority.Medium,
-    tags: [],
-  });
 
+  // 现在组件只在需要时创建，可以直接使用 task 的值作为初始值
+  const [formData, setFormData] = useState<UpdateTaskRequest>({
+    title: task?.title || "",
+    description: task?.description || "",
+    priority: task?.priority || TaskPriority.Medium,
+    tags: task?.tags || [],
+  });
   const [tagInput, setTagInput] = useState("");
   const [images, setImages] = useState<string[]>([]);
 
-  // Pre-populate form when task changes or dialog opens
-  useEffect(() => {
-    if (task && open) {
-      setFormData({
-        title: task.title,
-        description: task.description || "",
-        priority: task.priority,
-        tags: task.tags || [],
-      });
-      // Reset images when opening with a new task
-      setImages([]);
-    }
-  }, [task, open]);
+  // Handle dialog open/close
+  const handleOpenChange = (newOpen: boolean) => {
+    onOpenChange(newOpen);
+  };
 
   const handleSubmit = () => {
     if (!task || !formData.title?.trim()) return;
@@ -68,15 +60,8 @@ export function EditTaskDialog({ open, onOpenChange, task, onSubmit }: EditTaskD
       tags: formData.tags,
     });
 
-    // Reset form when closing
-    setFormData({
-      title: "",
-      description: "",
-      priority: TaskPriority.Medium,
-      tags: [],
-    });
-    setImages([]);
-    onOpenChange(false);
+    // Close dialog (which will trigger cleanup via handleOpenChange)
+    handleOpenChange(false);
   };
 
   const handleAddTag = () => {
@@ -104,7 +89,7 @@ export function EditTaskDialog({ open, onOpenChange, task, onSubmit }: EditTaskD
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="sm:max-w-[550px] max-h-[80vh] overflow-y-auto">
         <form onSubmit={(e) => { e.preventDefault(); handleSubmit(); }}>
           <DialogHeader>
@@ -209,7 +194,7 @@ export function EditTaskDialog({ open, onOpenChange, task, onSubmit }: EditTaskD
           </div>
 
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+            <Button type="button" variant="outline" onClick={() => handleOpenChange(false)}>
               {t('common.cancel')}
             </Button>
             <Button type="submit" disabled={!formData.title?.trim()}>

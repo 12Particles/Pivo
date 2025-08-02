@@ -3462,6 +3462,7 @@ dependencies = [
  "git2",
  "glob",
  "lazy_static",
+ "libc",
  "log",
  "log4rs",
  "nix 0.29.0",
@@ -3471,6 +3472,7 @@ dependencies = [
  "reqwest",
  "serde",
  "serde_json",
+ "shell-escape",
  "slug",
  "sqlx",
  "tauri",
@@ -4412,6 +4414,12 @@ dependencies = [
  "sigchld",
  "windows-sys 0.60.2",
 ]
+
+[[package]]
+name = "shell-escape"
+version = "0.1.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "45bb67a18fa91266cc7807181f62f9178a6873bfad7dc788c42e6430db40184f"
 
 [[package]]
 name = "shlex"

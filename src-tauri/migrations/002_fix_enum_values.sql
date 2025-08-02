@@ -41,8 +41,8 @@ DROP TABLE tasks;
 ALTER TABLE tasks_new RENAME TO tasks;
 
 -- Recreate indexes
-CREATE INDEX idx_tasks_project_id ON tasks(project_id);
-CREATE INDEX idx_tasks_status ON tasks(status);
+CREATE INDEX IF NOT EXISTS idx_tasks_project_id ON tasks(project_id);
+CREATE INDEX IF NOT EXISTS idx_tasks_status ON tasks(status);
 
 -- Recreate trigger
 CREATE TRIGGER update_tasks_updated_at AFTER UPDATE ON tasks

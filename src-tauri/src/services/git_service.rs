@@ -1,6 +1,6 @@
 use std::path::{Path, PathBuf};
-use std::process::Command;
 use crate::models::{DiffMode, DiffResult, FileDiff, FileStatus, DiffStats, RebaseStatus, WorktreeInfo};
+use crate::utils::command::execute_git;
 
 #[derive(Debug, Clone)]
 pub struct GitService {
@@ -28,18 +28,18 @@ impl GitService {
         log::info!("Creating worktree for branch {} at {:?}", branch_name, worktree_path);
         
         // Create worktree
-        let output = Command::new("git")
-            .current_dir(repo_path)
-            .args(&[
+        let output = execute_git(
+            &[
                 "worktree",
                 "add",
                 "-b",
                 branch_name,
                 worktree_path.to_str().unwrap(),
                 base_branch,
-            ])
-            .output()
-            .map_err(|e| format!("Failed to create worktree: {}", e))?;
+            ],
+            repo_path,
+        )
+        .map_err(|e| format!("Failed to create worktree: {}", e))?;
 
         if !output.status.success() {
             let error = String::from_utf8_lossy(&output.stderr).to_string();
@@ -87,12 +87,9 @@ impl GitService {
     /// Detect the default branch of the repository
     pub fn detect_default_branch(&self, repo_path: &Path) -> Result<String, String> {
         // First, try to get the default branch from remote HEAD
-        let output = Command::new("git")
-            .current_dir(repo_path)
-            .args(&["symbolic-ref", "refs/remotes/origin/HEAD"])
-            .output();
+        let output = execute_git(&["symbolic-ref", "refs/remotes/origin/HEAD"], repo_path).ok();
         
-        if let Ok(output) = output {
+        if let Some(output) = output {
             if output.status.success() {
                 let remote_head = String::from_utf8_lossy(&output.stdout).trim().to_string();
                 // Extract branch name from refs/remotes/origin/main
@@ -104,10 +101,7 @@ impl GitService {
         }
         
         // If that doesn't work, try to list all branches and look for common default branch names
-        let output = Command::new("git")
-            .current_dir(repo_path)
-            .args(&["branch", "-r"])
-            .output()
+        let output = execute_git(&["branch", "-r"], repo_path)
             .map_err(|e| format!("Failed to list remote branches: {}", e))?;
         
         if output.status.success() {
@@ -134,10 +128,7 @@ impl GitService {
         }
         
         // Last resort: try current branch
-        let output = Command::new("git")
-            .current_dir(repo_path)
-            .args(&["rev-parse", "--abbrev-ref", "HEAD"])
-            .output()
+        let output = execute_git(&["rev-parse", "--abbrev-ref", "HEAD"], repo_path)
             .map_err(|e| format!("Failed to get current branch: {}", e))?;
         
         if output.status.success() {
@@ -153,10 +144,7 @@ impl GitService {
     
     /// Get the commit hash of a branch
     pub fn get_branch_commit(&self, repo_path: &Path, branch: &str) -> Result<String, String> {
-        let output = Command::new("git")
-            .current_dir(repo_path)
-            .args(&["rev-parse", branch])
-            .output()
+        let output = execute_git(&["rev-parse", branch], repo_path)
             .map_err(|e| format!("Failed to get branch commit: {}", e))?;
 
         if !output.status.success() {
@@ -169,11 +157,11 @@ impl GitService {
     /// Remove a worktree
     pub fn remove_worktree(&self, repo_path: &Path, worktree_path: &Path) -> Result<(), String> {
         // First, remove the worktree
-        let output = Command::new("git")
-            .current_dir(repo_path)
-            .args(&["worktree", "remove", worktree_path.to_str().unwrap(), "--force"])
-            .output()
-            .map_err(|e| format!("Failed to remove worktree: {}", e))?;
+        let output = execute_git(
+            &["worktree", "remove", worktree_path.to_str().unwrap(), "--force"],
+            repo_path,
+        )
+        .map_err(|e| format!("Failed to remove worktree: {}", e))?;
 
         if !output.status.success() {
             return Err(String::from_utf8_lossy(&output.stderr).to_string());
@@ -189,10 +177,7 @@ impl GitService {
 
     /// Get the current branch name
     pub fn get_current_branch(repo_path: &Path) -> Result<String, String> {
-        let output = Command::new("git")
-            .current_dir(repo_path)
-            .args(&["rev-parse", "--abbrev-ref", "HEAD"])
-            .output()
+        let output = execute_git(&["rev-parse", "--abbrev-ref", "HEAD"], repo_path)
             .map_err(|e| format!("Failed to get current branch: {}", e))?;
 
         if !output.status.success() {
@@ -204,10 +189,7 @@ impl GitService {
 
     /// Get list of branches
     pub fn list_branches(repo_path: &Path) -> Result<Vec<String>, String> {
-        let output = Command::new("git")
-            .current_dir(repo_path)
-            .args(&["branch", "--format=%(refname:short)"])
-            .output()
+        let output = execute_git(&["branch", "--format=%(refname:short)"], repo_path)
             .map_err(|e| format!("Failed to list branches: {}", e))?;
 
         if !output.status.success() {
@@ -231,10 +213,7 @@ impl GitService {
             args.push("--staged");
         }
 
-        let output = Command::new("git")
-            .current_dir(repo_path)
-            .args(&args)
-            .output()
+        let output = execute_git(&args, repo_path)
             .map_err(|e| format!("Failed to get diff: {}", e))?;
 
         if !output.status.success() {
@@ -265,17 +244,11 @@ impl GitService {
         };
         
         // Get unstaged changes
-        let unstaged_output = Command::new("git")
-            .current_dir(repo_path)
-            .args(&["diff", "--numstat", "--name-status"])
-            .output()
+        let unstaged_output = execute_git(&["diff", "--numstat", "--name-status"], repo_path)
             .map_err(|e| format!("Failed to get unstaged diff: {}", e))?;
             
         // Get staged changes
-        let staged_output = Command::new("git")
-            .current_dir(repo_path)
-            .args(&["diff", "--staged", "--numstat", "--name-status"])
-            .output()
+        let staged_output = execute_git(&["diff", "--staged", "--numstat", "--name-status"], repo_path)
             .map_err(|e| format!("Failed to get staged diff: {}", e))?;
         
         // Parse both outputs
@@ -293,11 +266,11 @@ impl GitService {
     
     /// Get all changes between base commit and current HEAD
     fn get_branch_diff(&self, repo_path: &Path, base_commit: &str) -> Result<DiffResult, String> {
-        let output = Command::new("git")
-            .current_dir(repo_path)
-            .args(&["diff", base_commit, "HEAD", "--numstat", "--name-status"])
-            .output()
-            .map_err(|e| format!("Failed to get branch diff: {}", e))?;
+        let output = execute_git(
+            &["diff", base_commit, "HEAD", "--numstat", "--name-status"],
+            repo_path,
+        )
+        .map_err(|e| format!("Failed to get branch diff: {}", e))?;
             
         if !output.status.success() {
             return Err(String::from_utf8_lossy(&output.stderr).to_string());
@@ -324,10 +297,7 @@ impl GitService {
     /// Get diff against remote branch
     fn get_remote_diff(&self, repo_path: &Path, remote_branch: &str) -> Result<DiffResult, String> {
         // First fetch the latest remote
-        let fetch_output = Command::new("git")
-            .current_dir(repo_path)
-            .args(&["fetch", "origin", remote_branch])
-            .output()
+        let fetch_output = execute_git(&["fetch", "origin", remote_branch], repo_path)
             .map_err(|e| format!("Failed to fetch remote: {}", e))?;
             
         if !fetch_output.status.success() {
@@ -336,11 +306,11 @@ impl GitService {
         
         // Get diff against remote
         let remote_ref = format!("origin/{}", remote_branch);
-        let output = Command::new("git")
-            .current_dir(repo_path)
-            .args(&["diff", &remote_ref, "HEAD", "--numstat", "--name-status"])
-            .output()
-            .map_err(|e| format!("Failed to get remote diff: {}", e))?;
+        let output = execute_git(
+            &["diff", &remote_ref, "HEAD", "--numstat", "--name-status"],
+            repo_path,
+        )
+        .map_err(|e| format!("Failed to get remote diff: {}", e))?;
             
         if !output.status.success() {
             return Err(String::from_utf8_lossy(&output.stderr).to_string());
@@ -366,11 +336,11 @@ impl GitService {
     
     /// Get diff for a commit range
     fn get_commit_range_diff(&self, repo_path: &Path, from: &str, to: &str) -> Result<DiffResult, String> {
-        let output = Command::new("git")
-            .current_dir(repo_path)
-            .args(&["diff", from, to, "--numstat", "--name-status"])
-            .output()
-            .map_err(|e| format!("Failed to get commit range diff: {}", e))?;
+        let output = execute_git(
+            &["diff", from, to, "--numstat", "--name-status"],
+            repo_path,
+        )
+        .map_err(|e| format!("Failed to get commit range diff: {}", e))?;
             
         if !output.status.success() {
             return Err(String::from_utf8_lossy(&output.stderr).to_string());
@@ -397,11 +367,11 @@ impl GitService {
     /// Get merge preview diff
     fn get_merge_preview_diff(&self, repo_path: &Path, target_branch: &str) -> Result<DiffResult, String> {
         // This is a bit more complex - we need to simulate a merge
-        let output = Command::new("git")
-            .current_dir(repo_path)
-            .args(&["merge-tree", "--write-tree", target_branch, "HEAD"])
-            .output()
-            .map_err(|e| format!("Failed to get merge preview: {}", e))?;
+        let output = execute_git(
+            &["merge-tree", "--write-tree", target_branch, "HEAD"],
+            repo_path,
+        )
+        .map_err(|e| format!("Failed to get merge preview: {}", e))?;
             
         if !output.status.success() {
             // Fallback to simple diff
@@ -417,11 +387,11 @@ impl GitService {
         };
         
         // For now, just get the diff against target branch
-        let diff_output = Command::new("git")
-            .current_dir(repo_path)
-            .args(&["diff", target_branch, "HEAD", "--numstat", "--name-status"])
-            .output()
-            .map_err(|e| format!("Failed to get diff: {}", e))?;
+        let diff_output = execute_git(
+            &["diff", target_branch, "HEAD", "--numstat", "--name-status"],
+            repo_path,
+        )
+        .map_err(|e| format!("Failed to get diff: {}", e))?;
             
         self.parse_diff_output(&diff_output.stdout, &mut files, &mut stats)?;
         
@@ -486,19 +456,16 @@ impl GitService {
     /// Check if rebase is needed
     pub fn check_rebase_status(&self, worktree_path: &Path, base_branch: &str) -> Result<RebaseStatus, String> {
         // Fetch latest changes
-        let _fetch = Command::new("git")
-            .current_dir(worktree_path)
-            .args(&["fetch", "origin", base_branch])
-            .output()
+        let _fetch = execute_git(&["fetch", "origin", base_branch], worktree_path)
             .map_err(|e| format!("Failed to fetch: {}", e))?;
         
         // Get ahead/behind count
         let remote_ref = format!("origin/{}", base_branch);
-        let output = Command::new("git")
-            .current_dir(worktree_path)
-            .args(&["rev-list", "--left-right", "--count", &format!("{}...HEAD", remote_ref)])
-            .output()
-            .map_err(|e| format!("Failed to get ahead/behind count: {}", e))?;
+        let output = execute_git(
+            &["rev-list", "--left-right", "--count", &format!("{}...HEAD", remote_ref)],
+            worktree_path,
+        )
+        .map_err(|e| format!("Failed to get ahead/behind count: {}", e))?;
             
         if !output.status.success() {
             return Err(String::from_utf8_lossy(&output.stderr).to_string());
@@ -521,11 +488,9 @@ impl GitService {
 
     /// Stage files
     pub fn stage_files(repo_path: &Path, files: &[&str]) -> Result<(), String> {
-        let output = Command::new("git")
-            .current_dir(repo_path)
-            .arg("add")
-            .args(files)
-            .output()
+        let mut args = vec!["add"];
+        args.extend_from_slice(files);
+        let output = execute_git(&args, repo_path)
             .map_err(|e| format!("Failed to stage files: {}", e))?;
 
         if !output.status.success() {
@@ -537,10 +502,7 @@ impl GitService {
 
     /// Commit changes
     pub fn commit(repo_path: &Path, message: &str) -> Result<String, String> {
-        let output = Command::new("git")
-            .current_dir(repo_path)
-            .args(&["commit", "-m", message])
-            .output()
+        let output = execute_git(&["commit", "-m", message], repo_path)
             .map_err(|e| format!("Failed to commit: {}", e))?;
 
         if !output.status.success() {
@@ -548,10 +510,7 @@ impl GitService {
         }
 
         // Get the commit hash
-        let hash_output = Command::new("git")
-            .current_dir(repo_path)
-            .args(&["rev-parse", "HEAD"])
-            .output()
+        let hash_output = execute_git(&["rev-parse", "HEAD"], repo_path)
             .map_err(|e| format!("Failed to get commit hash: {}", e))?;
 
         Ok(String::from_utf8_lossy(&hash_output.stdout).trim().to_string())
@@ -564,10 +523,7 @@ impl GitService {
             args.push("--force");
         }
 
-        let output = Command::new("git")
-            .current_dir(repo_path)
-            .args(&args)
-            .output()
+        let output = execute_git(&args, repo_path)
             .map_err(|e| format!("Failed to push: {}", e))?;
 
         if !output.status.success() {
@@ -579,10 +535,7 @@ impl GitService {
 
     /// Get repository status
     pub fn get_status(&self, repo_path: &Path) -> Result<GitStatus, String> {
-        let output = Command::new("git")
-            .current_dir(repo_path)
-            .args(&["status", "--porcelain"])
-            .output()
+        let output = execute_git(&["status", "--porcelain"], repo_path)
             .map_err(|e| format!("Failed to get status: {}", e))?;
 
         if !output.status.success() {
@@ -635,10 +588,7 @@ impl GitService {
         }
 
         // Get remotes
-        let remote_output = Command::new("git")
-            .current_dir(repo_path)
-            .args(&["remote", "-v"])
-            .output()
+        let remote_output = execute_git(&["remote", "-v"], repo_path)
             .map_err(|e| format!("Failed to get remotes: {}", e))?;
 
         if remote_output.status.success() {
@@ -661,10 +611,7 @@ impl GitService {
         }
         
         // Get current branch
-        let branch_output = Command::new("git")
-            .current_dir(repo_path)
-            .args(&["rev-parse", "--abbrev-ref", "HEAD"])
-            .output()
+        let branch_output = execute_git(&["rev-parse", "--abbrev-ref", "HEAD"], repo_path)
             .map_err(|e| format!("Failed to get current branch: {}", e))?;
         if branch_output.status.success() {
             files.branch = Some(String::from_utf8_lossy(&branch_output.stdout).trim().to_string());
@@ -673,22 +620,22 @@ impl GitService {
         // Get tracking branch and ahead/behind info
         if let Some(branch) = &files.branch {
             // Get tracking branch
-            let tracking_output = Command::new("git")
-                .current_dir(repo_path)
-                .args(&["rev-parse", "--abbrev-ref", &format!("{}@{{upstream}}", branch)])
-                .output();
+            let tracking_output = execute_git(
+                &["rev-parse", "--abbrev-ref", &format!("{}@{{upstream}}", branch)],
+                repo_path,
+            ).ok();
             
-            if let Ok(output) = tracking_output {
+            if let Some(output) = tracking_output {
                 if output.status.success() {
                     files.tracking = Some(String::from_utf8_lossy(&output.stdout).trim().to_string());
                     
                     // Get ahead/behind counts
-                    let rev_list_output = Command::new("git")
-                        .current_dir(repo_path)
-                        .args(&["rev-list", "--left-right", "--count", &format!("{}...{}@{{upstream}}", branch, branch)])
-                        .output();
+                    let rev_list_output = execute_git(
+                        &["rev-list", "--left-right", "--count", &format!("{}...{}@{{upstream}}", branch, branch)],
+                        repo_path,
+                    ).ok();
                     
-                    if let Ok(output) = rev_list_output {
+                    if let Some(output) = rev_list_output {
                         if output.status.success() {
                             let counts = String::from_utf8_lossy(&output.stdout);
                             let parts: Vec<&str> = counts.trim().split('\t').collect();
@@ -706,10 +653,7 @@ impl GitService {
     }
 
     pub fn get_file_from_ref(repo_path: &Path, file_ref: &str) -> Result<String, String> {
-        let output = Command::new("git")
-            .current_dir(repo_path)
-            .args(&["show", file_ref])
-            .output()
+        let output = execute_git(&["show", file_ref], repo_path)
             .map_err(|e| format!("Failed to get file from ref: {}", e))?;
 
         if !output.status.success() {

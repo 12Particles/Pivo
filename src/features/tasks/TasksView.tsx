@@ -229,18 +229,20 @@ export function TasksView() {
         projectId={currentProject.id}
       />
       
-      <EditTaskDialog
-        open={showEditTaskDialog}
-        onOpenChange={(open) => {
-          setShowEditTaskDialog(open);
-          if (!open) {
-            // Reset taskToEdit when dialog closes
-            setTaskToEdit(null);
-          }
-        }}
-        task={taskToEdit}
-        onSubmit={(taskId, data) => handleUpdateTask(taskId, data)}
-      />
+      {showEditTaskDialog && taskToEdit && (
+        <EditTaskDialog
+          open={showEditTaskDialog}
+          onOpenChange={(open) => {
+            setShowEditTaskDialog(open);
+            if (!open) {
+              // Reset taskToEdit when dialog closes
+              setTaskToEdit(null);
+            }
+          }}
+          task={taskToEdit}
+          onSubmit={(taskId, data) => handleUpdateTask(taskId, data)}
+        />
+      )}
       
       <ProjectMainView
         leftPanel={

@@ -1,5 +1,6 @@
 use crate::models::{DiffMode, DiffResult, RebaseStatus};
 use crate::services::GitService;
+use crate::utils::command::execute_git;
 use std::path::Path;
 
 // Original git commands
@@ -66,10 +67,7 @@ pub async fn get_diff(repo_path: String, staged: bool) -> Result<String, String>
 
 #[tauri::command]
 pub async fn list_all_files(repo_path: String) -> Result<Vec<String>, String> {
-    let output = std::process::Command::new("git")
-        .current_dir(&repo_path)
-        .args(&["ls-tree", "-r", "HEAD", "--name-only"])
-        .output()
+    let output = execute_git(&["ls-tree", "-r", "HEAD", "--name-only"], repo_path.as_ref())
         .map_err(|e| format!("Failed to list files: {}", e))?;
 
     if !output.status.success() {

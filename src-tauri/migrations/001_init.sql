@@ -64,10 +64,10 @@ CREATE TABLE IF NOT EXISTS execution_processes (
 );
 
 -- Indexes
-CREATE INDEX idx_tasks_project_id ON tasks(project_id);
-CREATE INDEX idx_tasks_status ON tasks(status);
-CREATE INDEX idx_task_attempts_task_id ON task_attempts(task_id);
-CREATE INDEX idx_execution_processes_task_attempt_id ON execution_processes(task_attempt_id);
+CREATE INDEX IF NOT EXISTS idx_tasks_project_id ON tasks(project_id);
+CREATE INDEX IF NOT EXISTS idx_tasks_status ON tasks(status);
+CREATE INDEX IF NOT EXISTS idx_task_attempts_task_id ON task_attempts(task_id);
+CREATE INDEX IF NOT EXISTS idx_execution_processes_task_attempt_id ON execution_processes(task_attempt_id);
 
 -- Triggers for updated_at
 CREATE TRIGGER update_projects_updated_at AFTER UPDATE ON projects

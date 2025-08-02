@@ -93,33 +93,35 @@ export function ProjectsView() {
         onProjectsChange={loadProjects}
       />
       
-      <ProjectSettingsDialog
-        initialValues={selectedProjectInfo || undefined}
-        open={showCreateDialog}
-        onOpenChange={(open) => {
-          setShowCreateDialog(open);
-          if (!open) {
+      {showCreateDialog && (
+        <ProjectSettingsDialog
+          initialValues={selectedProjectInfo || undefined}
+          open={showCreateDialog}
+          onOpenChange={(open) => {
+            setShowCreateDialog(open);
+            if (!open) {
+              setSelectedProjectInfo(null);
+            }
+          }}
+          onSubmit={async (values) => {
+            const project = await projectApi.create({
+              name: values.name,
+              path: values.path,
+              description: values.description,
+              git_repo: values.git_repo,
+              main_branch: values.main_branch,
+              setup_script: values.setup_script,
+              dev_script: values.dev_script
+            });
+            await loadProjects();
             setSelectedProjectInfo(null);
-          }
-        }}
-        onSubmit={async (values) => {
-          const project = await projectApi.create({
-            name: values.name,
-            path: values.path,
-            description: values.description,
-            git_repo: values.git_repo,
-            main_branch: values.main_branch,
-            setup_script: values.setup_script,
-            dev_script: values.dev_script
-          });
-          await loadProjects();
-          setSelectedProjectInfo(null);
-          
-          // Open project in new window
-          await windowApi.openProjectWindow(project.id, project.name);
-        }}
-        isCreating={true}
-      />
+            
+            // Open project in new window
+            await windowApi.openProjectWindow(project.id, project.name);
+          }}
+          isCreating={true}
+        />
+      )}
     </div>
   );
 }

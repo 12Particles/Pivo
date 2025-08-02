@@ -46,7 +46,9 @@ rand = "0.8"
 dirs = "5.0"
 glob = "0.3"
 walkdir = "2.5"
+shell-escape = "0.1"
 
 [target.'cfg(unix)'.dependencies]
 nix = { version = "0.29", features = ["signal"] }
+libc = "0.2"
 

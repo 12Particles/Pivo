@@ -6,6 +6,7 @@ mod commands;
 mod logging;
 mod menu;
 mod window_manager;
+mod utils;
 
 use std::sync::Arc;
 use services::{TaskService, ProjectService, ProcessService, McpServerManager, CodingAgentExecutorService, MergeRequestService, ConfigService, FileWatcherService};
@@ -95,13 +96,17 @@ pub fn run() {
                         Ok(())
                     }
                     Err(e) => {
+                        log::error!("Database initialization failed: {}", e);
                         Err(e)
                     }
                 }
             });
             
             if let Err(e) = setup_result {
+                log::error!("Failed to initialize application: {}", e);
                 eprintln!("Failed to initialize application: {}", e);
+                eprintln!("This may be due to corrupted database. The application attempted to recreate the database.");
+                eprintln!("If the problem persists, please check the logs for more details.");
                 return Err(Box::new(std::io::Error::new(
                     std::io::ErrorKind::Other,
                     format!("Failed to initialize application: {}", e)

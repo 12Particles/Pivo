@@ -1,5 +1,6 @@
 use crate::models::{CreateProjectRequest, Project, UpdateProjectRequest};
 use crate::AppState;
+use crate::utils::command::execute_git;
 use tauri::State;
 use uuid::Uuid;
 use serde::{Deserialize, Serialize};
@@ -204,12 +205,7 @@ pub async fn read_project_info(path: String) -> Result<ProjectInfo, String> {
         log::info!("Checking git remotes for path: {}", project_path.display());
         
         // Get current branch
-        if let Ok(output) = std::process::Command::new("git")
-            .arg("symbolic-ref")
-            .arg("--short")
-            .arg("HEAD")
-            .current_dir(&project_path)
-            .output()
+        if let Ok(output) = execute_git(&["symbolic-ref", "--short", "HEAD"], &project_path)
         {
             if output.status.success() {
                 let branch = String::from_utf8_lossy(&output.stdout).trim().to_string();
@@ -222,11 +218,7 @@ pub async fn read_project_info(path: String) -> Result<ProjectInfo, String> {
         
         // If we couldn't get the current branch, try to get the default branch from remote
         if main_branch.is_none() {
-            if let Ok(output) = std::process::Command::new("git")
-                .arg("symbolic-ref")
-                .arg("refs/remotes/origin/HEAD")
-                .current_dir(&project_path)
-                .output()
+            if let Ok(output) = execute_git(&["symbolic-ref", "refs/remotes/origin/HEAD"], &project_path)
             {
                 if output.status.success() {
                     let remote_head = String::from_utf8_lossy(&output.stdout).trim().to_string();
@@ -240,12 +232,7 @@ pub async fn read_project_info(path: String) -> Result<ProjectInfo, String> {
         }
         
         // First try to get origin remote
-        if let Ok(output) = std::process::Command::new("git")
-            .arg("remote")
-            .arg("get-url")
-            .arg("origin")
-            .current_dir(&project_path)
-            .output()
+        if let Ok(output) = execute_git(&["remote", "get-url", "origin"], &project_path)
         {
             if output.status.success() {
                 let url = String::from_utf8_lossy(&output.stdout).trim().to_string();
@@ -264,10 +251,7 @@ pub async fn read_project_info(path: String) -> Result<ProjectInfo, String> {
         // If origin doesn't exist, try to get the first available remote
         if git_repo.is_none() {
             log::info!("Origin not found, checking for other remotes");
-            if let Ok(output) = std::process::Command::new("git")
-                .arg("remote")
-                .current_dir(&project_path)
-                .output()
+            if let Ok(output) = execute_git(&["remote"], &project_path)
             {
                 if output.status.success() {
                     let remotes = String::from_utf8_lossy(&output.stdout);
@@ -276,12 +260,7 @@ pub async fn read_project_info(path: String) -> Result<ProjectInfo, String> {
                         if !first_remote.is_empty() {
                             log::info!("Trying to get URL for remote: {}", first_remote);
                             // Get URL for the first remote
-                            if let Ok(url_output) = std::process::Command::new("git")
-                                .arg("remote")
-                                .arg("get-url")
-                                .arg(first_remote)
-                                .current_dir(&project_path)
-                                .output()
+                            if let Ok(url_output) = execute_git(&["remote", "get-url", first_remote], &project_path)
                             {
                                 if url_output.status.success() {
                                     let url = String::from_utf8_lossy(&url_output.stdout).trim().to_string();

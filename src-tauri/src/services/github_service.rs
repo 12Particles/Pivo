@@ -3,7 +3,7 @@ use reqwest::header::{HeaderMap, HeaderValue, ACCEPT, AUTHORIZATION, USER_AGENT}
 use serde::{Deserialize, Serialize};
 use crate::models::{GitHubConfig, MergeRequestInfo, GitRemoteInfo, MergeRequestState, MergeStatus, PipelineStatus};
 use crate::services::git_platform::GitPlatformService;
-use std::process::Command;
+use crate::utils::command::execute_git;
 
 pub struct GitHubService {
     config: GitHubConfig,
@@ -348,10 +348,7 @@ impl GitPlatformService for GitHubService {
         log::info!("Starting push_branch - repo: {}, branch: {}, force: {}", repo_path, branch, force);
         
         // Get the remote URL
-        let remote_output = Command::new("git")
-            .args(&["remote", "get-url", "origin"])
-            .current_dir(repo_path)
-            .output()
+        let remote_output = execute_git(&["remote", "get-url", "origin"], repo_path.as_ref())
             .map_err(|e| format!("Failed to get remote URL: {}", e))?;
         
         if !remote_output.status.success() {
@@ -396,10 +393,7 @@ impl GitPlatformService for GitHubService {
         log::info!("Pushing from repo: {}", repo_path);
         
         // First, disable credential helper for this push to ensure our URL is used
-        let _config_output = Command::new("git")
-            .args(&["-c", "credential.helper="])
-            .current_dir(repo_path)
-            .output();
+        let _config_output = execute_git(&["-c", "credential.helper="], repo_path.as_ref()).ok();
         
         // Push to the authenticated URL
         let branch_spec = format!("{}:{}", branch, branch);
@@ -416,10 +410,7 @@ impl GitPlatformService for GitHubService {
             }
         }).collect::<Vec<_>>());
         
-        let push_output = Command::new("git")
-            .args(&push_args)
-            .current_dir(repo_path)
-            .output()
+        let push_output = execute_git(&push_args, repo_path.as_ref())
             .map_err(|e| format!("Failed to push branch: {}", e))?;
         
         if !push_output.status.success() {
