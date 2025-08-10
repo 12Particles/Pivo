@@ -56,11 +56,40 @@
 - **pnpm** (推荐的包管理器)
 - **Git**
 
+#### 在macOS上安装
+
+**安装Node.js：**
+```bash
+# 使用Homebrew
+brew install node
+
+# 或从nodejs.org下载
+# https://nodejs.org/en/download/
+```
+
+**安装Rust：**
+```bash
+# 使用rustup (推荐)
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+
+# 按照屏幕提示操作，然后重新加载shell
+source $HOME/.cargo/env
+```
+
+**安装pnpm：**
+```bash
+# 使用npm
+npm install -g pnpm
+
+# 或使用Homebrew
+brew install pnpm
+```
+
 ### 安装步骤
 
 1. **克隆仓库**
    ```bash
-   git clone https://github.com/yourusername/pivo.git
+   git clone https://github.com/12Particles/Pivo.git
    cd pivo
    ```
 
@@ -197,7 +226,7 @@ Pivo使用SQLite进行数据持久化。数据库在首次运行时自动初始�
 
 ## ⭐ Star历史
 
-[![Star History Chart](https://api.star-history.com/svg?repos=yourusername/pivo&type=Date)](https://star-history.com/#yourusername/pivo&Date)
+[![Star History Chart](https://api.star-history.com/svg?repos=12Particles/Pivo&type=Date)](https://star-history.com/#12Particles/Pivo&Date)
 
 ## 💬 支持
 
