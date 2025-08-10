@@ -710,65 +710,70 @@ export function FileTreeDiff({ projectPath, taskId, worktreePath, refreshKey = 0
     }
   };
 
-  const renderFileNode = (node: FileNode, level: number = 0) => {
+  // Separate component for file node to avoid hook order issues
+  const FileNodeItem = ({ node, level }: { node: FileNode; level: number }) => {
     const isExpanded = expandedFolders.has(node.path);
     const isSelected = selectedFile === node.path;
     const [dropdownOpen, setDropdownOpen] = useState(false);
     const buttonRef = useRef<HTMLButtonElement>(null);
 
     return (
-      <div key={node.path}>
-        <DropdownMenu open={dropdownOpen} onOpenChange={setDropdownOpen}>
-          <DropdownMenuTrigger asChild>
-            <Button
-              ref={buttonRef}
-              variant="ghost"
-              size="sm"
-              className={cn(
-                "w-full justify-start px-2 h-8",
-                isSelected && "bg-accent",
-                "hover:bg-accent/50"
-              )}
-              style={{ paddingLeft: `${level * 16 + 8}px` }}
-              onClick={(e) => {
-                // Left click: handle file/folder click, don't open menu
-                e.preventDefault();
-                handleFileClick(node);
-              }}
-              onContextMenu={(e) => {
-                // Right click: open dropdown menu
-                e.preventDefault();
-                e.stopPropagation();
-                setDropdownOpen(true);
-              }}
-            >
-              {node.type === "folder" ? (
-                <>
-                  {isExpanded ? (
-                    <ChevronDown className="h-3 w-3 mr-1" />
-                  ) : (
-                    <ChevronRight className="h-3 w-3 mr-1" />
-                  )}
-                  <FolderOpen className="h-3 w-3 mr-2" />
-                </>
-              ) : (
-                <>
-                  <FileText className="h-3 w-3 mr-2 ml-4" />
-                  {getStatusIcon(node.status)}
-                </>
-              )}
-              <span className="text-sm truncate">{node.name}</span>
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent>
-            {renderContextMenuItems({
-              filePath: node.path,
-              fileName: node.name,
-              isFile: node.type === "file",
-              onViewDiff: node.type === "file" ? () => handleFileClick(node) : undefined,
-            })}
-          </DropdownMenuContent>
-        </DropdownMenu>
+      <div>
+        <div className="relative">
+          <Button
+            ref={buttonRef}
+            variant="ghost"
+            size="sm"
+            className={cn(
+              "w-full justify-start px-2 h-8",
+              isSelected && "bg-accent",
+              "hover:bg-accent/50"
+            )}
+            style={{ paddingLeft: `${level * 16 + 8}px` }}
+            onClick={(e) => {
+              // Left click: handle file/folder click
+              e.preventDefault();
+              handleFileClick(node);
+            }}
+            onContextMenu={(e) => {
+              // Right click: open dropdown menu
+              e.preventDefault();
+              e.stopPropagation();
+              setDropdownOpen(true);
+            }}
+          >
+            {node.type === "folder" ? (
+              <>
+                {isExpanded ? (
+                  <ChevronDown className="h-3 w-3 mr-1" />
+                ) : (
+                  <ChevronRight className="h-3 w-3 mr-1" />
+                )}
+                <FolderOpen className="h-3 w-3 mr-2" />
+              </>
+            ) : (
+              <>
+                <FileText className="h-3 w-3 mr-2 ml-4" />
+                {getStatusIcon(node.status)}
+              </>
+            )}
+            <span className="text-sm truncate">{node.name}</span>
+          </Button>
+          
+          <DropdownMenu open={dropdownOpen} onOpenChange={setDropdownOpen}>
+            <DropdownMenuTrigger asChild>
+              <div style={{ display: 'none' }} />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent>
+              {renderContextMenuItems({
+                filePath: node.path,
+                fileName: node.name,
+                isFile: node.type === "file",
+                onViewDiff: node.type === "file" ? () => handleFileClick(node) : undefined,
+              })}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
         {node.type === "folder" && isExpanded && node.children && (
           <div>
             {node.children.map(child => renderFileNode(child, level + 1))}
@@ -776,6 +781,10 @@ export function FileTreeDiff({ projectPath, taskId, worktreePath, refreshKey = 0
         )}
       </div>
     );
+  };
+
+  const renderFileNode = (node: FileNode, level: number = 0) => {
+    return <FileNodeItem key={node.path} node={node} level={level} />;
   };
 
   // Effect to reload all files when switching to All Files view and status is available
