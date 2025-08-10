@@ -197,6 +197,14 @@ Configure Git platform integrations for merge request support:
 4. **Execute Tasks**: Use the integrated terminal or AI to execute task-related commands
 5. **Track Progress**: Monitor task attempts and execution history
 
+## 🤝 Community
+
+### Discord
+
+Join our Discord community for discussions, support, and updates:
+
+[![Discord](https://img.shields.io/discord/YOUR_SERVER_ID?label=Discord&logo=discord&logoColor=white)](https://discord.gg/DrpbENmX)
+
 ## 🤝 Contributing
 
 We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) for details.
