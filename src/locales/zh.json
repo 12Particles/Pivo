@@ -365,5 +365,18 @@
     "authorizationExpired": "授权码已过期，请重试。",
     "deviceFlowError": "启动授权流程失败",
     "codeCopied": "代码已复制到剪贴板"
+  },
+  "comments": {
+    "title": "评论",
+    "addComment": "添加评论",
+    "selectedCode": "选中的代码:",
+    "yourComment": "你的评论:",
+    "enterComment": "输入你的评论...",
+    "add": "添加评论",
+    "count": "条评论",
+    "submitted": "评论已提交",
+    "submittedToAgent": "评论已发送到任务对话",
+    "submitError": "提交评论失败",
+    "submitToAgent": "提交给助手"
   }
 }

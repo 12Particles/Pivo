@@ -104,7 +104,7 @@ export function TasksView() {
       
       // If shouldStart is true, execute the task immediately
       if (shouldStart) {
-        const initialMessage = `请执行以下任务：\n\n标题：${task.title}\n${task.description ? `\n描述：${task.description}` : ''}`;
+        const initialMessage = `Please execute the following task:\n\nTitle: ${task.title}\n${task.description ? `\nDescription: ${task.description}` : ''}`;
         await executeTaskCommand({
           type: 'SEND_MESSAGE',
           taskId: task.id,
@@ -266,9 +266,9 @@ export function TasksView() {
               onExecuteTask={async (task) => {
                 setSelectedTask(task);
                 try {
-                  // 构建包含任务上下文的初始消息 - 与 create&start 使用相同的格式
-                  const initialMessage = `请执行以下任务：\n\n标题：${task.title}\n${task.description ? `\n描述：${task.description}` : ''}`;
-                  // 注意：从任务卡片执行时无法获取原始图片，因为图片不存储在任务中
+                  // Build initial message with task context - same format as create&start
+                  const initialMessage = `Please execute the following task:\n\nTitle: ${task.title}\n${task.description ? `\nDescription: ${task.description}` : ''}`;
+                  // Note: Cannot get original images when executing from task card since images are not stored in task
                   await executeTaskCommand({
                     type: 'SEND_MESSAGE',
                     taskId: task.id,

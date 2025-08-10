@@ -368,5 +368,18 @@
     "authorizationExpired": "Authorization code expired. Please try again.",
     "deviceFlowError": "Failed to start authorization flow",
     "codeCopied": "Code copied to clipboard"
+  },
+  "comments": {
+    "title": "Comments",
+    "addComment": "Add Comment",
+    "selectedCode": "Selected Code:",
+    "yourComment": "Your Comment:",
+    "enterComment": "Enter your comment...",
+    "add": "Add Comment",
+    "count": "comments",
+    "submitted": "Comments submitted",
+    "submittedToAgent": "Comments sent to task conversation",
+    "submitError": "Failed to submit comments",
+    "submitToAgent": "Submit to Agent"
   }
 }
