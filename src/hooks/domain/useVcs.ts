@@ -1,6 +1,7 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { gitHubApi, gitLabApi } from '@/services/api';
 import type { MergeRequestInfo } from '@/types';
+import { listen } from '@tauri-apps/api/event';
 
 export function useGitHubAuth() {
   const [config, setConfig] = useState<any>(null);
@@ -68,6 +69,9 @@ export function useVcsPullRequests(options: {
 }) {
   const [pullRequests, setPullRequests] = useState<MergeRequestInfo[]>([]);
   const [loading, setLoading] = useState(false);
+  
+  // Use ref to store the latest refresh function
+  const refreshRef = useRef<() => Promise<void>>();
 
   const refresh = useCallback(async () => {
     if (!options.taskId && !options.taskAttemptId) return;
@@ -98,10 +102,35 @@ export function useVcsPullRequests(options: {
       setLoading(false);
     }
   }, [options.taskId, options.taskAttemptId, options.provider]);
+  
+  // Update ref whenever refresh changes
+  refreshRef.current = refresh;
 
   useEffect(() => {
     refresh();
   }, [refresh]);
+
+  // Listen for MR/PR updates from backend
+  useEffect(() => {
+    let unsubscribeFn: (() => void) | null = null;
+    
+    listen('vcs:merge-request-updated', (event) => {
+      // When backend syncs MR/PR status, refresh the list
+      console.log('Received MR/PR update event:', event.payload);
+      // Use ref to always call the latest refresh function
+      if (refreshRef.current) {
+        refreshRef.current();
+      }
+    }).then(fn => {
+      unsubscribeFn = fn;
+    });
+
+    return () => {
+      if (unsubscribeFn) {
+        unsubscribeFn();
+      }
+    };
+  }, []); // Empty dependency array - set up once
 
   return {
     pullRequests,

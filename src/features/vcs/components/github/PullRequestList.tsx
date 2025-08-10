@@ -77,17 +77,6 @@ export function PullRequestList({ taskId, taskAttemptId, project }: PullRequestL
     }
   }, [pullRequests, lastUpdated]);
 
-  // Auto-refresh and sync pull requests every 30 seconds
-  useEffect(() => {
-    if (!hasAuth || pullRequests.length === 0 || !project?.git_repo || !currentAttempt) return;
-
-    const interval = setInterval(() => {
-      console.log('Auto-syncing pull requests from GitHub...');
-      syncPullRequestStatus();
-    }, 30000); // 30 seconds
-
-    return () => clearInterval(interval);
-  }, [hasAuth, pullRequests.length, project?.git_repo, currentAttempt]);
 
   const loadLatestAttempt = async () => {
     if (!taskId) return;

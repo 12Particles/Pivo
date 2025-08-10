@@ -239,13 +239,13 @@ export function IntegrationPanel({ task, project }: IntegrationPanelProps) {
             <PullRequestList 
               taskId={task.id} 
               taskAttemptId={currentAttempt?.id}
-              project={project} 
+              project={project}
             />
           ) : (
             <MergeRequestList 
               taskId={task.id} 
               taskAttemptId={currentAttempt?.id}
-              project={project} 
+              project={project}
             />
           )}
         </div>
