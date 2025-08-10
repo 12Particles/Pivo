@@ -12,7 +12,8 @@
 
 **Pivo** 基于Tauri、React和Rust构建，为基于Git的项目管理提供无缝体验，集成AI助手和终端功能。
 
-[![Pivo 演示视频](https://img.youtube.com/vi/b121xeutrFY/0.jpg)](https://youtu.be/b121xeutrFY)
+[![Pivo 演示视频](https://img.youtube.com/vi/gA0qbPZwuJg/0.jpg)](https://youtu.be/gA0qbPZwuJg)
+
 *观看演示视频了解任务管理、文件变更和AI对话功能*
 
 ## ✨ 主要特性
