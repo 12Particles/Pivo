@@ -57,11 +57,40 @@
 - **pnpm** (recommended package manager)
 - **Git**
 
+#### Installing on macOS
+
+**Install Node.js:**
+```bash
+# Using Homebrew
+brew install node
+
+# Or download from nodejs.org
+# https://nodejs.org/en/download/
+```
+
+**Install Rust:**
+```bash
+# Using rustup (recommended)
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+
+# Follow the on-screen instructions, then reload your shell
+source $HOME/.cargo/env
+```
+
+**Install pnpm:**
+```bash
+# Using npm
+npm install -g pnpm
+
+# Or using Homebrew
+brew install pnpm
+```
+
 ### Installation
 
 1. **Clone the repository**
    ```bash
-   git clone https://github.com/yourusername/pivo.git
+   git clone https://github.com/12Particles/Pivo.git
    cd pivo
    ```
 
@@ -193,7 +222,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## ⭐ Star History
 
-[![Star History Chart](https://api.star-history.com/svg?repos=12Particles/pivo&type=Date)](https://star-history.com/#yourusername/pivo&Date)
+[![Star History Chart](https://api.star-history.com/svg?repos=12Particles/Pivo&type=Date)](https://star-history.com/#12Particles/Pivo&Date)
 
 ## 💬 Support
 
