@@ -13,8 +13,8 @@
 
 **Pivo** is built with Tauri, React, and Rust, providing a seamless experience for managing Git-based projects with integrated AI assistance and terminal capabilities.
 
-![Pivo Interface](assets/screenshot.jpg)
-*Main interface showing task management, file changes, and AI conversation features*
+[![Pivo Demo Video](https://img.youtube.com/vi/b121xeutrFY/0.jpg)](https://youtu.be/b121xeutrFY)
+*Watch the demo video showing task management, file changes, and AI conversation features*
 
 ## ✨ Key Features
 
