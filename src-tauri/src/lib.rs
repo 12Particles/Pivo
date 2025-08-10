@@ -15,6 +15,7 @@ use tauri::Manager;
 use tokio::sync::Mutex;
 use commands::mcp::McpState;
 use commands::cli::CliState;
+use commands::dev_server::DevServerManager;
 use window_manager::ProjectWindowManager;
 
 pub struct AppState {
@@ -92,6 +93,9 @@ pub fn run() {
                         
                         // Store file watcher service
                         app.manage(file_watcher_service);
+                        
+                        // Store dev server manager
+                        app.manage(DevServerManager::new());
                         
                         Ok(())
                     }
@@ -206,6 +210,9 @@ pub fn run() {
             commands::filesystem::search_files_from_current_dir,
             commands::command::search_commands,
             commands::command::get_command_content,
+            commands::dev_server::start_dev_server,
+            commands::dev_server::stop_dev_server,
+            commands::dev_server::get_dev_server_status,
             services::watch_worktree,
             services::unwatch_worktree,
             services::unwatch_all,

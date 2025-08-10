@@ -6,6 +6,7 @@ import { Task, Project, TaskAttempt } from "@/types";
 import { GitBranch, Terminal } from "lucide-react";
 import { FileTreeDiff } from "@/features/vcs/components/common/FileTreeDiff";
 import { IntegrationPanel } from "@/features/integration/components/IntegrationPanel";
+import { DevPanel } from "@/features/dev/components/DevPanel";
 import { ResizableLayout } from "@/features/layout/components/ResizableLayout";
 import { useState, useEffect } from "react";
 import { taskAttemptApi } from "@/services/api";
@@ -190,8 +191,9 @@ export function TaskDetailsPanel({
       <Card className="h-full">
         <CardContent className="h-full p-0">
           <Tabs defaultValue="details" className="h-full flex flex-col">
-            <TabsList className="grid w-full grid-cols-2 flex-shrink-0">
+            <TabsList className="grid w-full grid-cols-3 flex-shrink-0">
               <TabsTrigger value="details">{t('task.taskDetails')}</TabsTrigger>
+              <TabsTrigger value="dev">Dev</TabsTrigger>
               <TabsTrigger value="integration">{t('integration.title')}</TabsTrigger>
             </TabsList>
 
@@ -309,6 +311,16 @@ export function TaskDetailsPanel({
               </TabsContent>
 
 
+
+              <TabsContent value="dev" className="h-full p-0">
+                {project ? (
+                  <DevPanel project={project} />
+                ) : (
+                  <div className="flex items-center justify-center h-full text-muted-foreground">
+                    {t('terminal.notAssociatedProject')}
+                  </div>
+                )}
+              </TabsContent>
 
               <TabsContent value="integration" className="h-full p-0">
                 {project && task ? (
