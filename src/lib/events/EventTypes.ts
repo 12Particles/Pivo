@@ -99,6 +99,17 @@ export interface AppEvents {
     file_path: string;
     kind: string;
   };
+  
+  // Dev server events
+  'dev-server-output': {
+    process_id: string;
+    type: string;
+    data: string;
+  };
+  'dev-server-stopped': {
+    process_id: string;
+    exit_code?: number;
+  };
 }
 
 // Type helper for event names

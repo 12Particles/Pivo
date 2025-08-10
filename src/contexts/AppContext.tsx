@@ -4,14 +4,14 @@ import { eventBus } from '@/lib/events/EventBus';
 
 interface AppContextValue {
   // Navigation state
-  currentView: 'projects' | 'tasks' | 'settings' | 'projectSettings';
+  currentView: 'projects' | 'tasks' | 'settings' | 'projectSettings' | 'dev';
   settingsTab?: string;
   
   // Current project
   currentProject: Project | null;
   
   // Actions
-  navigateTo: (view: 'projects' | 'tasks' | 'settings' | 'projectSettings', options?: { tab?: string }) => void;
+  navigateTo: (view: 'projects' | 'tasks' | 'settings' | 'projectSettings' | 'dev', options?: { tab?: string }) => void;
   setCurrentProject: (project: Project | null) => void;
 }
 
