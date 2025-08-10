@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -713,12 +713,15 @@ export function FileTreeDiff({ projectPath, taskId, worktreePath, refreshKey = 0
   const renderFileNode = (node: FileNode, level: number = 0) => {
     const isExpanded = expandedFolders.has(node.path);
     const isSelected = selectedFile === node.path;
+    const [dropdownOpen, setDropdownOpen] = useState(false);
+    const buttonRef = useRef<HTMLButtonElement>(null);
 
     return (
       <div key={node.path}>
-        <DropdownMenu>
+        <DropdownMenu open={dropdownOpen} onOpenChange={setDropdownOpen}>
           <DropdownMenuTrigger asChild>
             <Button
+              ref={buttonRef}
               variant="ghost"
               size="sm"
               className={cn(
@@ -727,10 +730,16 @@ export function FileTreeDiff({ projectPath, taskId, worktreePath, refreshKey = 0
                 "hover:bg-accent/50"
               )}
               style={{ paddingLeft: `${level * 16 + 8}px` }}
-              onClick={() => handleFileClick(node)}
-              onContextMenu={(e) => {
+              onClick={(e) => {
+                // Left click: handle file/folder click, don't open menu
                 e.preventDefault();
-                // The dropdown menu will handle the right-click
+                handleFileClick(node);
+              }}
+              onContextMenu={(e) => {
+                // Right click: open dropdown menu
+                e.preventDefault();
+                e.stopPropagation();
+                setDropdownOpen(true);
               }}
             >
               {node.type === "folder" ? (
