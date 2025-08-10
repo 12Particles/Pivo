@@ -215,38 +215,41 @@ impl CodingAgent for ClaudeCodeAgent {
                 .ok_or("Could not find claude or npx. Please ensure claude-code is installed or Node.js and npm are available.")
         };
         
-        let cmd = cmd_result?;
+        let claude_cmd = cmd_result?;
         
-        // Parse composite command if needed
-        let (program, base_args) = if cmd.contains(' ') {
-            let parts: Vec<&str> = cmd.split_whitespace().collect();
-            (parts[0].to_string(), parts[1..].to_vec())
-        } else {
-            (cmd, vec![])
-        };
-        
-        let mut command = Command::new(&program);
-        
-        // Add base args if any (for node npx-cli.js case)
-        for arg in base_args {
-            command.arg(arg);
-        }
+        // Build the command arguments
+        let mut cmd_args = vec![];
         
         // Add claude-code args only if using npx
         if using_npx {
-            command.arg("@anthropic-ai/claude-code@latest");
+            cmd_args.push("@anthropic-ai/claude-code@latest");
         } else {
             // When using claude command directly, we need these args for non-interactive streaming
-            command.arg("--print");
-            command.arg("--verbose");
-            command.arg("--output-format");
-            command.arg("stream-json");
+            cmd_args.extend_from_slice(&["--print", "--verbose", "--output-format", "stream-json"]);
         }
         
+        // Add --dangerously-skip-permissions flag for both cases
+        cmd_args.push("--dangerously-skip-permissions");
+        
         if let Some(session_id) = &execution_context.resume_session_id {
-            command.arg("--resume");
-            command.arg(session_id);
+            cmd_args.push("--resume");
+            cmd_args.push(session_id);
         }
+        
+        // Build the full shell command
+        let shell_cmd = if using_npx {
+            format!("{} {}", claude_cmd, cmd_args.join(" "))
+        } else {
+            format!("{} {}", claude_cmd, cmd_args.join(" "))
+        };
+        
+        info!("Executing command via shell: {}", shell_cmd);
+        
+        // Use shell to execute the command with proper environment
+        let mut command = Command::new("/bin/zsh");
+        command.arg("-l"); // Login shell to load full environment
+        command.arg("-c");
+        command.arg(&shell_cmd);
         
         command.current_dir(&execution_context.working_directory);
         command.stdin(Stdio::piped());
@@ -259,10 +262,6 @@ impl CodingAgent for ClaudeCodeAgent {
         
         if let Ok(anthropic_key) = std::env::var("ANTHROPIC_API_KEY") {
             command.env("ANTHROPIC_API_KEY", anthropic_key);
-        }
-        
-        if let Ok(node_path) = std::env::var("NODE_PATH") {
-            command.env("NODE_PATH", node_path);
         }
         
         info!("Starting Claude Code process...");
