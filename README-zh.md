@@ -199,7 +199,7 @@ Pivo使用SQLite进行数据持久化。数据库在首次运行时自动初始�
 ## 社区
 ### 微信群
 
-![9d24168dff9d96540fb5c012b0a0b212](https://github.com/user-attachments/assets/7a0e0f87-2ac9-4aca-aa78-9a922a339faa)
+<img width="1080" height="1596" alt="image" src="https://github.com/user-attachments/assets/f22c7204-7ed0-4ee9-9ab5-7077757ff0d3" />
 
 ## 🤝 贡献
 
