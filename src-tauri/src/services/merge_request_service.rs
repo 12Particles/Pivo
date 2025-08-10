@@ -161,4 +161,16 @@ impl MergeRequestService {
             self.create_merge_request(api_data).await
         }
     }
+
+    pub async fn get_open_merge_requests(&self) -> Result<Vec<MergeRequest>, Box<dyn std::error::Error + Send + Sync>> {
+        let mut conn = self.pool.acquire().await?;
+        
+        let rows = sqlx::query_as::<_, MergeRequestRow>(
+            "SELECT * FROM merge_requests WHERE state IN ('opened', 'open') ORDER BY created_at DESC"
+        )
+        .fetch_all(&mut *conn)
+        .await?;
+        
+        Ok(rows.into_iter().map(Into::into).collect())
+    }
 }

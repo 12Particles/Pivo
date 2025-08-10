@@ -12,6 +12,7 @@ pub mod config_service;
 pub mod merge_request_service;
 pub mod file_watcher_service;
 pub mod command_service;
+pub mod vcs_sync_service;
 
 pub use task_service::*;
 pub use project_service::*;
@@ -27,3 +28,4 @@ pub use config_service::*;
 pub use merge_request_service::*;
 pub use file_watcher_service::*;
 pub use command_service::*;
+pub use vcs_sync_service::*;

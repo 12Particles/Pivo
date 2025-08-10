@@ -312,7 +312,10 @@ export function TaskDetailsPanel({
 
               <TabsContent value="integration" className="h-full p-0">
                 {project && task ? (
-                  <IntegrationPanel task={task} project={project} />
+                  <IntegrationPanel 
+                    task={task} 
+                    project={project} 
+                  />
                 ) : (
                   <div className="flex items-center justify-center h-full text-muted-foreground">
                     {t('terminal.notAssociatedProject')}

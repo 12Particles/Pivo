@@ -9,9 +9,10 @@ mod window_manager;
 mod utils;
 
 use std::sync::Arc;
-use services::{TaskService, ProjectService, ProcessService, McpServerManager, CodingAgentExecutorService, MergeRequestService, ConfigService, FileWatcherService};
+use services::{TaskService, ProjectService, ProcessService, McpServerManager, CodingAgentExecutorService, MergeRequestService, ConfigService, FileWatcherService, VcsSyncService, VcsSyncConfig, GitLabService, GitHubService};
+use models::{GitLabConfig, GitHubConfig};
 use repository::DatabaseRepository;
-use tauri::Manager;
+use tauri::{Manager, Emitter};
 use tokio::sync::Mutex;
 use commands::mcp::McpState;
 use commands::cli::CliState;
@@ -66,6 +67,48 @@ pub fn run() {
                         let config_service = Arc::new(Mutex::new(config_service_inner));
                         let file_watcher_service = Arc::new(FileWatcherService::new(handle.clone()));
                         let window_manager = Arc::new(ProjectWindowManager::new(handle.clone()));
+                        
+                        // Initialize VCS sync service
+                        let vcs_sync_config = VcsSyncConfig::default();
+                        
+                        // Get configs from config service
+                        let config = config_service.lock().await;
+                        let gitlab_config = config.get_gitlab_config().cloned()
+                            .unwrap_or_else(|| GitLabConfig {
+                                gitlab_url: Some("https://gitlab.com".to_string()),
+                                pat: None,
+                                username: None,
+                                primary_email: None,
+                                default_mr_base: None,
+                            });
+                        let github_config = config.get_github_config().cloned()
+                            .unwrap_or_else(|| GitHubConfig {
+                                access_token: None,
+                                username: None,
+                                default_pr_base: None,
+                            });
+                        drop(config);
+                        
+                        let gitlab_service = Arc::new(Mutex::new(GitLabService::new(gitlab_config)));
+                        let github_service = Arc::new(Mutex::new(GitHubService::new(github_config)));
+                        
+                        if vcs_sync_config.enabled {
+                            let vcs_sync_service = Arc::new(VcsSyncService::new(
+                                pool.clone(),
+                                gitlab_service.clone(),
+                                github_service.clone(),
+                                vcs_sync_config.sync_interval_seconds,
+                                handle.clone(),
+                            ));
+                            
+                            // Start background sync service
+                            let sync_service = vcs_sync_service.clone();
+                            tokio::spawn(async move {
+                                sync_service.start_background_sync().await;
+                            });
+                            
+                            log::info!("VCS sync service started with {} seconds interval", vcs_sync_config.sync_interval_seconds);
+                        }
                         
                         // Store app state
                         app.manage(AppState {
